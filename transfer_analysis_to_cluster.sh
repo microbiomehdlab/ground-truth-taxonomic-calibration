@@ -18,6 +18,8 @@ code_files=(
   transfer_analysis_to_cluster.sh
   run_publication_original_unpaired_q010.sh
   run_original_unpaired_q010_cluster.sbatch
+  rerun_current_figures_only.sh
+  rerun_supplementary_figures_only.sh
   cluster_preflight_original_unpaired.sh rscript_in_container.sh
   build_crc_spike_maaslin2_container.sh
 )

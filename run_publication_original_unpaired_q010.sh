@@ -61,8 +61,12 @@ required=(
   scripts/plot_manuscript_community_DA_recovery.R
   scripts/plot_internal_and_crossstudy_artefact_filter_validation.R
   scripts/plot_spike_calibratability_gam.R
+  scripts/plot_manuscript_community_offtarget_artifacts.R
+  scripts/plot_supp_community_depth_qc_recovery_models.R
+  scripts/plot_supp_community_qc_recovery_full.R
   scripts/validate_taxon_aliases.R
   scripts/99_make_current_manuscript_figures.R
+  rerun_supplementary_figures_only.sh
 )
 for path in "${required[@]}"; do
   [[ -e "$path" ]] || { echo "[ERROR] Missing required path: $path" >&2; exit 1; }
@@ -184,6 +188,21 @@ mkdir -p "$RUN_ROOT/manuscript_figures/figure7_calibratability"
   --min-detected 40 \
   --focus-targets "Bacteroides fragilis,Fusobacterium nucleatum subsp. nucleatum,Parvimonas micra,Dialister pneumosintes" \
   --transfer-tests true
+
+if [[ -n "${QC_LIST:-}" || -n "${COMMUNITY_TARGET_FILE:-}" ||
+      -s "$RUN_ROOT/qc_depth_original_samples/qc_files.txt" ]]; then
+  echo "[SUPPLEMENT] Generate Supplementary Figures B1--B13"
+  PROJECT="$PROJECT" \
+  RUN_ROOT="$RUN_ROOT" \
+  R_BIN="$R_BIN" \
+  QC_LIST="${QC_LIST:-}" \
+  COMMUNITY_TARGET_FILE="${COMMUNITY_TARGET_FILE:-}" \
+  bash rerun_supplementary_figures_only.sh
+else
+  echo "[WARN] Supplementary Figures B1--B13 were not generated because neither" >&2
+  echo "       QC_LIST nor COMMUNITY_TARGET_FILE was supplied." >&2
+  echo "       Run rerun_supplementary_figures_only.sh after supplying one of them." >&2
+fi
 
 echo "[STEP 8/8] Validate outputs and record provenance"
 expected_outputs=(

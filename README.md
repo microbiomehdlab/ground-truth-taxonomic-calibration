@@ -76,6 +76,7 @@ are intentionally excluded from Git.
 | `run_original_unpaired_q010_cluster.sbatch` | Submit the complete statistical analysis and figure regeneration |
 | `run_publication_original_unpaired_q010.sh` | Run the same downstream workflow inside an allocated job |
 | `rerun_current_figures_only.sh` | Reassemble Figures 2–5 from an existing run without repeating analyses |
+| `rerun_supplementary_figures_only.sh` | Regenerate Supplementary Figures B1–B13 from a completed run |
 | `transfer_analysis_to_cluster.sh` | Transfer the reviewed analysis code and staged inputs |
 
 `R/` and `scripts/` intentionally have different roles: files under `R/`
@@ -373,6 +374,36 @@ bash rerun_current_figures_only.sh
 The helper preserves the previous composites in a timestamped
 `blank_composites_*` directory, does not rerun MaAsLin2 or recovery analyses,
 and rejects effectively blank PNG outputs.
+
+### Regenerate Supplementary Figures B1–B13
+
+The supplementary figures are a separate plotting-only target because B1 and
+B6–B10 additionally use original-sample FastQC read-depth information. With a
+completed analysis run, supply either the previously derived community/QC
+table:
+
+```bash
+PROJECT="$PWD" \
+SIF=/path/to/crc_spike_original_unpaired_q010_r433_maaslin2_1180_v1.sif \
+RUN_ROOT=/path/to/completed/RUNS_publication_original_unpaired_q010_TIMESTAMP \
+COMMUNITY_TARGET_FILE=/path/to/community_target_level_depth_recovery.tsv \
+bash rerun_supplementary_figures_only.sh
+```
+
+or a text file containing one absolute path per original-sample FastQC
+`*_fastqc.zip` file:
+
+```bash
+PROJECT="$PWD" \
+SIF=/path/to/crc_spike_original_unpaired_q010_r433_maaslin2_1180_v1.sif \
+RUN_ROOT=/path/to/completed/RUNS_publication_original_unpaired_q010_TIMESTAMP \
+QC_LIST=/path/to/qc_files.txt \
+bash rerun_supplementary_figures_only.sh
+```
+
+The command reuses the completed recovery and MaAsLin2 outputs and writes 13
+PDF/PNG pairs plus a manifest under
+`RUN_ROOT/manuscript_figures/supplementary/`.
 
 ## Reproducibility records
 
