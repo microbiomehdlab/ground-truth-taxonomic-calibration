@@ -22,7 +22,11 @@ def parse_args() -> argparse.Namespace:
 
 def read_metadata(path: Path, requested_column: str | None) -> tuple[str, list[str]]:
     with path.open(newline="", encoding="utf-8-sig") as handle:
-        dialect = csv.Sniffer().sniff(handle.read(8192), delimiters="\t,")
+        preview = handle.read(8192)
+        try:
+            dialect = csv.Sniffer().sniff(preview, delimiters="\t,")
+        except csv.Error:
+            dialect = csv.excel_tab
         handle.seek(0)
         reader = csv.DictReader(handle, dialect=dialect)
         fields = reader.fieldnames or []
@@ -71,16 +75,15 @@ def index_sample_directories(
     return directory_index, accession_index
 
 
-def resolve_one(stage_dir: Path, mate: int) -> Path:
-    hits = sorted(stage_dir.glob(f"*_{mate}_fastqc.zip"))
-    if len(hits) != 1:
-        raise ValueError(
-            f"Expected exactly one mate-{mate} FastQC ZIP in {stage_dir}; "
-            f"found {len(hits)}"
-        )
-    if hits[0].stat().st_size == 0:
-        raise ValueError(f"FastQC ZIP is empty: {hits[0]}")
-    return hits[0].resolve()
+def archive_status(hits: list[Path]) -> tuple[str, Path | None]:
+    if len(hits) == 0:
+        return "missing", None
+    if len(hits) > 1:
+        raise ValueError(f"ambiguous FastQC archives: {list(map(str, hits))}")
+    archive = hits[0].resolve()
+    if archive.stat().st_size == 0:
+        return "empty", archive
+    return "available", archive
 
 
 def main() -> int:
@@ -95,14 +98,17 @@ def main() -> int:
     sample_dirs, accession_files = index_sample_directories(root)
     rows = []
     errors = []
+    warnings = []
 
     for sample in samples:
         locations = sample_dirs.get(sample, [])
         try:
             if len(locations) == 1:
                 sample_dir = locations[0]
-                resolved_files = {
-                    (stage, mate): resolve_one(sample_dir / stage, mate)
+                archive_hits = {
+                    (stage, mate): sorted(
+                        (sample_dir / stage).glob(f"*_{mate}_fastqc.zip")
+                    )
                     for stage in ("qc_before", "qc_after")
                     for mate in (1, 2)
                 }
@@ -113,44 +119,64 @@ def main() -> int:
                     f"{sample}; found {len(locations)}"
                 )
             else:
-                resolved_files = {}
-                for stage in ("qc_before", "qc_after"):
-                    for mate in (1, 2):
-                        hits = accession_files.get((sample, stage, mate), [])
-                        if len(hits) != 1:
-                            raise ValueError(
-                                f"no directory named {sample}, and expected exactly "
-                                f"one archive {sample}_{mate}_fastqc.zip under "
-                                f"{stage}; found {len(hits)}"
-                            )
-                        resolved_files[(stage, mate)] = hits[0]
-                biological_dirs = {
-                    path.parent.parent.resolve() for path in resolved_files.values()
+                archive_hits = {
+                    (stage, mate): accession_files.get(
+                        (sample, stage, mate), []
+                    )
+                    for stage in ("qc_before", "qc_after")
+                    for mate in (1, 2)
                 }
+                biological_dirs = {
+                    path.parent.parent.resolve()
+                    for hits in archive_hits.values()
+                    for path in hits
+                }
+                if not biological_dirs:
+                    raise ValueError(
+                        f"no directory named {sample} and no FastQC archives "
+                        f"named {sample}_[12]_fastqc.zip"
+                    )
                 if len(biological_dirs) != 1:
                     raise ValueError(
                         "accession-matched archives span multiple biological "
                         f"sample directories: {sorted(map(str, biological_dirs))}"
                     )
                 matched_by = "fastqc_accession"
+                sample_dir = next(iter(biological_dirs))
 
+            sample_rows = []
             for stage in ("qc_before", "qc_after"):
+                available_in_stage = 0
                 for mate in (1, 2):
-                    archive = resolved_files[(stage, mate)]
-                    if archive.stat().st_size == 0:
-                        raise ValueError(f"FastQC ZIP is empty: {archive}")
-                    rows.append(
+                    status, archive = archive_status(archive_hits[(stage, mate)])
+                    if status == "available":
+                        available_in_stage += 1
+                    else:
+                        warnings.append(
+                            f"{sample}: mate {mate} under {stage} is {status}"
+                            + (f": {archive}" if archive else "")
+                        )
+                    sample_directory = (
+                        archive.parent.parent.resolve()
+                        if archive is not None
+                        else sample_dir
+                    )
+                    sample_rows.append(
                         {
                             "sample_id": sample,
                             "matched_by": matched_by,
-                            "metaprep_sample_directory": str(
-                                archive.parent.parent.resolve()
-                            ),
+                            "metaprep_sample_directory": str(sample_directory),
                             "stage": stage,
                             "mate": str(mate),
-                            "fastqc_zip": str(archive),
+                            "status": status,
+                            "fastqc_zip": str(archive) if archive else "",
                         }
                     )
+                if available_in_stage == 0:
+                    raise ValueError(
+                        f"no usable FastQC archive for either mate under {stage}"
+                    )
+            rows.extend(sample_rows)
         except ValueError as exc:
             errors.append(f"{sample}: {exc}")
 
@@ -168,8 +194,10 @@ def main() -> int:
 
     args.output_list.parent.mkdir(parents=True, exist_ok=True)
     args.output_manifest.parent.mkdir(parents=True, exist_ok=True)
+    available_rows = [row for row in rows if row["status"] == "available"]
     args.output_list.write_text(
-        "".join(f"{row['fastqc_zip']}\n" for row in rows), encoding="utf-8"
+        "".join(f"{row['fastqc_zip']}\n" for row in available_rows),
+        encoding="utf-8",
     )
     with args.output_manifest.open("w", newline="", encoding="utf-8") as handle:
         writer = csv.DictWriter(
@@ -180,6 +208,7 @@ def main() -> int:
                 "metaprep_sample_directory",
                 "stage",
                 "mate",
+                "status",
                 "fastqc_zip",
             ],
             delimiter="\t",
@@ -187,11 +216,23 @@ def main() -> int:
         writer.writeheader()
         writer.writerows(rows)
 
-    expected = len(samples) * 4
-    if len(rows) != expected:
-        raise RuntimeError(f"Internal error: expected {expected} files; found {len(rows)}")
+    expected_rows = len(samples) * 4
+    if len(rows) != expected_rows:
+        raise RuntimeError(
+            f"Internal error: expected {expected_rows} manifest rows; "
+            f"found {len(rows)}"
+        )
+    if warnings:
+        print(
+            f"[WARN] {len(warnings)} mate-level FastQC archives were missing or "
+            "empty; the available synchronized mate will be used:",
+            file=sys.stderr,
+        )
+        for warning in warnings:
+            print(f"  - {warning}", file=sys.stderr)
     print(
-        f"[PASS] Resolved {len(rows)} MetaPrep FastQC ZIPs for "
+        f"[PASS] Resolved {len(available_rows)} usable MetaPrep FastQC ZIPs "
+        f"({len(rows) - len(available_rows)} unavailable) for "
         f"{len(samples)} samples "
         f"from metadata column '{sample_column}'."
     )

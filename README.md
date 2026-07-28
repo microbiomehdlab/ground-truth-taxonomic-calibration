@@ -392,8 +392,11 @@ bash rerun_supplementary_figures_only.sh
 The workflow reads `metadata_w_study.tsv`, resolves only those samples under
 `METAPREP_ROOT/<cohort>/sequencing/<biological-sample>/qc_before|qc_after/`.
 Samples may be identified either by the biological-sample directory or by the
-run accession in each FastQC filename. The resolver requires exactly one
-FastQC ZIP per mate and stage and records the selected inputs in
+run accession in each FastQC filename. The resolver normally expects one
+FastQC ZIP per mate and stage. If one mate-level archive is missing or empty,
+the available synchronized mate is used for the read-pair count and the issue
+is recorded explicitly; at least one usable archive is required for both
+`qc_before` and `qc_after`. The selected inputs and validation status are in
 `RUN_ROOT/qc_depth_original_samples/qc_manifest.tsv`.
 
 For compatibility with older runs, the previously derived community/QC table
