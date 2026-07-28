@@ -189,12 +189,14 @@ mkdir -p "$RUN_ROOT/manuscript_figures/figure7_calibratability"
   --focus-targets "Bacteroides fragilis,Fusobacterium nucleatum subsp. nucleatum,Parvimonas micra,Dialister pneumosintes" \
   --transfer-tests true
 
-if [[ -n "${QC_LIST:-}" || -n "${COMMUNITY_TARGET_FILE:-}" ||
+if [[ -n "${METRAPREP_ROOT:-}" || -n "${QC_LIST:-}" ||
+      -n "${COMMUNITY_TARGET_FILE:-}" ||
       -s "$RUN_ROOT/qc_depth_original_samples/qc_files.txt" ]]; then
   echo "[SUPPLEMENT] Generate Supplementary Figures B1--B13"
   PROJECT="$PROJECT" \
   RUN_ROOT="$RUN_ROOT" \
   R_BIN="$R_BIN" \
+  METRAPREP_ROOT="${METRAPREP_ROOT:-}" \
   QC_LIST="${QC_LIST:-}" \
   COMMUNITY_TARGET_FILE="${COMMUNITY_TARGET_FILE:-}" \
   bash rerun_supplementary_figures_only.sh

@@ -378,26 +378,30 @@ and rejects effectively blank PNG outputs.
 ### Regenerate Supplementary Figures B1–B13
 
 The supplementary figures are a separate plotting-only target because B1 and
-B6–B10 additionally use original-sample FastQC read-depth information. With a
-completed analysis run, supply either the previously derived community/QC
-table:
+B6–B10 additionally use original-sample FastQC read-depth information. The
+recommended interface requires only the stable MetraPrep root:
+
+```bash
+PROJECT="$PWD" \
+SIF=/path/to/crc_spike_original_unpaired_q010_r433_maaslin2_1180_v1.sif \
+RUN_ROOT=/path/to/completed/RUNS_publication_original_unpaired_q010_TIMESTAMP \
+METRAPREP_ROOT=/path/to/data/processed/metraprep \
+bash rerun_supplementary_figures_only.sh
+```
+
+The workflow reads `metadata_w_study.tsv`, resolves only those samples under
+`METRAPREP_ROOT/<cohort>/sequencing/<sample>/qc_before|qc_after/`, and requires
+exactly one FastQC ZIP per mate and stage. It records the resolved inputs in
+`RUN_ROOT/qc_depth_original_samples/qc_manifest.tsv`.
+
+For compatibility with older runs, the previously derived community/QC table
+can be supplied directly:
 
 ```bash
 PROJECT="$PWD" \
 SIF=/path/to/crc_spike_original_unpaired_q010_r433_maaslin2_1180_v1.sif \
 RUN_ROOT=/path/to/completed/RUNS_publication_original_unpaired_q010_TIMESTAMP \
 COMMUNITY_TARGET_FILE=/path/to/community_target_level_depth_recovery.tsv \
-bash rerun_supplementary_figures_only.sh
-```
-
-or a text file containing one absolute path per original-sample FastQC
-`*_fastqc.zip` file:
-
-```bash
-PROJECT="$PWD" \
-SIF=/path/to/crc_spike_original_unpaired_q010_r433_maaslin2_1180_v1.sif \
-RUN_ROOT=/path/to/completed/RUNS_publication_original_unpaired_q010_TIMESTAMP \
-QC_LIST=/path/to/qc_files.txt \
 bash rerun_supplementary_figures_only.sh
 ```
 

@@ -6,10 +6,14 @@ PROJECT="${PROJECT:-$PWD}"
 R_BIN="${R_BIN:-$PROJECT/rscript_in_container.sh}"
 QC_LIST="${QC_LIST:-}"
 COMMUNITY_TARGET_FILE="${COMMUNITY_TARGET_FILE:-}"
+METRAPREP_ROOT="${METRAPREP_ROOT:-}"
+METADATA="${METADATA:-}"
 
 cd "$PROJECT"
 PROJECT="$(pwd -P)"
 [[ "$RUN_ROOT" = /* ]] || RUN_ROOT="$PROJECT/$RUN_ROOT"
+METADATA="${METADATA:-$PROJECT/metadata_w_study.tsv}"
+[[ "$METADATA" = /* ]] || METADATA="$PROJECT/$METADATA"
 
 [[ -d "$RUN_ROOT" ]] || {
   echo "[ERROR] Completed RUN_ROOT does not exist: $RUN_ROOT" >&2
@@ -68,11 +72,23 @@ if [[ -z "$COMMUNITY_TARGET_FILE" ]]; then
   if [[ -z "$QC_LIST" && -s "$RUN_ROOT/qc_depth_original_samples/qc_files.txt" ]]; then
     QC_LIST="$RUN_ROOT/qc_depth_original_samples/qc_files.txt"
   fi
+  if [[ -z "$QC_LIST" && -n "$METRAPREP_ROOT" ]]; then
+    qc_inventory="$RUN_ROOT/qc_depth_original_samples"
+    mkdir -p "$qc_inventory"
+    python3 "$PROJECT/scripts/build_metraprep_qc_manifest.py" \
+      --metraprep-root "$METRAPREP_ROOT" \
+      --metadata "$METADATA" \
+      --output-list "$qc_inventory/qc_files.txt" \
+      --output-manifest "$qc_inventory/qc_manifest.tsv"
+    QC_LIST="$qc_inventory/qc_files.txt"
+  fi
   [[ -n "$QC_LIST" && -s "$QC_LIST" ]] || {
     cat >&2 <<EOF
 [ERROR] Supplementary Figures B1 and B6--B10 require original-sample QC depth.
 Set one of:
   COMMUNITY_TARGET_FILE=/path/to/community_target_level_depth_recovery.tsv
+or:
+  METRAPREP_ROOT=/path/to/data/processed/metraprep
 or:
   QC_LIST=/path/to/qc_files.txt
 
