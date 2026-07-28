@@ -1,0 +1,32 @@
+name: crc-spike-maaslin2
+channels:
+  - conda-forge
+  - bioconda
+  - nodefaults
+dependencies:
+  - r-base=4.3.3
+  - bioconductor-maaslin2=1.18.0
+  - r-optparse
+  - r-data.table
+  - r-dplyr
+  - r-tibble
+  - r-readr
+  - r-tidyr
+  - r-stringr
+  - r-purrr
+  - r-rlang
+  - r-ggplot2
+  - r-forcats
+  - r-scales
+  - r-patchwork
+  - r-cowplot
+  - r-gridextra
+  - r-pheatmap
+  - r-ggrepel
+  - r-rcolorbrewer
+  - r-mgcv
+  - r-jsonlite
+  - r-sessioninfo
+  - r-png
+  - python=3.11
+  - pandas

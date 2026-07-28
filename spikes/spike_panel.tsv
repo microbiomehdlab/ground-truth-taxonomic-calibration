@@ -1,0 +1,11 @@
+label	taxon_name	assembly	fasta	weight	url
+Fnuc	Fusobacterium nucleatum subsp. nucleatum	GCF_003019295.1	references/genomes/Fnuc.fa	1	
+Pmic	Parvimonas micra	GCF_003454775.1	references/genomes/Pmic.fa	1	
+Pana	Peptostreptococcus anaerobius	GCF_900454605.1	references/genomes/Pana.fa	1	
+Psto	Peptostreptococcus stomatis	GCA_000147675.2	references/genomes/Psto.fa	1	
+Dpne	Dialister pneumosintes	GCF_003570845.1	references/genomes/Dpne.fa	1	
+Csym	Clostridium symbiosum	GCF_000466485.1	references/genomes/Csym.fa	1	
+Hhat	Hungatella hathewayi	GCF_000235505.1	references/genomes/Hhat.fa	1	
+Bfrag	Bacteroides fragilis	GCF_000025985.1	references/genomes/Bfrag.fa	1	
+Porp	Porphyromonas asaccharolytica	GCF_000183605.1	references/genomes/Porp.fa	1	
+Pint	Prevotella intermedia	GCF_002797175.1	references/genomes/Pint.fa	1	

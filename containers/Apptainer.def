@@ -1,0 +1,45 @@
+Bootstrap: docker
+From: continuumio/miniconda3:24.7.1-0
+
+%labels
+    Author Andre-Salgado
+    Project CRC-spike-MaAsLin2
+    Description R 4.3.3 and MaAsLin2 1.18.0 for manuscript reproduction
+
+%files
+    containers/environment.yml /opt/environment.yml
+    containers/verify_crc_spike_environment.R /opt/verify_crc_spike_environment.R
+
+%post
+    set -eux
+    export DEBIAN_FRONTEND=noninteractive
+    apt-get update
+    apt-get install -y --no-install-recommends \
+        ca-certificates procps git build-essential libcurl4-openssl-dev \
+        libssl-dev libxml2-dev libfontconfig1-dev libfreetype6-dev \
+        libpng-dev libtiff5-dev libjpeg-dev libharfbuzz-dev libfribidi-dev \
+        libcairo2-dev libxt-dev
+    rm -rf /var/lib/apt/lists/*
+    /opt/conda/bin/conda config --system --set channel_priority strict
+    /opt/conda/bin/conda install -y -n base -c conda-forge mamba
+    /opt/conda/bin/mamba env create -f /opt/environment.yml
+    /opt/conda/bin/conda clean -afy
+    /opt/conda/envs/crc-spike-maaslin2/bin/Rscript /opt/verify_crc_spike_environment.R
+
+%environment
+    export PATH=/opt/conda/envs/crc-spike-maaslin2/bin:/opt/conda/bin:$PATH
+    export LC_ALL=C.UTF-8
+    export LANG=C.UTF-8
+    unset R_HOME
+    unset R_LIBS
+    export R_ENVIRON_USER=/dev/null
+    export R_PROFILE_USER=/dev/null
+    export OMP_NUM_THREADS=1
+    export OPENBLAS_NUM_THREADS=1
+    export MKL_NUM_THREADS=1
+
+%runscript
+    exec "$@"
+
+%test
+    Rscript /opt/verify_crc_spike_environment.R

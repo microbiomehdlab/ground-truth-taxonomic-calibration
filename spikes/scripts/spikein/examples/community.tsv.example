@@ -1,0 +1,10 @@
+# label	pool1	pool2	weight
+Fnuc	/path/to/spike_work/pools/Fnuc.pool_1.fq	/path/to/spike_work/pools/Fnuc.pool_2.fq	1
+Pmic	/path/to/spike_work/pools/Pmic.pool_1.fq	/path/to/spike_work/pools/Pmic.pool_2.fq	1
+Psto	/path/to/spike_work/pools/Psto.pool_1.fq	/path/to/spike_work/pools/Psto.pool_2.fq	1
+Dpne	/path/to/spike_work/pools/Dpne.pool_1.fq	/path/to/spike_work/pools/Dpne.pool_2.fq	1
+Csym	/path/to/spike_work/pools/Csym.pool_1.fq	/path/to/spike_work/pools/Csym.pool_2.fq	1
+Hhat	/path/to/spike_work/pools/Hhat.pool_1.fq	/path/to/spike_work/pools/Hhat.pool_2.fq	1
+Bfrag	/path/to/spike_work/pools/Bfrag.pool_1.fq	/path/to/spike_work/pools/Bfrag.pool_2.fq	1
+Porp	/path/to/spike_work/pools/Porp.pool_1.fq	/path/to/spike_work/pools/Porp.pool_2.fq	1
+Pint	/path/to/spike_work/pools/Pint.pool_1.fq	/path/to/spike_work/pools/Pint.pool_2.fq	1

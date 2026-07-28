@@ -1,0 +1,57 @@
+# Host-specific configuration
+config/global.env
+spikes/spikein.env
+taxonomy/*.env
+
+# Raw sequencing data, reference databases, and generated profiles
+data/
+references/
+databases/
+results/
+profile_results/
+runs/
+outputs/
+datasets/yashidas2019/
+
+# Scheduler and workflow logs
+logs/
+*.out
+*.err
+slurm-*
+
+# Generated spike pools and FASTQs
+pools*/
+spiked_fastqs/
+*.fastq
+*.fastq.gz
+*.fq
+*.fq.gz
+*.sra
+
+# Generated manifests, temporary files, and caches
+*.tmp
+*.temp
+*.partial
+__pycache__/
+*.py[cod]
+.Rhistory
+.RData
+.DS_Store
+
+# Containers and large archives
+*.sif
+*.img
+*.tar
+*.tar.gz
+*.zip
+
+# Staged downstream analysis inputs (large or generated)
+/samples_spiked_all_independent.tsv
+/samples_spiked_all_community.tsv
+/spike_panel.tsv
+/spike_taxon_aliases.csv
+/metadata_w_study.tsv
+/metaphlan4_merged_unspecified.csv
+/kraken2_bracken_merged_unspecified.csv
+/LOCAL_INPUT_SHA256.txt
+/TRANSFER_SHA256.txt
