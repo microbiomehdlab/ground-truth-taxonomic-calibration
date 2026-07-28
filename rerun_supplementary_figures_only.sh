@@ -6,7 +6,7 @@ PROJECT="${PROJECT:-$PWD}"
 R_BIN="${R_BIN:-$PROJECT/rscript_in_container.sh}"
 QC_LIST="${QC_LIST:-}"
 COMMUNITY_TARGET_FILE="${COMMUNITY_TARGET_FILE:-}"
-METRAPREP_ROOT="${METRAPREP_ROOT:-}"
+METAPREP_ROOT="${METAPREP_ROOT:-}"
 METADATA="${METADATA:-}"
 
 cd "$PROJECT"
@@ -72,11 +72,11 @@ if [[ -z "$COMMUNITY_TARGET_FILE" ]]; then
   if [[ -z "$QC_LIST" && -s "$RUN_ROOT/qc_depth_original_samples/qc_files.txt" ]]; then
     QC_LIST="$RUN_ROOT/qc_depth_original_samples/qc_files.txt"
   fi
-  if [[ -z "$QC_LIST" && -n "$METRAPREP_ROOT" ]]; then
+  if [[ -z "$QC_LIST" && -n "$METAPREP_ROOT" ]]; then
     qc_inventory="$RUN_ROOT/qc_depth_original_samples"
     mkdir -p "$qc_inventory"
-    python3 "$PROJECT/scripts/build_metraprep_qc_manifest.py" \
-      --metraprep-root "$METRAPREP_ROOT" \
+    python3 "$PROJECT/scripts/build_metaprep_qc_manifest.py" \
+      --metaprep-root "$METAPREP_ROOT" \
       --metadata "$METADATA" \
       --output-list "$qc_inventory/qc_files.txt" \
       --output-manifest "$qc_inventory/qc_manifest.tsv"
@@ -88,7 +88,7 @@ if [[ -z "$COMMUNITY_TARGET_FILE" ]]; then
 Set one of:
   COMMUNITY_TARGET_FILE=/path/to/community_target_level_depth_recovery.tsv
 or:
-  METRAPREP_ROOT=/path/to/data/processed/metraprep
+  METAPREP_ROOT=/path/to/data/processed/metaprep
 or:
   QC_LIST=/path/to/qc_files.txt
 

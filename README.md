@@ -379,19 +379,21 @@ and rejects effectively blank PNG outputs.
 
 The supplementary figures are a separate plotting-only target because B1 and
 B6–B10 additionally use original-sample FastQC read-depth information. The
-recommended interface requires only the stable MetraPrep root:
+recommended interface requires only the stable MetaPrep root:
 
 ```bash
 PROJECT="$PWD" \
 SIF=/path/to/crc_spike_original_unpaired_q010_r433_maaslin2_1180_v1.sif \
 RUN_ROOT=/path/to/completed/RUNS_publication_original_unpaired_q010_TIMESTAMP \
-METRAPREP_ROOT=/path/to/data/processed/metraprep \
+METAPREP_ROOT=/path/to/data/processed/metaprep \
 bash rerun_supplementary_figures_only.sh
 ```
 
 The workflow reads `metadata_w_study.tsv`, resolves only those samples under
-`METRAPREP_ROOT/<cohort>/sequencing/<sample>/qc_before|qc_after/`, and requires
-exactly one FastQC ZIP per mate and stage. It records the resolved inputs in
+`METAPREP_ROOT/<cohort>/sequencing/<biological-sample>/qc_before|qc_after/`.
+Samples may be identified either by the biological-sample directory or by the
+run accession in each FastQC filename. The resolver requires exactly one
+FastQC ZIP per mate and stage and records the selected inputs in
 `RUN_ROOT/qc_depth_original_samples/qc_manifest.tsv`.
 
 For compatibility with older runs, the previously derived community/QC table
