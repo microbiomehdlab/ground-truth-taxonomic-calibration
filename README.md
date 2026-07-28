@@ -75,6 +75,7 @@ are intentionally excluded from Git.
 | `preflight_all.sh` | Validate the integrated upstream and downstream workflow |
 | `run_original_unpaired_q010_cluster.sbatch` | Submit the complete statistical analysis and figure regeneration |
 | `run_publication_original_unpaired_q010.sh` | Run the same downstream workflow inside an allocated job |
+| `rerun_current_figures_only.sh` | Reassemble Figures 2–5 from an existing run without repeating analyses |
 | `transfer_analysis_to_cluster.sh` | Transfer the reviewed analysis code and staged inputs |
 
 `R/` and `scripts/` intentionally have different roles: files under `R/`
@@ -355,6 +356,23 @@ RUN_ROOT/
   PROVENANCE.txt
   logs/pipeline.log
 ```
+
+### Reassemble Figures 2–5 without rerunning analyses
+
+If the source panels already exist under
+`RUN_ROOT/manuscript_figures/current/source_panels`, reassemble only the final
+composites with:
+
+```bash
+PROJECT="$PWD" \
+SIF=/path/to/crc_spike_original_unpaired_q010_r433_maaslin2_1180_v1.sif \
+RUN_ROOT=/path/to/completed/RUNS_publication_original_unpaired_q010_TIMESTAMP \
+bash rerun_current_figures_only.sh
+```
+
+The helper preserves the previous composites in a timestamped
+`blank_composites_*` directory, does not rerun MaAsLin2 or recovery analyses,
+and rejects effectively blank PNG outputs.
 
 ## Reproducibility records
 

@@ -16,7 +16,13 @@ options <- list(
   make_option("--run-dir", default = "RUNS_publication_original_unpaired_q010"),
   make_option("--metadata", default = "metadata_w_study.tsv"),
   make_option("--kraken", default = "kraken2_bracken_merged_unspecified.csv"),
-  make_option("--metaphlan", default = "metaphlan4_merged_unspecified.csv")
+  make_option("--metaphlan", default = "metaphlan4_merged_unspecified.csv"),
+  make_option("--dpi", type = "integer", default = 450,
+              help = "PNG resolution for final composites [default %default]"),
+  make_option(
+    "--rerun-panels", type = "logical", default = TRUE,
+    help = "Regenerate source panels before assembly [default %default]"
+  )
 )
 opt <- parse_args(OptionParser(option_list = options))
 root <- normalizePath(opt$`project-root`, mustWork = TRUE)
@@ -44,57 +50,61 @@ d5a <- file.path(panels, "fig5_community_abundance")
 d5b <- file.path(panels, "fig5_community_da")
 for (d in c(d2, d2_supp, d3a, d3b, d4, d5a, d5b)) dir.create(d, recursive = TRUE, showWarnings = FALSE)
 
-run_r("1st_panel_plot_manuscript_tool_discordance.R", c(
-  arg("indir", file.path(run_dir, "spike_metrics")),
-  arg("outdir", d2),
-  arg("spike-labels", "Bfrag,Fnuc,Pint,Pmic"),
-  arg("metadata-input", abs_path(opt$metadata)),
-  arg("metadata-sample-col", "sample_id"),
-  arg("metadata-condition-col", "Target_Condition"),
-  arg("metadata-study-col", "Study")
-))
-run_r("1st_panel_plot_manuscript_tool_discordance.R", c(
-  arg("indir", file.path(run_dir, "spike_metrics")),
-  arg("outdir", d2_supp),
-  arg("spike-labels", "Bfrag,Csym,Dpne,Fnuc,Hhat,Pmic,Pana,Psto,Porp,Pint"),
-  arg("metadata-input", abs_path(opt$metadata)),
-  arg("metadata-sample-col", "sample_id"),
-  arg("metadata-condition-col", "Target_Condition"),
-  arg("metadata-study-col", "Study"),
-  arg("width", "18"),
-  arg("height", "9")
-))
-run_r("plot_manuscript_independent_spike_overview.R", c(
-  arg("indir", file.path(run_dir, "spike_metrics")), arg("outdir", d3a),
-  arg("spike-labels", "Bfrag,Csym,Dpne,Fnuc,Hhat,Pmic,Pana,Psto,Porp,Pint"),
-  arg("sort-labels-by", "taxon")
-))
-run_r("plot_manuscript_fnuc_case_study_panel.R", c(
-  arg("indir", file.path(run_dir, "spike_metrics")),
-  arg("metadata-input", abs_path(opt$metadata)),
-  arg("kraken-input", abs_path(opt$kraken)),
-  arg("metaphlan-input", abs_path(opt$metaphlan)),
-  arg("outdir", d3b), arg("spike-label", "Fnuc")
-))
-run_r("plot_manuscript_crc_biomarker_recoverability_compact.R", c(
-  arg("summary-dir", file.path(run_dir, "species_driver_and_thresholds")),
-  arg("outdir", d4), arg("focus-fraction", "0.0001"),
-  arg("spike-label-order", "Bfrag,Csym,Dpne,Fnuc,Hhat,Pmic,Pana,Psto,Porp,Pint")
-))
-run_r("plot_manuscript_community_spike_concordance.R", c(
-  # The plotting script selects community rows itself. Use the combined table:
-  # the community-only compatibility export lacks fields required by this plot.
-  arg("input-file", file.path(run_dir, "spike_metrics", "target_member_errors_with_condition.csv")),
-  arg("outdir", d5a), arg("community-size", "10"),
-  arg("main-effective-fractions", "0.00001,0.00005,0.0001,0.0005,0.001"),
-  arg("spike-label-order", "Bfrag,Csym,Dpne,Fnuc,Hhat,Pmic,Pana,Psto,Porp,Pint")
-))
-run_r("plot_manuscript_community_DA_recovery.R", c(
-  arg("indir", file.path(run_dir, "maaslin_spike")), arg("outdir", d5b),
-  arg("community-size", "10"),
-  arg("main-effective-fractions", "0.00001,0.00005,0.0001,0.0005,0.001"),
-  arg("spike-label-order", "Bfrag,Csym,Dpne,Fnuc,Hhat,Pmic,Pana,Psto,Porp,Pint")
-))
+if (isTRUE(opt$`rerun-panels`)) {
+  run_r("1st_panel_plot_manuscript_tool_discordance.R", c(
+    arg("indir", file.path(run_dir, "spike_metrics")),
+    arg("outdir", d2),
+    arg("spike-labels", "Bfrag,Fnuc,Pint,Pmic"),
+    arg("metadata-input", abs_path(opt$metadata)),
+    arg("metadata-sample-col", "sample_id"),
+    arg("metadata-condition-col", "Target_Condition"),
+    arg("metadata-study-col", "Study")
+  ))
+  run_r("1st_panel_plot_manuscript_tool_discordance.R", c(
+    arg("indir", file.path(run_dir, "spike_metrics")),
+    arg("outdir", d2_supp),
+    arg("spike-labels", "Bfrag,Csym,Dpne,Fnuc,Hhat,Pmic,Pana,Psto,Porp,Pint"),
+    arg("metadata-input", abs_path(opt$metadata)),
+    arg("metadata-sample-col", "sample_id"),
+    arg("metadata-condition-col", "Target_Condition"),
+    arg("metadata-study-col", "Study"),
+    arg("width", "18"),
+    arg("height", "9")
+  ))
+  run_r("plot_manuscript_independent_spike_overview.R", c(
+    arg("indir", file.path(run_dir, "spike_metrics")), arg("outdir", d3a),
+    arg("spike-labels", "Bfrag,Csym,Dpne,Fnuc,Hhat,Pmic,Pana,Psto,Porp,Pint"),
+    arg("sort-labels-by", "taxon")
+  ))
+  run_r("plot_manuscript_fnuc_case_study_panel.R", c(
+    arg("indir", file.path(run_dir, "spike_metrics")),
+    arg("metadata-input", abs_path(opt$metadata)),
+    arg("kraken-input", abs_path(opt$kraken)),
+    arg("metaphlan-input", abs_path(opt$metaphlan)),
+    arg("outdir", d3b), arg("spike-label", "Fnuc")
+  ))
+  run_r("plot_manuscript_crc_biomarker_recoverability_compact.R", c(
+    arg("summary-dir", file.path(run_dir, "species_driver_and_thresholds")),
+    arg("outdir", d4), arg("focus-fraction", "0.0001"),
+    arg("spike-label-order", "Bfrag,Csym,Dpne,Fnuc,Hhat,Pmic,Pana,Psto,Porp,Pint")
+  ))
+  run_r("plot_manuscript_community_spike_concordance.R", c(
+    # The plotting script selects community rows itself. Use the combined table:
+    # the community-only compatibility export lacks fields required by this plot.
+    arg("input-file", file.path(run_dir, "spike_metrics", "target_member_errors_with_condition.csv")),
+    arg("outdir", d5a), arg("community-size", "10"),
+    arg("main-effective-fractions", "0.00001,0.00005,0.0001,0.0005,0.001"),
+    arg("spike-label-order", "Bfrag,Csym,Dpne,Fnuc,Hhat,Pmic,Pana,Psto,Porp,Pint")
+  ))
+  run_r("plot_manuscript_community_DA_recovery.R", c(
+    arg("indir", file.path(run_dir, "maaslin_spike")), arg("outdir", d5b),
+    arg("community-size", "10"),
+    arg("main-effective-fractions", "0.00001,0.00005,0.0001,0.0005,0.001"),
+    arg("spike-label-order", "Bfrag,Csym,Dpne,Fnuc,Hhat,Pmic,Pana,Psto,Porp,Pint")
+  ))
+} else {
+  message("[INFO] Reusing existing source panels in: ", panels)
+}
 
 find_panel <- function(dir, stems) {
   candidates <- unlist(lapply(stems, function(s) file.path(dir, paste0(s, c(".png", ".pdf")))))
@@ -111,11 +121,38 @@ read_plot <- function(path) {
     png::writePNG(bitmap[, , seq_len(min(3, dim(bitmap)[3])), drop = FALSE], tmp)
     path <- tmp
   }
-  cowplot::ggdraw() + cowplot::draw_image(path)
+  image <- png::readPNG(path)
+  grob <- grid::rasterGrob(
+    image, x = 0.5, y = 0.5,
+    width = grid::unit(1, "npc"), height = grid::unit(1, "npc"),
+    interpolate = TRUE
+  )
+  cowplot::ggdraw() + cowplot::draw_grob(grob)
+}
+validate_nonblank_png <- function(path) {
+  image <- png::readPNG(path)
+  rgb <- if (length(dim(image)) == 3L) image[, , seq_len(min(3L, dim(image)[3])), drop = FALSE] else image
+  nonwhite_fraction <- mean(rgb < 0.985, na.rm = TRUE)
+  dynamic_range <- diff(range(rgb, finite = TRUE))
+  if (!is.finite(nonwhite_fraction) || nonwhite_fraction < 0.001 ||
+      !is.finite(dynamic_range) || dynamic_range < 0.02) {
+    stop(
+      "Generated composite is effectively blank: ", path,
+      " (non-white fraction=", signif(nonwhite_fraction, 3),
+      ", range=", signif(dynamic_range, 3), ")",
+      call. = FALSE
+    )
+  }
+  message(
+    "[OK] Non-blank composite: ", basename(path),
+    " (non-white fraction=", signif(nonwhite_fraction, 3), ")"
+  )
 }
 save <- function(plot, stem, width, height) {
   ggsave(file.path(outdir, paste0(stem, ".pdf")), plot, width = width, height = height, device = cairo_pdf, bg = "white")
-  ggsave(file.path(outdir, paste0(stem, ".png")), plot, width = width, height = height, dpi = 450, bg = "white")
+  png_path <- file.path(outdir, paste0(stem, ".png"))
+  ggsave(png_path, plot, width = width, height = height, dpi = opt$dpi, bg = "white")
+  validate_nonblank_png(png_path)
 }
 
 fig2 <- read_plot(find_panel(d2, "manuscript_full_baseline_discordance_panel"))
