@@ -161,13 +161,24 @@ save(fig2, "Fig2_baseline_profiler_discordance", 12.2, 8.8)
 fig2_supp <- read_plot(find_panel(d2_supp, "manuscript_full_baseline_discordance_panel"))
 save(fig2_supp, "Supplementary_Fig_B2_baseline_all_10_targets", 18, 9)
 
+fig3_lower <- plot_grid(
+  read_plot(find_panel(d3a, "panel_B_bias_variability_dotplots_naturestyle")),
+  read_plot(find_panel(d3b, c(
+    "panelC_recovery_classes_lowspikes_Fnuc",
+    "panelB_recovery_classes_lowspikes_Fnuc"
+  ))),
+  nrow = 1,
+  rel_widths = c(1.85, 1),
+  align = "h",
+  axis = "tb"
+)
 fig3 <- plot_grid(
   read_plot(find_panel(d3a, "panel_A_good_recovery_dumbbell_naturestyle")),
-  read_plot(find_panel(d3a, "panel_B_bias_variability_dotplots_naturestyle")),
-  read_plot(find_panel(d3b, c("panelC_recovery_classes_lowspikes_Fnuc", "panelB_recovery_classes_lowspikes_Fnuc"))),
-  ncol = 1, rel_heights = c(1, 1, 1)
+  fig3_lower,
+  ncol = 1,
+  rel_heights = c(1, 1.12)
 )
-save(fig3, "Fig3_independent_spike_recovery", 15.2, 16)
+save(fig3, "Fig3_independent_spike_recovery", 15.2, 10.6)
 
 fig4 <- plot_grid(
   read_plot(find_panel(d4, c(
