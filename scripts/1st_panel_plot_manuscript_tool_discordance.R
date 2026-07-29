@@ -29,6 +29,7 @@ option_list <- list(
   make_option("--prevalence-threshold", type = "double", default = 0),
   make_option("--abundance-scale", type = "character", default = "auto"),
   make_option("--allow-metadata-subset", action = "store_true", default = FALSE),
+  make_option("--taxa-per-row", type = "integer", default = 5),
   make_option("--width", type = "double", default = 14),
   make_option("--height", type = "double", default = 9),
   make_option("--dpi", type = "integer", default = 400)
@@ -57,6 +58,7 @@ for (nm in c("indir","manifest-input","design-input","aliases-input","kraken-inp
 }
 opt$prevalence_threshold <- as.numeric(opt_value(opt, "prevalence-threshold") %||% cli_value("--prevalence-threshold") %||% 0)
 opt$allow_metadata_subset <- isTRUE(opt_value(opt, "allow-metadata-subset")) || "--allow-metadata-subset" %in% commandArgs(trailingOnly = TRUE)
+opt$taxa_per_row <- as.integer(opt_value(opt, "taxa-per-row") %||% cli_value("--taxa-per-row") %||% 5)
 opt$width <- as.numeric(opt_value(opt, "width") %||% cli_value("--width") %||% 14)
 opt$height <- as.numeric(opt_value(opt, "height") %||% cli_value("--height") %||% 9)
 opt$dpi <- as.integer(opt_value(opt, "dpi") %||% cli_value("--dpi") %||% 400)
@@ -404,10 +406,15 @@ make_abundance_plot <- function(dat, show_heading = TRUE) {
     theme(legend.position = "none")
 }
 
-# Ten taxon columns become illegible when an 18-inch landscape plot is reduced
-# to journal page width. For detailed all-target output, use two five-taxon
-# blocks while retaining exactly the requested top-to-bottom manuscript order.
-taxon_blocks <- split(selected_labels, ceiling(seq_along(selected_labels) / 5))
+# Main figures can use compact blocks, whereas the rotated supplementary page
+# intentionally keeps all ten targets in one wide row.
+if (!is.finite(opt$taxa_per_row) || opt$taxa_per_row < 1) {
+  stop("--taxa-per-row must be a positive integer.", call. = FALSE)
+}
+taxon_blocks <- split(
+  selected_labels,
+  ceiling(seq_along(selected_labels) / opt$taxa_per_row)
+)
 prev_plots <- lapply(seq_along(taxon_blocks), function(i) {
   block <- taxon_blocks[[i]]
   dat <- prev %>%

@@ -68,8 +68,9 @@ if (isTRUE(opt$`rerun-panels`)) {
     arg("metadata-sample-col", "sample_id"),
     arg("metadata-condition-col", "Target_Condition"),
     arg("metadata-study-col", "Study"),
-    arg("width", "12.5"),
-    arg("height", "16.5")
+    arg("taxa-per-row", "10"),
+    arg("width", "18"),
+    arg("height", "9")
   ))
   run_r("plot_manuscript_independent_spike_overview.R", c(
     arg("indir", file.path(run_dir, "spike_metrics")), arg("outdir", d3a),
@@ -167,7 +168,7 @@ fig2 <- read_plot(find_panel(d2, "manuscript_full_baseline_discordance_panel"))
 save(fig2, "Fig2_baseline_profiler_discordance", 12.2, 8.8)
 
 fig2_supp <- read_plot(find_panel(d2_supp, "manuscript_full_baseline_discordance_panel"))
-save(fig2_supp, "Supplementary_Fig_B2_baseline_all_10_targets", 12.5, 16.5)
+save(fig2_supp, "Supplementary_Fig_B2_baseline_all_10_targets", 18, 9)
 
 fig3_lower <- plot_grid(
   read_plot(find_panel(d3a, "panel_B_bias_variability_dotplots_naturestyle")),

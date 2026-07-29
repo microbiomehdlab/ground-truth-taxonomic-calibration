@@ -587,31 +587,21 @@ class_all_display <- class_all %>%
       levels = c("Good", "Intermediate", "Poor / missed")
     )
   )
-class_taxon_blocks <- split(label_levels, ceiling(seq_along(label_levels) / 5))
-make_class_block <- function(block) {
-  dat <- class_all_display %>%
-    filter(as.character(spike_label) %in% block) %>%
-    mutate(spike_label = factor(as.character(spike_label), levels = block))
-
-  ggplot(dat, aes(x = fraction_label, y = prop, fill = recovery_class_display)) +
-    geom_col(width = 0.85, color = "white", linewidth = 0.25) +
-    facet_grid(tool ~ spike_label) +
-    scale_y_continuous(labels = percent_format(accuracy = 1), expand = expansion(mult = c(0, 0.02))) +
-    scale_fill_manual(values = class_cols, name = "Recovery class", drop = FALSE) +
-    labs(x = "Spike fraction", y = "% of samples") +
-    pub_theme(11.2) +
-    theme(axis.text.x = element_text(angle = 45, hjust = 1), legend.position = "bottom")
-}
-supp_class <- wrap_plots(
-  lapply(class_taxon_blocks, make_class_block),
-  ncol = 1,
-  guides = "collect"
+supp_class <- ggplot(
+  class_all_display,
+  aes(x = fraction_label, y = prop, fill = recovery_class_display)
 ) +
+  geom_col(width = 0.85, color = "white", linewidth = 0.25) +
+  facet_grid(tool ~ spike_label) +
+  scale_y_continuous(labels = percent_format(accuracy = 1), expand = expansion(mult = c(0, 0.02))) +
+  scale_fill_manual(values = class_cols, name = "Recovery class", drop = FALSE) +
+  labs(x = "Spike fraction", y = "% of samples") +
+  pub_theme(10.6) +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1), legend.position = "bottom") +
   plot_annotation(
     title = "Recovery-class composition across all independent taxa and spike fractions",
     subtitle = "Good ≤10%; Intermediate >10% and ≤50%; Poor / missed >50% or undetected"
-  ) &
-  theme(legend.position = "bottom")
+  )
 
 save_plot_set(pA, "panel_A_good_recovery_dumbbell_naturestyle", width = 12.0, height = 4.85, dpi = opt$dpi)
 save_plot_set(pA_avg, "supp_panel_A_average_recovery_dumbbell_naturestyle", width = 12.0, height = 4.85, dpi = opt$dpi)
@@ -622,7 +612,7 @@ save_plot_set(main_fig, "manuscript_independent_spike_overview_naturestyle_AB", 
 save_plot_set(supp_good, "supp_good_recovery_dot_heatmap_allfractions", width = opt$`supp-width`, height = opt$`supp-height`, dpi = opt$dpi)
 save_plot_set(supp_bias, "supp_bias_variability_dotplots_allfractions", width = opt$`supp-width`, height = opt$`supp-height`, dpi = opt$dpi)
 save_plot_set(supp_median, "supp_median_recovery_heatmap_allfractions", width = opt$`supp-width`, height = opt$`supp-height`, dpi = opt$dpi)
-save_plot_set(supp_class, "supp_recovery_class_composition_allfractions", width = 13, height = 11, dpi = opt$dpi)
+save_plot_set(supp_class, "supp_recovery_class_composition_allfractions", width = 17, height = 8.5, dpi = opt$dpi)
 
 readme_lines <- c(
   "Run example:",

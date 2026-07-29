@@ -68,8 +68,9 @@ run_r "$PROJECT/scripts/1st_panel_plot_manuscript_tool_discordance.R" \
   --metadata-sample-col sample_id \
   --metadata-condition-col Target_Condition \
   --metadata-study-col Study \
-  --width 12.5 \
-  --height 16.5 \
+  --taxa-per-row 10 \
+  --width 18 \
+  --height 9 \
   --dpi 450
 
 run_r "$PROJECT/scripts/plot_manuscript_independent_spike_overview.R" \

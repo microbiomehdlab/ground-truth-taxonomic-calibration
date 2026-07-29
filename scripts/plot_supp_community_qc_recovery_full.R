@@ -491,8 +491,13 @@ binned <- target_support %>%
       "Intermediate" = "I",
       "Poor / missed" = "P/M"
     ),
-    label_colour = if_else(recovery_class == "Intermediate", "#1A1A1A", "white")
-  )
+    label_colour = if_else(recovery_class == "Intermediate", "#1A1A1A", "white"),
+    stack_order = as.integer(recovery_class)
+  ) %>%
+  arrange(tool_label, support_bin, desc(stack_order)) %>%
+  group_by(tool_label, support_bin) %>%
+  mutate(label_y = cumsum(prop) - prop / 2) %>%
+  ungroup()
 
 write_tsv(binned, file.path(outdir, "tables", "recovery_class_composition_by_read_support.tsv"))
 
@@ -514,6 +519,7 @@ fig_b10 <- ggplot(
   geom_col(width = 0.75, colour = "white", linewidth = 0.3) +
   geom_text(
     aes(
+      y = label_y,
       label = ifelse(
         prop >= 0.08,
         paste(label_code, percent(prop, accuracy = 1)),
@@ -521,7 +527,6 @@ fig_b10 <- ggplot(
       ),
       colour = label_colour
     ),
-    position = position_stack(vjust = 0.5),
     size = 3.2
   ) +
   facet_wrap(~ tool_label, ncol = 1) +
@@ -605,10 +610,11 @@ make_taxon_plot <- function(dat, y_col, y_label, title_text, subtitle_text, outf
   ) +
     geom_line(alpha = 0.65, linewidth = 0.55) +
     geom_point(size = 1.8, alpha = 0.8) +
-    facet_wrap(~ taxon_label, ncol = 5) +
+    facet_wrap(~ taxon_label, nrow = 1) +
     scale_x_continuous(
       breaks = fraction_breaks_log,
-      labels = pct_label_from_log
+      labels = pct_label_from_log,
+      guide = guide_axis(n.dodge = 2)
     ) +
     scale_y_continuous(
       labels = percent_format(accuracy = 1),
@@ -631,10 +637,14 @@ make_taxon_plot <- function(dat, y_col, y_label, title_text, subtitle_text, outf
       shape = "Cohort"
     ) +
     theme_pub() +
-    theme(axis.text.x = element_text(angle = 35, hjust = 1))
+    theme(
+      axis.text.x = element_text(angle = 45, hjust = 1, size = 7.5),
+      panel.spacing.x = unit(0.8, "lines"),
+      strip.text.x = element_text(size = 9)
+    )
 
-  ggsave(file.path(outdir, paste0(outfile_prefix, ".png")), p, width = 10, height = 7.5, dpi = dpi, bg = "white")
-  save_pdf(file.path(outdir, paste0(outfile_prefix, ".pdf")), p, width = 10, height = 7.5)
+  ggsave(file.path(outdir, paste0(outfile_prefix, ".png")), p, width = 22, height = 6.5, dpi = dpi, bg = "white")
+  save_pdf(file.path(outdir, paste0(outfile_prefix, ".pdf")), p, width = 22, height = 6.5)
 
   invisible(p)
 }

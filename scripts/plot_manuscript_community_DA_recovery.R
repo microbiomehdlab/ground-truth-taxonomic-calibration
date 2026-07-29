@@ -565,7 +565,7 @@ pB_all <- make_tool_dumbbell(
   rate_col = "positive_da_rate",
   title_text = "Community target differential-abundance detection across all effective fractions",
   x_label = "Target significant and enriched (% runs)",
-  facets_per_row = 4
+  facets_per_row = 7
 )
 
 # Supplementary q-value intensity heatmap.
@@ -835,7 +835,7 @@ main_fig <- (pA | pB) / (pC | pD) +
 save_plot_set(pA, "panel_A_independent_vs_community_target_DA_detection_dumbbell", width = 12.0, height = 6.5, dpi = opt$dpi)
 save_plot_set(pA_concordance_supp, "supp_panel_A_background_resolved_DA_concordance", width = 11.5, height = 6.8, dpi = opt$dpi)
 save_plot_set(pB, "panel_B_community_target_DA_detection_main_effective_fractions", width = 12.5, height = 5.5, dpi = opt$dpi)
-save_plot_set(pB_all, "supp_panel_B_community_target_DA_detection_all_effective_fractions", width = 10.5, height = 8.0, dpi = opt$dpi)
+save_plot_set(pB_all, "supp_panel_B_community_target_DA_detection_all_effective_fractions", width = 15.0, height = 5.5, dpi = opt$dpi)
 save_plot_set(pB_q_supp, "supp_panel_B_community_median_neglog10q_heatmap_all_effective_fractions", width = 10.5, height = 7.2, dpi = opt$dpi)
 save_plot_set(pC, "panel_C_study_specific_community_target_DA_detection", width = 8.8, height = 4.7, dpi = opt$dpi)
 save_plot_set(pC_species_supp, "supp_panel_C_study_resolved_community_target_DA_detection_by_species", width = 12.5, height = 6.8, dpi = opt$dpi)

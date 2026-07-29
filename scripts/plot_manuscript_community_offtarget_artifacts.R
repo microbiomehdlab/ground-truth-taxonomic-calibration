@@ -49,7 +49,7 @@ option_list <- list(
               help = "Number of top taxa to label per profiler in Panels B-D [default %default]"),
   make_option("--max-rank", type = "integer", default = 200,
               help = "Maximum top-N taxa to display in ranked-overlap Panel D [default %default]"),
-  make_option("--main-width", type = "double", default = 10.5,
+  make_option("--main-width", type = "double", default = 18.0,
               help = "Main figure width in inches [default %default]"),
   make_option("--main-height", type = "double", default = 12.5,
               help = "Main figure height in inches [default %default]"),
@@ -1083,13 +1083,13 @@ main_fig <- (pA | pB) / (pC | pD) +
     tag_levels = "A",
     tag_suffix = ".",
     theme = theme(
-      plot.title = element_text(face = "bold", size = 18.5, hjust = 0, colour = "#111111", margin = margin(b = 10)),
+      plot.title = element_text(face = "bold", size = 18.5, hjust = 0, colour = "#111111", margin = margin(b = 16)),
       plot.tag = element_text(face = "bold", size = 15.0, colour = "#111111")
     )
   ) &
   theme(
     plot.tag.position = c(0.01, 0.995),
-    plot.margin = margin(10, 12, 10, 12)
+    plot.margin = margin(12, 16, 12, 16)
   )
 
 save_plot_set(pA, "panel_A_combined_artefact_burden", width = 8.0, height = 6.2, dpi = opt$dpi)
