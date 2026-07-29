@@ -444,8 +444,13 @@ colour-vision-deficiency-safe profiler and recovery-class colours, concise
 panel titles, percent-labelled abundance axes where applicable, and the
 manuscript taxon order:
 `Bfrag, Csym, Dpne, Fnuc, Hhat, Pmic, Pana, Psto, Porp, Pint`.
-Dense ten-taxon supplementary displays are arranged in two five-taxon blocks
-so labels remain legible when the vector PDFs are reduced to a journal page.
+Supplementary Figures B2, B4, B7–B9, and B11 intentionally use wide landscape
+layouts. B2 and B4 show all ten taxa side-by-side; B7–B9 use one ten-taxon row
+with additional spacing between spike-fraction labels; and B11 shows all seven
+effective fractions side-by-side. These PDFs are designed for a rotated
+supplementary page and should not be reflowed onto a portrait canvas. Figure
+B10 uses `G`, `I`, and `P/M` for Good, Intermediate, and Poor/missed,
+respectively.
 
 ## Reproducibility records
 

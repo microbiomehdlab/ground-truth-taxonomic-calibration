@@ -96,6 +96,7 @@ table headers.
 | `metaphlan4_merged_unspecified.csv` | Unspiked MetaPhlAn 4 abundance table |
 | `kraken2_bracken_merged_unspecified.csv` | Unspiked Kraken2/Bracken abundance table |
 | `profile_results/` | Profiled abundance tables for all spike-in experiments |
+
 The repository already includes the shared `R/` helper code; it is not an
 external input.
 
