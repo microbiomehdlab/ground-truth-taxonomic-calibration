@@ -697,7 +697,7 @@ agg$model <- factor(agg$model, levels = model_order)
 pB <- ggplot(agg, aes(x = model, y = median_abs_log_error, group = interaction(tool, taxon))) +
   geom_line(alpha = 0.25) + geom_point(size = 1.5) +
   facet_wrap(~ tool, scales = "free_y") +
-  labs(title = "B. Grouped cross-validated\nmodel performance",
+  labs(title = "B. Grouped cross-validated model performance",
        subtitle = "Lower held-out median absolute log error is better",
        x = NULL, y = "Median absolute log10 error") + theme_manuscript
 
@@ -735,7 +735,7 @@ pC <- ggplot(gam_sum, aes(x = tool, y = taxon_label, fill = log_error_improvemen
     na.value = "grey90"
   ) +
   labs(
-    title = "C. Evidence for profiler–taxon\ncalibratability",
+    title = "C. Evidence for profiler–taxon calibratability",
     subtitle = paste0(
       "S = strong; C = conditional; L = little evidence; ",
       "ND = insufficient detection or modelling data"
@@ -792,13 +792,13 @@ if (nrow(transfer)) {
 if (requireNamespace("patchwork", quietly = TRUE)) {
   if (!is.null(pD)) {
     composite <- (pA / (pB | pC) / pD) + patchwork::plot_layout(heights = c(1.25, 1, 0.8))
-    h <- 8.5
+    h <- 16
   } else {
     composite <- pA / (pB | pC) + patchwork::plot_layout(heights = c(1.3, 1))
-    h <- 6.5
+    h <- 12
   }
-  ggsave(file.path(args$outdir, "manuscript_spike_calibratability_gam.pdf"), composite, width = 7.1, height = h, device = cairo_pdf)
-  ggsave(file.path(args$outdir, "manuscript_spike_calibratability_gam.png"), composite, width = 7.1, height = h, dpi = 450)
+  ggsave(file.path(args$outdir, "manuscript_spike_calibratability_gam.pdf"), composite, width = 14, height = h, device = cairo_pdf)
+  ggsave(file.path(args$outdir, "manuscript_spike_calibratability_gam.png"), composite, width = 14, height = h, dpi = 450)
 }
 
 writeLines(c(

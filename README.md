@@ -389,12 +389,13 @@ RERUN_PANELS=true \
 bash rerun_current_figures_only.sh
 ```
 
-With `RERUN_PANELS=true`, the plotting scripts also save native R plot objects.
-The assembler uses these objects to preserve vector text and geometry in the
-final PDFs and exports Figures 2–7 at a 180-mm (7.1-inch) journal print width.
-Older source panels without native objects remain supported through a raster
-fallback only when `RERUN_PANELS=false`; that fallback is not preferred for
-submission artwork.
+With `RERUN_PANELS=true`, each plotting script regenerates high-resolution
+panel PNGs, individual vector PDFs, and native R plot objects. Final multipanel
+assembly uses the 450-dpi PNG panels on canvases that retain their validated
+physical dimensions. This deliberately scales text, legends, margins, and
+facet strips together; directly reflowing native objects on a smaller canvas
+can clip labels and compress the data regions. The individual panel PDFs remain
+the vector masters when separate panels are required.
 
 ### Regenerate Supplementary Figures B1–B13
 

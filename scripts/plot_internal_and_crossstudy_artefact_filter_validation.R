@@ -548,8 +548,8 @@ pA <- ggplot(enrich_sum, aes(x = group, y = fraction_flagged,
   scale_colour_manual(values = profiler_cols, name = "Profiler") +
   scale_y_continuous(labels = function(x) paste0(round(100 * x), "%"), limits = c(0, 1.08), breaks = seq(0, 1, 0.25)) +
   labs(
-    title = "A. Off-target DA calls are enriched\namong artefact-prone taxa",
-    subtitle = "Internal community benchmark;\nartefacts defined from abundance deviation",
+    title = "A. Off-target DA calls are enriched among artefact-prone taxa",
+    subtitle = "Internal community benchmark; artefacts defined from abundance deviation",
     x = NULL,
     y = "Median fraction flagged"
   ) + theme_manuscript
@@ -571,7 +571,7 @@ pB <- ggplot(b_long, aes(x = state, y = burden, group = context_id, colour = too
   facet_wrap(~ tool_label, scales = "free_y") +
   scale_colour_manual(values = profiler_cols, name = "Profiler", guide = "none") +
   labs(
-    title = "B. Within-benchmark filtering reduces\noff-target DA burden",
+    title = "B. Within-benchmark filtering reduces off-target DA burden",
     subtitle = paste0("Pooled artefact lists; threshold = ", 100 * main_threshold, "%;\nprofiler facets use separate y-scales"),
     x = NULL,
     y = "Off-target enriched taxa"
@@ -675,9 +675,9 @@ ggsave(file.path(outdir, "supplementary_threshold_sensitivity.pdf"), pS, width =
 if (requireNamespace("patchwork", quietly = TRUE)) {
   combined <- (pA | pB) / pC / pD + patchwork::plot_layout(heights = c(0.95, 1.0, 1.0))
   ggsave(file.path(outdir, "manuscript_internal_and_crossstudy_artefact_filter_validation.pdf"),
-         combined, width = 7.1, height = 8.4, device = cairo_pdf)
+         combined, width = 14, height = 15, device = cairo_pdf)
   ggsave(file.path(outdir, "manuscript_internal_and_crossstudy_artefact_filter_validation.png"),
-         combined, width = 7.1, height = 8.4, dpi = 450)
+         combined, width = 14, height = 15, dpi = 450)
 } else {
   message("[WARN] Package 'patchwork' is unavailable; individual panels were saved, but not the composite figure.")
 }

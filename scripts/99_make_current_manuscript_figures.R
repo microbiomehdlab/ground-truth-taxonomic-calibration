@@ -107,18 +107,12 @@ if (isTRUE(opt$`rerun-panels`)) {
 }
 
 find_panel <- function(dir, stems) {
-  if (isTRUE(opt$`rerun-panels`)) {
-    rds_candidates <- file.path(dir, paste0(stems, ".rds"))
-    rds_hit <- rds_candidates[file.exists(rds_candidates)]
-    if (!length(rds_hit)) {
-      stop(
-        "Fresh panel regeneration did not produce the native plot object required for vector assembly in ",
-        dir, ": ", paste(stems, collapse = ", ")
-      )
-    }
-    return(rds_hit[[1]])
-  }
-  candidates <- unlist(lapply(stems, function(s) file.path(dir, paste0(s, c(".rds", ".pdf", ".png")))))
+  # Composite source plots were designed and validated on their own large
+  # canvases. Import the high-resolution panel PNGs so text, legends, margins,
+  # and facet strips scale together when panels are assembled. Importing the
+  # native ggplot objects on a smaller composite canvas leaves point-size text
+  # unchanged and can crush or clip the plotting regions.
+  candidates <- unlist(lapply(stems, function(s) file.path(dir, paste0(s, c(".png", ".pdf", ".rds")))))
   hit <- candidates[file.exists(candidates)]
   if (!length(hit)) stop("Missing generated panel in ", dir, ": ", paste(stems, collapse = ", "))
   hit[[1]]
@@ -170,10 +164,10 @@ save <- function(plot, stem, width, height) {
 }
 
 fig2 <- read_plot(find_panel(d2, "manuscript_full_baseline_discordance_panel"))
-save(fig2, "Fig2_baseline_profiler_discordance", 7.1, 5.2)
+save(fig2, "Fig2_baseline_profiler_discordance", 12.2, 8.8)
 
 fig2_supp <- read_plot(find_panel(d2_supp, "manuscript_full_baseline_discordance_panel"))
-save(fig2_supp, "Supplementary_Fig_B2_baseline_all_10_targets", 7.1, 9.4)
+save(fig2_supp, "Supplementary_Fig_B2_baseline_all_10_targets", 12.5, 16.5)
 
 fig3_lower <- plot_grid(
   read_plot(find_panel(d3a, "panel_B_bias_variability_dotplots_naturestyle")),
@@ -192,7 +186,7 @@ fig3 <- plot_grid(
   ncol = 1,
   rel_heights = c(1, 1.12)
 )
-save(fig3, "Fig3_independent_spike_recovery", 7.1, 5.25)
+save(fig3, "Fig3_independent_spike_recovery", 15.2, 10.6)
 
 fig4 <- plot_grid(
   read_plot(find_panel(d4, c(
@@ -203,7 +197,7 @@ fig4 <- plot_grid(
   read_plot(find_panel(d4, "panel_C_intuitive_association_dot_summary_naturestyle")),
   ncol = 1, rel_heights = c(1, 1.1, 0.7)
 )
-save(fig4, "Fig4_biomarker_recoverability", 7.1, 9.5)
+save(fig4, "Fig4_biomarker_recoverability", 12.2, 18.2)
 
 fig5 <- plot_grid(
   read_plot(find_panel(d5a, "panel_A_independent_vs_community_good_recovery_dumbbell")),
@@ -211,7 +205,7 @@ fig5 <- plot_grid(
   read_plot(find_panel(d5b, "panel_B_community_target_DA_detection_main_effective_fractions")),
   ncol = 1, rel_heights = c(1, 1, 1.05)
 )
-save(fig5, "Fig5_community_spike_recovery_and_DA", 7.1, 9.5)
+save(fig5, "Fig5_community_spike_recovery_and_DA", 13.5, 18.6)
 
 writeLines(c(
   "Current manuscript figure mapping",
