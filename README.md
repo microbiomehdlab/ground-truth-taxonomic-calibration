@@ -75,7 +75,7 @@ are intentionally excluded from Git.
 | `preflight_all.sh` | Validate the integrated upstream and downstream workflow |
 | `run_original_unpaired_q010_cluster.sbatch` | Submit the complete statistical analysis and figure regeneration |
 | `run_publication_original_unpaired_q010.sh` | Run the same downstream workflow inside an allocated job |
-| `rerun_current_figures_only.sh` | Reassemble Figures 2–5 from an existing run without repeating analyses |
+| `rerun_current_figures_only.sh` | Regenerate manuscript Figures 2–7 from a completed run without repeating upstream analyses |
 | `rerun_supplementary_figures_only.sh` | Regenerate Supplementary Figures B1–B13 from a completed run |
 | `transfer_analysis_to_cluster.sh` | Transfer the reviewed analysis code and staged inputs |
 
@@ -358,11 +358,9 @@ RUN_ROOT/
   logs/pipeline.log
 ```
 
-### Reassemble Figures 2–5 without rerunning analyses
+### Regenerate Figures 2–7 from completed analysis outputs
 
-If the source panels already exist under
-`RUN_ROOT/manuscript_figures/current/source_panels`, reassemble only the final
-composites with:
+To regenerate the main figures from a completed `RUN_ROOT`, use:
 
 ```bash
 PROJECT="$PWD" \
@@ -371,9 +369,32 @@ RUN_ROOT=/path/to/completed/RUNS_publication_original_unpaired_q010_TIMESTAMP \
 bash rerun_current_figures_only.sh
 ```
 
-The helper preserves the previous composites in a timestamped
-`blank_composites_*` directory, does not rerun MaAsLin2 or recovery analyses,
-and rejects effectively blank PNG outputs.
+With its default `RERUN_PANELS=false`, the helper reuses source panels under
+`RUN_ROOT/manuscript_figures/current/source_panels`. It preserves the previous
+final figures in a timestamped `previous_main_figures_*` directory and does
+not rerun MaAsLin2 or the abundance-recovery workflow. Figure 7 repeats its
+deterministic, seeded grouped-cross-validation fit from the completed
+target-level table because that fit and its plotting are implemented together.
+Set `RERUN_FIGURES_6_7=false` only when Figures 6–7 should be left unchanged.
+
+After changing a source plotting script, set `RERUN_PANELS=true` to rebuild
+the source panels from the completed analysis tables before assembling the
+main figures. This is the recommended command after updating this repository:
+
+```bash
+PROJECT="$PWD" \
+SIF=/path/to/crc_spike_original_unpaired_q010_r433_maaslin2_1180_v1.sif \
+RUN_ROOT=/path/to/completed/RUNS_publication_original_unpaired_q010_TIMESTAMP \
+RERUN_PANELS=true \
+bash rerun_current_figures_only.sh
+```
+
+With `RERUN_PANELS=true`, the plotting scripts also save native R plot objects.
+The assembler uses these objects to preserve vector text and geometry in the
+final PDFs and exports Figures 2–7 at a 180-mm (7.1-inch) journal print width.
+Older source panels without native objects remain supported through a raster
+fallback only when `RERUN_PANELS=false`; that fallback is not preferred for
+submission artwork.
 
 ### Regenerate Supplementary Figures B1–B13
 
@@ -410,9 +431,20 @@ COMMUNITY_TARGET_FILE=/path/to/community_target_level_depth_recovery.tsv \
 bash rerun_supplementary_figures_only.sh
 ```
 
-The command reuses the completed recovery and MaAsLin2 outputs and writes 13
-PDF/PNG pairs plus a manifest under
-`RUN_ROOT/manuscript_figures/supplementary/`.
+The command reuses the completed recovery and MaAsLin2 outputs but actively
+reruns every plotting script, so visual revisions cannot be hidden by stale
+source panels. It writes 13 PDF/PNG pairs plus a manifest under
+`RUN_ROOT/manuscript_figures/supplementary/`. The vector PDFs are the
+publication masters; the PNGs are 450-dpi review copies. A final validation
+step rejects blank or near-blank PNGs.
+
+The figure scripts use a consistent sans-serif publication theme,
+colour-vision-deficiency-safe profiler and recovery-class colours, concise
+panel titles, percent-labelled abundance axes where applicable, and the
+manuscript taxon order:
+`Bfrag, Csym, Dpne, Fnuc, Hhat, Pmic, Pana, Psto, Porp, Pint`.
+Dense ten-taxon supplementary displays are arranged in two five-taxon blocks
+so labels remain legible when the vector PDFs are reduced to a journal page.
 
 ## Reproducibility records
 

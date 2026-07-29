@@ -44,6 +44,7 @@ outdir <- get_arg(
     "community_qc_recovery_FULL_reproducible"
   )
 )
+dpi <- as.integer(get_arg("--dpi", "450"))
 
 dir.create(outdir, recursive = TRUE, showWarnings = FALSE)
 dir.create(file.path(outdir, "tables"), recursive = TRUE, showWarnings = FALSE)
@@ -79,6 +80,17 @@ if (length(missing) > 0) {
   stop("Input table is missing required columns: ", paste(missing, collapse = ", "))
 }
 
+x <- x %>%
+  mutate(
+    Target_Condition = dplyr::recode(
+      as.character(Target_Condition),
+      "colorectal carcinoma" = "CRC",
+      "Colorectal carcinoma" = "CRC",
+      .default = as.character(Target_Condition)
+    ),
+    Target_Condition = factor(Target_Condition, levels = c("Control", "Adenoma", "CRC"))
+  )
+
 canonical_taxon <- function(z) {
   z <- as.character(z)
   z_low <- tolower(z)
@@ -110,20 +122,45 @@ taxon_levels <- c(
   "Porphyromonas asaccharolytica",
   "Prevotella intermedia"
 )
+taxon_codes <- c(
+  "Bacteroides fragilis" = "Bfrag",
+  "Clostridium symbiosum" = "Csym",
+  "Dialister pneumosintes" = "Dpne",
+  "Fusobacterium nucleatum" = "Fnuc",
+  "Hungatella hathewayi" = "Hhat",
+  "Parvimonas micra" = "Pmic",
+  "Peptostreptococcus anaerobius" = "Pana",
+  "Peptostreptococcus stomatis" = "Psto",
+  "Porphyromonas asaccharolytica" = "Porp",
+  "Prevotella intermedia" = "Pint"
+)
 
 recovery_class_levels <- c(
   "Good",
-  "Average/intermediate",
-  "Poor/missed"
+  "Intermediate",
+  "Poor / missed"
 )
 
 recovery_class_cols <- c(
-  "Good" = "#1B9E77",
-  "Average/intermediate" = "#E6AB02",
-  "Poor/missed" = "#D95F02"
+  "Good" = "#009E73",
+  "Intermediate" = "#E69F00",
+  "Poor / missed" = "#D55E00"
 )
 
-theme_pub <- function(base_size = 10) {
+profiler_cols <- c(
+  "Kraken2 + Bracken" = "#009E73",
+  "MetaPhlAn 4" = "#6F5BD3"
+)
+
+save_pdf <- function(filename, plot, width, height) {
+  if (capabilities("cairo")) {
+    ggsave(filename, plot, width = width, height = height, device = cairo_pdf, bg = "white")
+  } else {
+    ggsave(filename, plot, width = width, height = height, bg = "white")
+  }
+}
+
+theme_pub <- function(base_size = 11) {
   theme_bw(base_size = base_size) +
     theme(
       panel.grid.minor = element_blank(),
@@ -131,8 +168,9 @@ theme_pub <- function(base_size = 10) {
       strip.background = element_rect(fill = "grey95", colour = "grey70"),
       strip.text = element_text(face = "bold"),
       axis.title = element_text(face = "bold"),
-      plot.title = element_text(face = "bold", hjust = 0),
-      plot.subtitle = element_text(size = 10),
+      axis.text = element_text(colour = "grey20"),
+      plot.title = element_text(face = "bold", hjust = 0, colour = "grey10"),
+      plot.subtitle = element_text(size = rel(0.92), colour = "grey25"),
       legend.title = element_text(face = "bold"),
       legend.position = "bottom"
     )
@@ -157,8 +195,18 @@ target_level_raw <- x %>%
     relative_error = suppressWarnings(as.numeric(relative_error)),
     observed_over_expected = suppressWarnings(as.numeric(observed_over_expected)),
     canonical_taxon = canonical_taxon(target_taxon),
+    taxon_label = factor(
+      unname(taxon_codes[canonical_taxon]),
+      levels = unname(taxon_codes[taxon_levels])
+    ),
     tool_label = factor(tool_label, levels = c("Kraken2 + Bracken", "MetaPhlAn 4")),
-    Study = factor(Study),
+    Study = factor(dplyr::recode(
+      as.character(Study),
+      "FengQ_2015" = "FengQ 2015",
+      "ZellerG_2014" = "Zeller 2014",
+      "Zeller_2014" = "Zeller 2014",
+      .default = as.character(Study)
+    )),
     Target_Condition = factor(Target_Condition)
   ) %>%
   filter(!is.na(canonical_taxon)) %>%
@@ -195,16 +243,16 @@ target_level <- target_level_raw %>%
     relative_error = ifelse(is.infinite(relative_error), NA_real_, relative_error),
     observed_over_expected = ifelse(is.infinite(observed_over_expected), NA_real_, observed_over_expected),
     recovery_class = case_when(
-      is.na(observed_over_expected) | is.na(relative_error) ~ "Poor/missed",
-      observed_over_expected <= 0 ~ "Poor/missed",
+      is.na(observed_over_expected) | is.na(relative_error) ~ "Poor / missed",
+      observed_over_expected <= 0 ~ "Poor / missed",
       abs(relative_error) <= 0.10 ~ "Good",
-      abs(relative_error) <= 0.50 ~ "Average/intermediate",
-      TRUE ~ "Poor/missed"
+      abs(relative_error) <= 0.50 ~ "Intermediate",
+      TRUE ~ "Poor / missed"
     ),
     recovery_class = factor(recovery_class, levels = recovery_class_levels),
     is_good = recovery_class == "Good",
-    is_average = recovery_class == "Average/intermediate",
-    is_poor_missed = recovery_class == "Poor/missed",
+    is_average = recovery_class == "Intermediate",
+    is_poor_missed = recovery_class == "Poor / missed",
     canonical_taxon = factor(canonical_taxon, levels = taxon_levels)
   )
 
@@ -350,8 +398,8 @@ pC <- ggplot(qc_plot, aes(x = raw_read_pairs_million, y = postqc_read_pairs_mill
 fig_b8 <- (pA | pB) / pC +
   plot_layout(heights = c(1, 1.05))
 
-ggsave(file.path(outdir, "FigB8_QC_only_ABC.pdf"), fig_b8, width = 12.5, height = 9.2, bg = "white")
-ggsave(file.path(outdir, "FigB8_QC_only_ABC.png"), fig_b8, width = 12.5, height = 9.2, dpi = 320, bg = "white")
+save_pdf(file.path(outdir, "FigB8_QC_only_ABC.pdf"), fig_b8, width = 12.5, height = 9.2)
+ggsave(file.path(outdir, "FigB8_QC_only_ABC.png"), fig_b8, width = 12.5, height = 9.2, dpi = dpi, bg = "white")
 
 # ============================================================
 # B9. Recovery classes vs effective spike fraction
@@ -361,13 +409,13 @@ plot_class_fraction <- sample_class %>%
   mutate(
     panel_label = case_when(
       recovery_class == "Good" ~ "A. Good recovery",
-      recovery_class == "Average/intermediate" ~ "B. Average/intermediate recovery",
-      recovery_class == "Poor/missed" ~ "C. Poor/missed recovery",
+      recovery_class == "Intermediate" ~ "B. Intermediate recovery",
+      recovery_class == "Poor / missed" ~ "C. Poor / missed recovery",
       TRUE ~ as.character(recovery_class)
     ),
     panel_label = factor(
       panel_label,
-      levels = c("A. Good recovery", "B. Average/intermediate recovery", "C. Poor/missed recovery")
+      levels = c("A. Good recovery", "B. Intermediate recovery", "C. Poor / missed recovery")
     )
   )
 
@@ -383,9 +431,11 @@ fig_b9 <- ggplot(
 ) +
   geom_point(alpha = 0.42, size = 1.35, position = position_jitter(width = 0.015, height = 0)) +
   geom_smooth(
+    aes(fill = tool_label),
     method = "glm",
     method.args = list(family = quasibinomial()),
     se = TRUE,
+    alpha = 0.10,
     linewidth = 0.8
   ) +
   facet_wrap(~ panel_label, ncol = 3) +
@@ -398,7 +448,11 @@ fig_b9 <- ggplot(
     limits = c(0, 1),
     breaks = c(0, 0.25, 0.50, 0.75, 1)
   ) +
+  scale_colour_manual(values = profiler_cols, drop = FALSE) +
+  scale_fill_manual(values = profiler_cols, drop = FALSE, guide = "none") +
   labs(
+    title = "Community recovery classes across effective spike fractions",
+    subtitle = "Good ≤10%; Intermediate >10% and ≤50%; Poor / missed >50% or undetected",
     x = "Effective spike fraction per community member",
     y = "Fraction of community members",
     colour = "Profiler",
@@ -407,8 +461,8 @@ fig_b9 <- ggplot(
   theme_pub() +
   theme(axis.text.x = element_text(angle = 35, hjust = 1))
 
-ggsave(file.path(outdir, "FigB9_recovery_classes_vs_spike_fraction.pdf"), fig_b9, width = 13.5, height = 5.4, bg = "white")
-ggsave(file.path(outdir, "FigB9_recovery_classes_vs_spike_fraction.png"), fig_b9, width = 13.5, height = 5.4, dpi = 320, bg = "white")
+save_pdf(file.path(outdir, "FigB9_recovery_classes_vs_spike_fraction.pdf"), fig_b9, width = 12, height = 5.8)
+ggsave(file.path(outdir, "FigB9_recovery_classes_vs_spike_fraction.png"), fig_b9, width = 12, height = 5.8, dpi = dpi, bg = "white")
 
 # ============================================================
 # B10. Recovery-class composition by low/medium/high read support
@@ -429,7 +483,16 @@ binned <- target_support %>%
   group_by(tool_label, support_bin) %>%
   mutate(prop = n / sum(n)) %>%
   ungroup() %>%
-  mutate(recovery_class = factor(recovery_class, levels = recovery_class_levels))
+  mutate(
+    recovery_class = factor(recovery_class, levels = recovery_class_levels),
+    label_code = dplyr::recode(
+      as.character(recovery_class),
+      "Good" = "G",
+      "Intermediate" = "I",
+      "Poor / missed" = "P/M"
+    ),
+    label_colour = if_else(recovery_class == "Intermediate", "#1A1A1A", "white")
+  )
 
 write_tsv(binned, file.path(outdir, "tables", "recovery_class_composition_by_read_support.tsv"))
 
@@ -448,24 +511,42 @@ fig_b10 <- ggplot(
   binned,
   aes(x = support_bin, y = prop, fill = recovery_class)
 ) +
-  geom_col(width = 0.75) +
+  geom_col(width = 0.75, colour = "white", linewidth = 0.3) +
+  geom_text(
+    aes(
+      label = ifelse(
+        prop >= 0.08,
+        paste(label_code, percent(prop, accuracy = 1)),
+        ""
+      ),
+      colour = label_colour
+    ),
+    position = position_stack(vjust = 0.5),
+    size = 3.2
+  ) +
   facet_wrap(~ tool_label, ncol = 1) +
   scale_fill_manual(
     values = recovery_class_cols,
     breaks = recovery_class_levels,
     drop = FALSE
   ) +
+  scale_colour_identity() +
   scale_y_continuous(labels = percent_format(accuracy = 1), limits = c(0, 1)) +
   labs(
-    x = NULL,
-    y = "Target-level observations",
+    title = "Recovery-class composition by implanted read-support tertile",
+    subtitle = paste0(
+      "Good (G) ≤10%; Intermediate (I) >10% and ≤50%; ",
+      "Poor / missed (P/M) >50% or undetected"
+    ),
+    x = "Implanted read-support tertile",
+    y = "Target-level observations (%)",
     fill = "Recovery class"
   ) +
   theme_pub() +
   theme(axis.text.x = element_text(angle = 20, hjust = 1))
 
-ggsave(file.path(outdir, "FigB10_recovery_class_composition_by_read_support.pdf"), fig_b10, width = 8.8, height = 7.4, bg = "white")
-ggsave(file.path(outdir, "FigB10_recovery_class_composition_by_read_support.png"), fig_b10, width = 8.8, height = 7.4, dpi = 320, bg = "white")
+save_pdf(file.path(outdir, "FigB10_recovery_class_composition_by_read_support.pdf"), fig_b10, width = 8.8, height = 7.4)
+ggsave(file.path(outdir, "FigB10_recovery_class_composition_by_read_support.png"), fig_b10, width = 8.8, height = 7.4, dpi = dpi, bg = "white")
 
 # ============================================================
 # Taxon-level rates for B11-B14
@@ -476,9 +557,15 @@ taxon_fraction_summary <- target_level %>%
   summarise(
     n = n(),
     good_rate = mean(recovery_class == "Good", na.rm = TRUE),
-    average_rate = mean(recovery_class == "Average/intermediate", na.rm = TRUE),
-    poor_missed_rate = mean(recovery_class == "Poor/missed", na.rm = TRUE),
+    average_rate = mean(recovery_class == "Intermediate", na.rm = TRUE),
+    poor_missed_rate = mean(recovery_class == "Poor / missed", na.rm = TRUE),
     .groups = "drop"
+  ) %>%
+  mutate(
+    taxon_label = factor(
+      unname(taxon_codes[as.character(canonical_taxon)]),
+      levels = unname(taxon_codes[taxon_levels])
+    )
   )
 
 write_tsv(taxon_fraction_summary, file.path(outdir, "tables", "taxon_recovery_class_rates_by_fraction.tsv"))
@@ -492,32 +579,33 @@ taxon_fraction_long <- taxon_fraction_summary %>%
   mutate(
     recovery_panel = case_when(
       rate_type == "good_rate" ~ "Good recovery",
-      rate_type == "average_rate" ~ "Average/intermediate recovery",
-      rate_type == "poor_missed_rate" ~ "Poor/missed recovery",
+      rate_type == "average_rate" ~ "Intermediate recovery",
+      rate_type == "poor_missed_rate" ~ "Poor / missed recovery",
       TRUE ~ rate_type
     ),
     recovery_panel = factor(
       recovery_panel,
-      levels = c("Good recovery", "Average/intermediate recovery", "Poor/missed recovery")
+      levels = c("Good recovery", "Intermediate recovery", "Poor / missed recovery")
     )
   )
 
 write_tsv(taxon_fraction_long, file.path(outdir, "tables", "taxon_recovery_class_rates_long.tsv"))
 
-make_taxon_plot <- function(dat, y_col, y_label, outfile_prefix) {
+make_taxon_plot <- function(dat, y_col, y_label, title_text, subtitle_text, outfile_prefix) {
   p <- ggplot(
     dat,
     aes(
       x = log10_effective_fraction_pct,
       y = .data[[y_col]],
       colour = tool_label,
+      linetype = tool_label,
       shape = Study,
       group = interaction(tool_label, Study)
     )
   ) +
     geom_line(alpha = 0.65, linewidth = 0.55) +
     geom_point(size = 1.8, alpha = 0.8) +
-    facet_wrap(~ canonical_taxon, ncol = 5) +
+    facet_wrap(~ taxon_label, ncol = 5) +
     scale_x_continuous(
       breaks = fraction_breaks_log,
       labels = pct_label_from_log
@@ -525,19 +613,28 @@ make_taxon_plot <- function(dat, y_col, y_label, outfile_prefix) {
     scale_y_continuous(
       labels = percent_format(accuracy = 1),
       limits = c(0, 1),
-      breaks = c(0, 0.5, 1)
+      breaks = c(0, 0.5, 1),
+      expand = expansion(mult = c(0.02, 0.04))
+    ) +
+    scale_colour_manual(values = profiler_cols, drop = FALSE) +
+    scale_linetype_manual(
+      values = c("Kraken2 + Bracken" = "solid", "MetaPhlAn 4" = "22"),
+      drop = FALSE
     ) +
     labs(
+      title = title_text,
+      subtitle = subtitle_text,
       x = "Effective spike fraction per community member",
       y = y_label,
       colour = "Profiler",
+      linetype = "Profiler",
       shape = "Cohort"
     ) +
     theme_pub() +
     theme(axis.text.x = element_text(angle = 35, hjust = 1))
 
-  ggsave(file.path(outdir, paste0(outfile_prefix, ".pdf")), p, width = 15, height = 9.5, bg = "white")
-  ggsave(file.path(outdir, paste0(outfile_prefix, ".png")), p, width = 15, height = 9.5, dpi = 320, bg = "white")
+  ggsave(file.path(outdir, paste0(outfile_prefix, ".png")), p, width = 10, height = 7.5, dpi = dpi, bg = "white")
+  save_pdf(file.path(outdir, paste0(outfile_prefix, ".pdf")), p, width = 10, height = 7.5)
 
   invisible(p)
 }
@@ -550,6 +647,8 @@ make_taxon_plot(
   taxon_fraction_summary,
   "good_rate",
   "Good recovery rate",
+  "Good recovery across community spike fractions",
+  "Absolute relative recovery error ≤10%",
   "FigB11_taxon_good_recovery_vs_spike_fraction"
 )
 
@@ -560,7 +659,9 @@ make_taxon_plot(
 make_taxon_plot(
   taxon_fraction_summary,
   "average_rate",
-  "Average/intermediate recovery rate",
+  "Intermediate recovery rate",
+  "Intermediate recovery across community spike fractions",
+  "Absolute relative recovery error >10% and ≤50%",
   "FigB12_taxon_average_intermediate_recovery_vs_spike_fraction"
 )
 
@@ -571,7 +672,9 @@ make_taxon_plot(
 make_taxon_plot(
   taxon_fraction_summary,
   "poor_missed_rate",
-  "Poor/missed recovery rate",
+  "Poor / missed recovery rate",
+  "Poor or missed recovery across community spike fractions",
+  "Absolute relative recovery error >50% or target undetected",
   "FigB13_taxon_poor_missed_recovery_vs_spike_fraction"
 )
 
@@ -614,8 +717,8 @@ fig_b14 <- ggplot(
     strip.text.y = element_text(angle = 0)
   )
 
-ggsave(file.path(outdir, "FigB14_combined_taxon_recovery_classes_vs_spike_fraction.pdf"), fig_b14, width = 19, height = 10.5, bg = "white")
-ggsave(file.path(outdir, "FigB14_combined_taxon_recovery_classes_vs_spike_fraction.png"), fig_b14, width = 19, height = 10.5, dpi = 320, bg = "white")
+save_pdf(file.path(outdir, "FigB14_combined_taxon_recovery_classes_vs_spike_fraction.pdf"), fig_b14, width = 19, height = 10.5)
+ggsave(file.path(outdir, "FigB14_combined_taxon_recovery_classes_vs_spike_fraction.png"), fig_b14, width = 19, height = 10.5, dpi = dpi, bg = "white")
 
 # ============================================================
 # Caption and manifest tables
@@ -656,15 +759,15 @@ writeLines(
     "=========================",
     "",
     "Good: abs(relative_error) <= 0.10",
-    "Average/intermediate: 0.10 < abs(relative_error) <= 0.50",
-    "Poor/missed: abs(relative_error) > 0.50, zero recovery, missing recovery, or non-finite recovery",
+    "Intermediate: 0.10 < abs(relative_error) <= 0.50",
+    "Poor / missed: abs(relative_error) > 0.50, zero recovery, missing recovery, or non-finite recovery",
     "",
     "Recovery-class colours",
     "======================",
     "",
     "Good: green",
-    "Average/intermediate: yellow",
-    "Poor/missed: orange",
+    "Intermediate: yellow",
+    "Poor / missed: orange",
     "",
     "Spike-fraction convention",
     "=========================",

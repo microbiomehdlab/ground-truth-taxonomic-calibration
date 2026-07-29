@@ -508,7 +508,7 @@ crossstudy_results <- add_labels(crossstudy_results)
 cross_main$transfer_label <- paste(study_label(cross_main$train_study), "→", study_label(cross_main$test_study))
 crossstudy_results$transfer_label <- paste(study_label(crossstudy_results$train_study), "→", study_label(crossstudy_results$test_study))
 
-profiler_cols <- c("Kraken2 + Bracken" = "#1B9E77", "MetaPhlAn 4" = "#7570B3")
+profiler_cols <- c("Kraken2 + Bracken" = "#009E73", "MetaPhlAn 4" = "#6F5BD3")
 
 library(ggplot2)
 theme_manuscript <- theme_bw(base_size = 10) +
@@ -548,8 +548,8 @@ pA <- ggplot(enrich_sum, aes(x = group, y = fraction_flagged,
   scale_colour_manual(values = profiler_cols, name = "Profiler") +
   scale_y_continuous(labels = function(x) paste0(round(100 * x), "%"), limits = c(0, 1.08), breaks = seq(0, 1, 0.25)) +
   labs(
-    title = "A. Off-target DA calls are enriched among artefact-prone taxa",
-    subtitle = "Internal community benchmark; artefacts defined from abundance deviation",
+    title = "A. Off-target DA calls are enriched\namong artefact-prone taxa",
+    subtitle = "Internal community benchmark;\nartefacts defined from abundance deviation",
     x = NULL,
     y = "Median fraction flagged"
   ) + theme_manuscript
@@ -571,8 +571,8 @@ pB <- ggplot(b_long, aes(x = state, y = burden, group = context_id, colour = too
   facet_wrap(~ tool_label, scales = "free_y") +
   scale_colour_manual(values = profiler_cols, name = "Profiler", guide = "none") +
   labs(
-    title = "B. Within-benchmark filtering strongly reduces off-target DA burden",
-    subtitle = paste0("Pooled artefact lists; threshold = ", 100 * main_threshold, "%"),
+    title = "B. Within-benchmark filtering reduces\noff-target DA burden",
+    subtitle = paste0("Pooled artefact lists; threshold = ", 100 * main_threshold, "%;\nprofiler facets use separate y-scales"),
     x = NULL,
     y = "Off-target enriched taxa"
   ) + theme_manuscript
@@ -666,18 +666,18 @@ pS <- ggplot(thr_plot, aes(x = 100 * threshold, y = f1_after,
 strip_titles <- function(p) p + labs(title = NULL, subtitle = NULL) +
   theme(plot.title = element_blank(), plot.subtitle = element_blank())
 
-ggsave(file.path(outdir, "panel_A_internal_artifact_enrichment.pdf"), strip_titles(pA), width = 6.5, height = 4.2)
-ggsave(file.path(outdir, "panel_B_internal_offtarget_reduction.pdf"), strip_titles(pB), width = 8.5, height = 4.2)
-ggsave(file.path(outdir, "panel_C_internal_biomarker_performance.pdf"), strip_titles(pC), width = 9.5, height = 4.8)
-ggsave(file.path(outdir, "panel_D_crossstudy_transfer_summary.pdf"), strip_titles(pD), width = 10.0, height = 4.8)
-ggsave(file.path(outdir, "supplementary_threshold_sensitivity.pdf"), pS, width = 8.5, height = 4.2)
+ggsave(file.path(outdir, "panel_A_internal_artifact_enrichment.pdf"), strip_titles(pA), width = 6.5, height = 4.2, device = cairo_pdf)
+ggsave(file.path(outdir, "panel_B_internal_offtarget_reduction.pdf"), strip_titles(pB), width = 8.5, height = 4.2, device = cairo_pdf)
+ggsave(file.path(outdir, "panel_C_internal_biomarker_performance.pdf"), strip_titles(pC), width = 9.5, height = 4.8, device = cairo_pdf)
+ggsave(file.path(outdir, "panel_D_crossstudy_transfer_summary.pdf"), strip_titles(pD), width = 10.0, height = 4.8, device = cairo_pdf)
+ggsave(file.path(outdir, "supplementary_threshold_sensitivity.pdf"), pS, width = 8.5, height = 4.2, device = cairo_pdf)
 
 if (requireNamespace("patchwork", quietly = TRUE)) {
   combined <- (pA | pB) / pC / pD + patchwork::plot_layout(heights = c(0.95, 1.0, 1.0))
   ggsave(file.path(outdir, "manuscript_internal_and_crossstudy_artefact_filter_validation.pdf"),
-         combined, width = 14, height = 13)
+         combined, width = 7.1, height = 8.4, device = cairo_pdf)
   ggsave(file.path(outdir, "manuscript_internal_and_crossstudy_artefact_filter_validation.png"),
-         combined, width = 14, height = 15, dpi = 300)
+         combined, width = 7.1, height = 8.4, dpi = 450)
 } else {
   message("[WARN] Package 'patchwork' is unavailable; individual panels were saved, but not the composite figure.")
 }

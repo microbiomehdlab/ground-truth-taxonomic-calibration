@@ -397,7 +397,7 @@ if (is.na(opt$panelc_ymax)) {
 panelc_ymax_all <- max(panelc_ymax_all, 1.2)
 
 cond_cols <- c("Control" = "#4C78A8", "Adenoma" = "#D9A441", "colorectal carcinoma" = "#D55E00")
-class_cols <- c("Good" = "#1B9E77", "Intermediate" = "#E6AB02", "Poor / missed" = "#D95F5F")
+class_cols <- c("Good" = "#009E73", "Intermediate" = "#E69F00", "Poor / missed" = "#D55E00")
 
 theme_pub <- function(base_size = 10.6) {
   theme_bw(base_size = base_size, base_family = "sans") +
@@ -533,11 +533,13 @@ make_panel_B_compact <- function(class_tbl, label_tbl, title_text) {
     coord_cartesian(clip = "off") +
     labs(
       title = title_text,
-      subtitle = paste0("Good ≤ ", scales::percent(opt$good_relative_error, accuracy = 1),
-                        "; intermediate > ", scales::percent(opt$good_relative_error, accuracy = 1),
-                        " and ≤ ", scales::percent(opt$avg_relative_error, accuracy = 1),
-                        "\nPoor / missed > ", scales::percent(opt$avg_relative_error, accuracy = 1),
-                        " or undetected"),
+      subtitle = paste0(
+        "Good ≤", scales::percent(opt$good_relative_error, accuracy = 1),
+        "\nIntermediate >", scales::percent(opt$good_relative_error, accuracy = 1),
+        " and ≤", scales::percent(opt$avg_relative_error, accuracy = 1),
+        "\nPoor / missed >", scales::percent(opt$avg_relative_error, accuracy = 1),
+        " or undetected"
+      ),
       x = NULL,
       y = "Samples"
     ) +
@@ -559,7 +561,7 @@ make_panel_B_compact <- function(class_tbl, label_tbl, title_text) {
       # Bias/Variability facet boxes in Fig. 2 panel B after assembly.
       # Use a larger internal gap rather than adding a cowplot spacer,
       # because this keeps the C-panel title aligned with the B-panel title.
-      plot.subtitle = element_text(size = 8.2, lineheight = 1.05, colour = "#333333", margin = margin(b = 24)),
+      plot.subtitle = element_text(size = 8.2, lineheight = 1.05, colour = "#333333", margin = margin(b = 10)),
       plot.margin = margin(5, 7, 5, 6)
     )
 }
@@ -604,6 +606,7 @@ make_panel_C <- function(box_tbl, ymax_value, title_text) {
 save_png_pdf <- function(plot_obj, stem, width_in, height_in) {
   ggsave(file.path(opt$outdir, paste0(stem, ".png")), plot_obj, width = width_in, height = height_in, dpi = opt$dpi, units = "in")
   ggsave(file.path(opt$outdir, paste0(stem, ".pdf")), plot_obj, width = width_in, height = height_in, units = "in", device = cairo_pdf)
+  saveRDS(plot_obj, file.path(opt$outdir, paste0(stem, ".rds")))
 }
 
 pA <- ggplot(baseline_prev, aes(x = Target_Condition, y = prevalence, fill = Target_Condition)) +

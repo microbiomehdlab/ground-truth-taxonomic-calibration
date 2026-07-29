@@ -169,8 +169,10 @@ if (is.null(opt$spike_labels) || !nzchar(opt$spike_labels)) {
   selected_labels <- selected_labels[nzchar(selected_labels)]
   message("[INFO] Requested labels before sorting (", length(selected_labels), "): ", paste(selected_labels, collapse = ", "))
 }
-selected_labels <- sort(unique(selected_labels))
-message("[INFO] Final spike-label order used in the figure (alphabetical): ", paste(selected_labels, collapse = ", "))
+# Preserve the explicitly requested manuscript order. Sorting here previously
+# caused the all-target supplementary panel to disagree with Figures 3 and 5.
+selected_labels <- unique(selected_labels)
+message("[INFO] Final spike-label order used in the figure: ", paste(selected_labels, collapse = ", "))
 
 label_taxa <- design %>% filter(.data$spike_label %in% selected_labels) %>% distinct(spike_label, member_taxon) %>% filter(!is.na(member_taxon), nzchar(member_taxon))
 missing_design <- setdiff(selected_labels, unique(label_taxa$spike_label))
@@ -319,6 +321,13 @@ plot_df <- full_baseline %>% left_join(metadata, by = "sample_key") %>% filter(!
     .default = as.character(Target_Condition)
   ),
   Target_Condition = factor(Target_Condition, levels = c("Control", "Adenoma", "CRC")),
+  Study = dplyr::recode(
+    as.character(Study),
+    "FengQ_2015" = "FengQ 2015",
+    "ZellerG_2014" = "Zeller 2014",
+    "Zeller_2014" = "Zeller 2014",
+    .default = as.character(Study)
+  ),
   positive = abundance > opt$prevalence_threshold
 ) %>% filter(!is.na(spike_label), !is.na(Target_Condition))
 if (nrow(plot_df) == 0) stop("No rows left after joining metadata and filtering labels/conditions.", call. = FALSE)
@@ -333,7 +342,7 @@ abund <- plot_df %>% filter(positive)
 write_csv(prev, file.path(opt$outdir, "full_baseline_prevalence_summary.csv"))
 write_csv(abund, file.path(opt$outdir, "full_baseline_positive_abundance_long.csv"))
 
-tool_cols <- c("Kraken2 + Bracken" = "#2A9D8F", "MetaPhlAn 4" = "#7B6DCC")
+tool_cols <- c("Kraken2 + Bracken" = "#009E73", "MetaPhlAn 4" = "#6F5BD3")
 abundance_percent_labels <- function(x) {
   # Data remain proportions and the scale remains logarithmic. Only the
   # displayed labels are converted to percent units.
@@ -346,30 +355,87 @@ abundance_percent_labels <- function(x) {
   out[is.na(x)] <- NA_character_
   paste0(out, "%")
 }
-theme_pub <- function(base_size = 10) {
+theme_pub <- function(base_size = 11) {
   theme_bw(base_size = base_size) + theme(
     panel.grid.major.x = element_blank(), panel.grid.minor = element_blank(), panel.grid.major.y = element_line(linewidth = 0.25, colour = "grey88"),
     panel.border = element_rect(linewidth = 0.35, colour = "grey35"), strip.background = element_rect(fill = "grey96", colour = "grey80", linewidth = 0.3),
     strip.text = element_text(face = "bold"), legend.position = "top", legend.title = element_blank(), axis.text.x = element_text(angle = 45, hjust = 1, vjust = 1),
-    plot.title = element_text(face = "bold", size = rel(1.15)), plot.subtitle = element_text(size = rel(0.95)), panel.spacing = unit(0.8, "lines")
+    axis.title = element_text(face = "bold"),
+    axis.text = element_text(colour = "grey20"),
+    plot.title = element_text(face = "bold", size = rel(1.18), colour = "grey10"),
+    plot.subtitle = element_text(size = rel(0.92), colour = "grey25"),
+    panel.spacing = unit(0.9, "lines"),
+    plot.margin = margin(7, 8, 7, 7)
   )
 }
-pA <- ggplot(prev, aes(x = Target_Condition, y = prevalence, fill = tool)) +
-  geom_col(position = position_dodge(width = 0.72), width = 0.62, colour = "grey25", linewidth = 0.2, alpha = 0.95) +
-  geom_errorbar(aes(ymin = ymin, ymax = ymax, colour = tool), position = position_dodge(width = 0.72), width = 0.18, linewidth = 0.35) +
-  facet_grid(Study ~ spike_label) + scale_y_continuous(labels = percent_format(accuracy = 1), limits = c(0, 1), expand = expansion(mult = c(0, 0.04))) +
-  scale_fill_manual(values = tool_cols, drop = FALSE) + scale_colour_manual(values = tool_cols, drop = FALSE) +
-  labs(title = "A. Full-cohort baseline prevalence by condition", subtitle = paste0("Bars show fraction of samples with baseline abundance > ", opt$prevalence_threshold, "; error bars are 95% Wilson CIs."), x = NULL, y = "Positive baseline samples") + theme_pub()
-pB <- ggplot(abund, aes(x = Target_Condition, y = abundance, colour = tool, fill = tool)) +
-  geom_boxplot(aes(group = interaction(Target_Condition, tool)), position = position_dodge(width = 0.72), width = 0.55, outlier.shape = NA, linewidth = 0.3, alpha = 0.22) +
-  geom_point(position = position_jitterdodge(jitter.width = 0.12, dodge.width = 0.72), size = 0.8, alpha = 0.65, stroke = 0) +
-  facet_grid(Study ~ spike_label, scales = "free_y") +
-  scale_y_log10(labels = abundance_percent_labels) +
-  scale_fill_manual(values = tool_cols, drop = FALSE) + scale_colour_manual(values = tool_cols, drop = FALSE) +
-  labs(title = "B. Full-cohort baseline abundance among positive samples", subtitle = paste0("Only samples with baseline abundance > ", opt$prevalence_threshold, " are shown here."), x = NULL, y = "Baseline abundance") + theme_pub() + theme(legend.position = "none")
-final <- pA / pB + plot_layout(heights = c(1, 1.15))
+make_prevalence_plot <- function(dat, show_heading = TRUE, show_legend = TRUE) {
+  ggplot(dat, aes(x = Target_Condition, y = prevalence, fill = tool)) +
+    geom_col(position = position_dodge(width = 0.72), width = 0.62, colour = "grey25", linewidth = 0.2, alpha = 0.95) +
+    geom_errorbar(aes(ymin = ymin, ymax = ymax, colour = tool), position = position_dodge(width = 0.72), width = 0.18, linewidth = 0.35) +
+    facet_grid(Study ~ spike_label) +
+    scale_y_continuous(labels = percent_format(accuracy = 1), limits = c(0, 1), expand = expansion(mult = c(0, 0.04))) +
+    scale_fill_manual(values = tool_cols, drop = FALSE) +
+    scale_colour_manual(values = tool_cols, drop = FALSE) +
+    labs(
+      title = if (show_heading) "A. Baseline prevalence by clinical group" else NULL,
+      subtitle = if (show_heading) "Fraction positive; error bars are 95% Wilson confidence intervals." else NULL,
+      x = NULL,
+      y = "Positive samples"
+    ) +
+    theme_pub() +
+    theme(legend.position = if (show_legend) "top" else "none")
+}
+
+make_abundance_plot <- function(dat, show_heading = TRUE) {
+  ggplot(dat, aes(x = Target_Condition, y = abundance, colour = tool, fill = tool)) +
+    geom_boxplot(aes(group = interaction(Target_Condition, tool)), position = position_dodge(width = 0.72), width = 0.55, outlier.shape = NA, linewidth = 0.3, alpha = 0.22) +
+    geom_point(position = position_jitterdodge(jitter.width = 0.12, dodge.width = 0.72), size = 0.8, alpha = 0.65, stroke = 0) +
+    facet_grid(Study ~ spike_label, scales = "free_y") +
+    scale_y_log10(labels = abundance_percent_labels) +
+    scale_fill_manual(values = tool_cols, drop = FALSE) +
+    scale_colour_manual(values = tool_cols, drop = FALSE) +
+    labs(
+      title = if (show_heading) "B. Baseline abundance among positive samples" else NULL,
+      subtitle = if (show_heading) "Positive samples only; abundance is displayed as percent on a log scale." else NULL,
+      x = NULL,
+      y = "Baseline abundance (%)"
+    ) +
+    theme_pub() +
+    theme(legend.position = "none")
+}
+
+# Ten taxon columns become illegible when an 18-inch landscape plot is reduced
+# to journal page width. For detailed all-target output, use two five-taxon
+# blocks while retaining exactly the requested top-to-bottom manuscript order.
+taxon_blocks <- split(selected_labels, ceiling(seq_along(selected_labels) / 5))
+prev_plots <- lapply(seq_along(taxon_blocks), function(i) {
+  block <- taxon_blocks[[i]]
+  dat <- prev %>%
+    filter(as.character(spike_label) %in% block) %>%
+    mutate(spike_label = factor(as.character(spike_label), levels = block))
+  make_prevalence_plot(dat, show_heading = i == 1, show_legend = i == 1)
+})
+abund_plots <- lapply(seq_along(taxon_blocks), function(i) {
+  block <- taxon_blocks[[i]]
+  dat <- abund %>%
+    filter(as.character(spike_label) %in% block) %>%
+    mutate(spike_label = factor(as.character(spike_label), levels = block))
+  make_abundance_plot(dat, show_heading = i == 1)
+})
+
+if (length(taxon_blocks) == 1) {
+  final <- prev_plots[[1]] / abund_plots[[1]] +
+    plot_layout(heights = c(1, 1.15))
+} else {
+  final <- wrap_plots(
+    c(prev_plots, abund_plots),
+    ncol = 1,
+    heights = c(rep(1, length(prev_plots)), rep(1.15, length(abund_plots)))
+  )
+}
 
 ggsave(file.path(opt$outdir, "manuscript_full_baseline_discordance_panel.png"), final, width = opt$width, height = opt$height, dpi = opt$dpi, units = "in")
 ggsave(file.path(opt$outdir, "manuscript_full_baseline_discordance_panel.pdf"), final, width = opt$width, height = opt$height, units = "in", device = cairo_pdf)
+saveRDS(final, file.path(opt$outdir, "manuscript_full_baseline_discordance_panel.rds"))
 message("[OK] Final spike labels in figure (", length(selected_labels), "): ", paste(selected_labels, collapse = ", "))
 message("[OK] Wrote full-baseline manuscript panel under ", normalizePath(opt$outdir, mustWork = FALSE))

@@ -30,7 +30,12 @@ outdir="$RUN_ROOT/manuscript_figures/supplementary"
 source="$outdir/source_panels"
 qc_source="$source/community_qc_recovery"
 offtarget_source="$source/community_offtarget_artifacts"
-mkdir -p "$outdir" "$source" "$qc_source" "$offtarget_source"
+baseline_source="$source/baseline_all_10_targets"
+independent_source="$source/independent_all_fractions"
+community_da_source="$source/community_DA_all_fractions"
+mkdir -p \
+  "$outdir" "$source" "$qc_source" "$offtarget_source" \
+  "$baseline_source" "$independent_source" "$community_da_source"
 
 run_r() {
   "$R_BIN" "$@"
@@ -52,6 +57,35 @@ copy_pair() {
 
 echo "[INFO] Reusing completed analyses in: $RUN_ROOT"
 echo "[INFO] No MaAsLin2 or abundance-recovery analysis will be rerun."
+
+# Regenerate, rather than copy, all panels whose plot scripts may have changed.
+# This keeps a supplementary-only rerun faithful to the current repository.
+run_r "$PROJECT/scripts/1st_panel_plot_manuscript_tool_discordance.R" \
+  --indir "$RUN_ROOT/spike_metrics" \
+  --outdir "$baseline_source" \
+  --spike-labels "Bfrag,Csym,Dpne,Fnuc,Hhat,Pmic,Pana,Psto,Porp,Pint" \
+  --metadata-input "$METADATA" \
+  --metadata-sample-col sample_id \
+  --metadata-condition-col Target_Condition \
+  --metadata-study-col Study \
+  --width 12.5 \
+  --height 16.5 \
+  --dpi 450
+
+run_r "$PROJECT/scripts/plot_manuscript_independent_spike_overview.R" \
+  --indir "$RUN_ROOT/spike_metrics" \
+  --outdir "$independent_source" \
+  --spike-labels "Bfrag,Csym,Dpne,Fnuc,Hhat,Pmic,Pana,Psto,Porp,Pint" \
+  --sort-labels-by taxon \
+  --dpi 450
+
+run_r "$PROJECT/scripts/plot_manuscript_community_DA_recovery.R" \
+  --indir "$RUN_ROOT/maaslin_spike" \
+  --outdir "$community_da_source" \
+  --community-size 10 \
+  --main-effective-fractions "0.00001,0.00005,0.0001,0.0005,0.001" \
+  --spike-label-order "Bfrag,Csym,Dpne,Fnuc,Hhat,Pmic,Pana,Psto,Porp,Pint" \
+  --dpi 450
 
 # B1 and B6--B10 require original-sample read depth. Reuse the derived table
 # when available; otherwise build it from the FastQC zip-file inventory.
@@ -116,7 +150,8 @@ fi
 run_r "$PROJECT/scripts/plot_supp_community_qc_recovery_full.R" \
   --run-root "$RUN_ROOT" \
   --community-target-file "$COMMUNITY_TARGET_FILE" \
-  --outdir "$qc_source"
+  --outdir "$qc_source" \
+  --dpi 450
 
 # B13 is a plotting-only analysis of completed abundance-error and MaAsLin2
 # outputs.
@@ -125,24 +160,25 @@ run_r "$PROJECT/scripts/plot_manuscript_community_offtarget_artifacts.R" \
   --outdir "$offtarget_source" \
   --alias-file "$PROJECT/spike_taxon_aliases.csv" \
   --community-size 10 \
-  --filter-mode original
+  --filter-mode original \
+  --dpi 450
 
-# B2--B5 and B11--B12 are already emitted as detailed source panels while
-# assembling current Figures 2, 3, and 5.
+# Collect the freshly rendered, publication-sized panels under stable B1--B13
+# names. PDFs are the publication masters; PNGs are high-resolution previews.
 copy_pair \
   "$qc_source/FigB8_QC_only_ABC" \
   "FigB1_sequencing_depth_and_preprocessing_QC"
 copy_pair \
-  "$current/Supplementary_Fig_B2_baseline_all_10_targets" \
+  "$baseline_source/manuscript_full_baseline_discordance_panel" \
   "FigB2_baseline_all_10_targets"
 copy_pair \
-  "$panels/fig3_independent/supp_good_recovery_dot_heatmap_allfractions" \
+  "$independent_source/supp_good_recovery_dot_heatmap_allfractions" \
   "FigB3_independent_good_recovery_all_fractions"
 copy_pair \
-  "$panels/fig3_independent/supp_recovery_class_composition_allfractions" \
+  "$independent_source/supp_recovery_class_composition_allfractions" \
   "FigB4_independent_recovery_classes_all_fractions"
 copy_pair \
-  "$panels/fig3_independent/supp_bias_variability_dotplots_allfractions" \
+  "$independent_source/supp_bias_variability_dotplots_allfractions" \
   "FigB5_independent_bias_variability_all_fractions"
 copy_pair \
   "$qc_source/FigB9_recovery_classes_vs_spike_fraction" \
@@ -160,10 +196,10 @@ copy_pair \
   "$qc_source/FigB10_recovery_class_composition_by_read_support" \
   "FigB10_community_recovery_by_read_support"
 copy_pair \
-  "$panels/fig5_community_da/supp_panel_B_community_target_DA_detection_all_effective_fractions" \
+  "$community_da_source/supp_panel_B_community_target_DA_detection_all_effective_fractions" \
   "FigB11_community_target_DA_all_fractions"
 copy_pair \
-  "$panels/fig5_community_da/supp_panel_D_community_offtarget_enriched_DA_burden_all_effective_fractions" \
+  "$community_da_source/supp_panel_D_community_offtarget_enriched_DA_burden_all_effective_fractions" \
   "FigB12_community_offtarget_DA_burden"
 copy_pair \
   "$offtarget_source/manuscript_community_offtarget_artifacts_overview" \
@@ -182,6 +218,35 @@ if [[ "$pdf_count" -ne 13 || "$png_count" -ne 13 ]]; then
   echo "[ERROR] Expected 13 PDFs and 13 PNGs; found $pdf_count PDFs and $png_count PNGs." >&2
   exit 1
 fi
+
+# Reject all-white or near-blank review images before reporting success. This
+# catches the graphics-device failure that previously produced empty current
+# figures even though their source panels were valid.
+run_r - "$outdir" <<'RS'
+args <- commandArgs(trailingOnly = TRUE)
+outdir <- args[[1]]
+files <- sort(list.files(outdir, pattern = "^FigB[0-9]+.*\\.png$", full.names = TRUE))
+if (!requireNamespace("png", quietly = TRUE)) {
+  stop("The R package 'png' is required for supplementary image validation.")
+}
+bad <- character()
+for (f in files) {
+  img <- png::readPNG(f)
+  rgb <- img[, , seq_len(min(3L, dim(img)[3L])), drop = FALSE]
+  # Inspect at most a 600 x 600 representative grid. Applying a function to
+  # every pixel of a 450-dpi multi-panel image is needlessly slow and can look
+  # like a hung process on a login node.
+  row_idx <- unique(round(seq(1, dim(rgb)[1], length.out = min(600L, dim(rgb)[1]))))
+  col_idx <- unique(round(seq(1, dim(rgb)[2], length.out = min(600L, dim(rgb)[2]))))
+  sample_rgb <- rgb[row_idx, col_idx, , drop = FALSE]
+  pixel_min <- do.call(pmin, lapply(seq_len(dim(sample_rgb)[3]), function(k) sample_rgb[, , k]))
+  nonwhite <- mean(pixel_min < 0.985)
+  spread <- diff(range(sample_rgb, finite = TRUE))
+  if (!is.finite(nonwhite) || nonwhite < 0.002 || spread < 0.05) bad <- c(bad, basename(f))
+}
+if (length(bad)) stop("Blank or near-blank supplementary PNG(s): ", paste(bad, collapse = ", "))
+message("[PASS] All 13 supplementary PNGs contain non-white graphical content.")
+RS
 
 echo "[PASS] Supplementary Figures B1--B13 regenerated."
 echo "[INFO] Output: $outdir"

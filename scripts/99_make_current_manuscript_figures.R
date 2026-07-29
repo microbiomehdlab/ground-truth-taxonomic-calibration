@@ -54,7 +54,7 @@ if (isTRUE(opt$`rerun-panels`)) {
   run_r("1st_panel_plot_manuscript_tool_discordance.R", c(
     arg("indir", file.path(run_dir, "spike_metrics")),
     arg("outdir", d2),
-    arg("spike-labels", "Bfrag,Fnuc,Pint,Pmic"),
+    arg("spike-labels", "Bfrag,Fnuc,Pmic,Pint"),
     arg("metadata-input", abs_path(opt$metadata)),
     arg("metadata-sample-col", "sample_id"),
     arg("metadata-condition-col", "Target_Condition"),
@@ -68,8 +68,8 @@ if (isTRUE(opt$`rerun-panels`)) {
     arg("metadata-sample-col", "sample_id"),
     arg("metadata-condition-col", "Target_Condition"),
     arg("metadata-study-col", "Study"),
-    arg("width", "18"),
-    arg("height", "9")
+    arg("width", "12.5"),
+    arg("height", "16.5")
   ))
   run_r("plot_manuscript_independent_spike_overview.R", c(
     arg("indir", file.path(run_dir, "spike_metrics")), arg("outdir", d3a),
@@ -107,12 +107,26 @@ if (isTRUE(opt$`rerun-panels`)) {
 }
 
 find_panel <- function(dir, stems) {
-  candidates <- unlist(lapply(stems, function(s) file.path(dir, paste0(s, c(".png", ".pdf")))))
+  if (isTRUE(opt$`rerun-panels`)) {
+    rds_candidates <- file.path(dir, paste0(stems, ".rds"))
+    rds_hit <- rds_candidates[file.exists(rds_candidates)]
+    if (!length(rds_hit)) {
+      stop(
+        "Fresh panel regeneration did not produce the native plot object required for vector assembly in ",
+        dir, ": ", paste(stems, collapse = ", ")
+      )
+    }
+    return(rds_hit[[1]])
+  }
+  candidates <- unlist(lapply(stems, function(s) file.path(dir, paste0(s, c(".rds", ".pdf", ".png")))))
   hit <- candidates[file.exists(candidates)]
   if (!length(hit)) stop("Missing generated panel in ", dir, ": ", paste(stems, collapse = ", "))
   hit[[1]]
 }
 read_plot <- function(path) {
+  if (tolower(tools::file_ext(path)) == "rds") {
+    return(readRDS(path))
+  }
   if (tolower(tools::file_ext(path)) == "pdf") {
     if (!requireNamespace("pdftools", quietly = TRUE)) stop("Package pdftools is required to import PDF-only panels.")
     bitmap <- pdftools::pdf_render_page(path, page = 1, dpi = 300, numeric = TRUE)
@@ -156,10 +170,10 @@ save <- function(plot, stem, width, height) {
 }
 
 fig2 <- read_plot(find_panel(d2, "manuscript_full_baseline_discordance_panel"))
-save(fig2, "Fig2_baseline_profiler_discordance", 12.2, 8.8)
+save(fig2, "Fig2_baseline_profiler_discordance", 7.1, 5.2)
 
 fig2_supp <- read_plot(find_panel(d2_supp, "manuscript_full_baseline_discordance_panel"))
-save(fig2_supp, "Supplementary_Fig_B2_baseline_all_10_targets", 18, 9)
+save(fig2_supp, "Supplementary_Fig_B2_baseline_all_10_targets", 7.1, 9.4)
 
 fig3_lower <- plot_grid(
   read_plot(find_panel(d3a, "panel_B_bias_variability_dotplots_naturestyle")),
@@ -178,7 +192,7 @@ fig3 <- plot_grid(
   ncol = 1,
   rel_heights = c(1, 1.12)
 )
-save(fig3, "Fig3_independent_spike_recovery", 15.2, 10.6)
+save(fig3, "Fig3_independent_spike_recovery", 7.1, 5.25)
 
 fig4 <- plot_grid(
   read_plot(find_panel(d4, c(
@@ -189,7 +203,7 @@ fig4 <- plot_grid(
   read_plot(find_panel(d4, "panel_C_intuitive_association_dot_summary_naturestyle")),
   ncol = 1, rel_heights = c(1, 1.1, 0.7)
 )
-save(fig4, "Fig4_biomarker_recoverability", 12.2, 18.2)
+save(fig4, "Fig4_biomarker_recoverability", 7.1, 9.5)
 
 fig5 <- plot_grid(
   read_plot(find_panel(d5a, "panel_A_independent_vs_community_good_recovery_dumbbell")),
@@ -197,7 +211,7 @@ fig5 <- plot_grid(
   read_plot(find_panel(d5b, "panel_B_community_target_DA_detection_main_effective_fractions")),
   ncol = 1, rel_heights = c(1, 1, 1.05)
 )
-save(fig5, "Fig5_community_spike_recovery_and_DA", 13.5, 18.6)
+save(fig5, "Fig5_community_spike_recovery_and_DA", 7.1, 9.5)
 
 writeLines(c(
   "Current manuscript figure mapping",

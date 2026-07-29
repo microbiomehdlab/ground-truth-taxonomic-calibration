@@ -41,7 +41,7 @@ option_list <- list(
   make_option("--good-threshold", type = "double", default = 0.10,
               help = "Absolute relative-error threshold for Good recovery [default %default]"),
   make_option("--average-threshold", type = "double", default = 0.50,
-              help = "Absolute relative-error threshold for Average recovery; larger values are Bad/missed [default %default]"),
+              help = "Absolute relative-error threshold for Intermediate recovery; larger values are Poor/missed [default %default]"),
   make_option("--main-width", type = "double", default = 15.5,
               help = "Main figure width in inches [default %default]"),
   make_option("--main-height", type = "double", default = 16.0,
@@ -88,12 +88,12 @@ tool_labeller <- c(
 tool_levels <- unname(tool_labeller)
 
 profiler_cols <- c(
-  "Kraken2 + Bracken" = "#2A9D8F",
-  "MetaPhlAn 4" = "#7B61D1"
+  "Kraken2 + Bracken" = "#009E73",
+  "MetaPhlAn 4" = "#6F5BD3"
 )
 condition_cols <- c(
   "Adenoma" = "#D8A03A",
-  "colorectal carcinoma" = "#D95F02",
+  "CRC" = "#D95F02",
   "Control" = "#4C78A8"
 )
 
@@ -130,14 +130,15 @@ save_plot_set <- function(plot_obj, stem, width, height, dpi = 320) {
     ggsave(pdf_path, plot_obj, width = width, height = height, bg = "white")
   }
   ggsave(png_path, plot_obj, width = width, height = height, dpi = dpi, bg = "white")
+  saveRDS(plot_obj, file.path(opt$outdir, paste0(stem, ".rds")))
 }
 
 classify_recovery <- function(abs_rel_err, ratio, good_thr, avg_thr) {
   case_when(
-    is.na(ratio) | is.na(abs_rel_err) ~ "Bad / missed",
+    is.na(ratio) | is.na(abs_rel_err) ~ "Poor / missed",
     abs_rel_err <= good_thr ~ "Good",
-    abs_rel_err <= avg_thr ~ "Average",
-    TRUE ~ "Bad / missed"
+    abs_rel_err <= avg_thr ~ "Intermediate",
+    TRUE ~ "Poor / missed"
   )
 }
 
@@ -181,7 +182,7 @@ tbl <- raw_tbl %>%
       opt$`good-threshold`,
       opt$`average-threshold`
     ),
-    recovery_class = factor(recovery_class, levels = c("Good", "Average", "Bad / missed"))
+    recovery_class = factor(recovery_class, levels = c("Good", "Intermediate", "Poor / missed"))
   ) %>%
   left_join(label_map, by = "member_taxon") %>%
   mutate(
@@ -235,8 +236,8 @@ rate_summary <- function(dat, by_context = FALSE) {
     summarise(
       n = n(),
       good_rate = mean(recovery_class == "Good", na.rm = TRUE),
-      avg_rate = mean(recovery_class == "Average", na.rm = TRUE),
-      bad_rate = mean(recovery_class == "Bad / missed", na.rm = TRUE),
+      avg_rate = mean(recovery_class == "Intermediate", na.rm = TRUE),
+      bad_rate = mean(recovery_class == "Poor / missed", na.rm = TRUE),
       median_recovery = median(observed_over_expected, na.rm = TRUE),
       iqr_recovery = IQR(observed_over_expected, na.rm = TRUE),
       .groups = "drop"
@@ -270,7 +271,15 @@ concordance_tbl <- inner_join(
 ) %>%
   mutate(
     effective_fraction_label = factor(effective_fraction_label, levels = matched_labels),
-    Target_Condition = factor(Target_Condition, levels = c("Adenoma", "colorectal carcinoma", "Control")),
+    Target_Condition = factor(
+      dplyr::recode(
+        as.character(Target_Condition),
+        "colorectal carcinoma" = "CRC",
+        "Colorectal carcinoma" = "CRC",
+        .default = as.character(Target_Condition)
+      ),
+      levels = c("Adenoma", "CRC", "Control")
+    ),
     Study_short = recode(Study, FengQ_2015 = "FengQ", ZellerG_2014 = "Zeller", .default = Study)
   )
 
@@ -336,15 +345,17 @@ pA <- ggplot(mode_pair_tbl, aes(y = spike_label_plot)) +
     na.rm = TRUE
   ) +
   geom_point(
-    aes(x = Independent, colour = "Independent"),
-    size = 3.0,
-    alpha = 0.96,
+    aes(x = Independent, colour = "Independent", shape = "Independent"),
+    size = 2.9,
+    alpha = 0.98,
+    position = position_nudge(y = 0.10),
     na.rm = TRUE
   ) +
   geom_point(
-    aes(x = Community, colour = "Community"),
-    size = 3.0,
-    alpha = 0.96,
+    aes(x = Community, colour = "Community", shape = "Community"),
+    size = 2.9,
+    alpha = 0.98,
+    position = position_nudge(y = -0.10),
     na.rm = TRUE
   ) +
   geom_vline(xintercept = 0.5, linetype = 2, colour = "#9B9B9B", linewidth = 0.40) +
@@ -357,9 +368,10 @@ pA <- ggplot(mode_pair_tbl, aes(y = spike_label_plot)) +
     expand = expansion(mult = c(0, 0))
   ) +
   scale_colour_manual(values = mode_cols, name = "Spike design") +
+  scale_shape_manual(values = c("Independent" = 16, "Community" = 17), name = "Spike design") +
   labs(
-    title = "A. Community spikes preserve independent-spike recovery patterns at matched fractions",
-    x = "% samples with good recovery",
+    title = "A. Independent- and community-spike recovery at matched fractions",
+    x = "Good recovery (absolute relative error ≤10%)",
     y = NULL
   ) +
   pub_theme(10.7) +
@@ -467,8 +479,14 @@ make_rate_dumbbell <- function(dat, rate_col, title_text, x_label) {
       linewidth = 0.50,
       lineend = "round"
     ) +
-    geom_point(aes(x = kraken, colour = "Kraken2 + Bracken"), size = 2.85, alpha = 0.96) +
-    geom_point(aes(x = metaphlan, colour = "MetaPhlAn 4"), size = 2.85, alpha = 0.96) +
+    geom_point(
+      aes(x = kraken, colour = "Kraken2 + Bracken", shape = "Kraken2 + Bracken"),
+      size = 2.75, alpha = 0.98, position = position_nudge(y = 0.10)
+    ) +
+    geom_point(
+      aes(x = metaphlan, colour = "MetaPhlAn 4", shape = "MetaPhlAn 4"),
+      size = 2.75, alpha = 0.98, position = position_nudge(y = -0.10)
+    ) +
     geom_vline(xintercept = 0.5, linetype = 2, colour = "#9B9B9B", linewidth = 0.38) +
     facet_wrap(~ effective_fraction_label, nrow = 1) +
     scale_x_continuous(
@@ -478,6 +496,7 @@ make_rate_dumbbell <- function(dat, rate_col, title_text, x_label) {
       expand = expansion(mult = c(0, 0))
     ) +
     scale_colour_manual(values = profiler_cols, name = "Profiler") +
+    scale_shape_manual(values = c("Kraken2 + Bracken" = 16, "MetaPhlAn 4" = 17), name = "Profiler") +
     labs(title = title_text, x = x_label, y = NULL) +
     pub_theme(10.6) +
     theme(
@@ -496,7 +515,7 @@ pB <- make_rate_dumbbell(
   community_overall,
   rate_col = "good_rate",
   title_text = "B. Full-cohort community spike recovery across ultra-low and weak effective fractions",
-  x_label = "% samples with good recovery"
+  x_label = "Good recovery (absolute relative error ≤10%)"
 )
 
 pB_avg <- make_rate_dumbbell(

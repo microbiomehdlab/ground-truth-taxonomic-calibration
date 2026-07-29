@@ -87,8 +87,8 @@ naturestyle_tool <- function(x) dplyr::recode(
 tool_order_naturestyle <- naturestyle_tool(tool_order_raw)
 
 tool_cols <- c(
-  "Kraken2 + Bracken" = "#1B9E77",
-  "MetaPhlAn 4" = "#7570B3"
+  "Kraken2 + Bracken" = "#009E73",
+  "MetaPhlAn 4" = "#6F5BD3"
 )
 condition_cols <- c(
   "Control" = "#4C78A8",
@@ -133,6 +133,7 @@ save_plot_pair <- function(p, stem, width, height, dpi = 320) {
     ggsave(pdf_path, p, width = width, height = height, bg = "white")
   }
   ggsave(png_path, p, width = width, height = height, dpi = dpi, bg = "white")
+  saveRDS(p, file.path(opt$outdir, paste0(stem, ".rds")))
 }
 
 # ----------------------------
@@ -245,12 +246,12 @@ pA_conservative <- ggplot() +
   )
 
 threshold_cols <- c(
-  "0.01%" = "#006D2C",
-  "0.05%" = "#31A354",
-  "0.10%" = "#78C679",
-  "0.50%" = "#FDD49E",
-  "1.00%" = "#FC8D59",
-  "5.00%" = "#D7301F",
+  "0.01%" = "#00204D",
+  "0.05%" = "#414D6B",
+  "0.10%" = "#6C6E72",
+  "0.50%" = "#9C9165",
+  "1.00%" = "#C8B35B",
+  "5.00%" = "#F1D54A",
   "NR" = "#BDBDBD"
 )
 
@@ -264,7 +265,7 @@ panelA_heatmap <- panelA %>%
       )
     ),
     spike_label = factor(as.character(spike_label), levels = rev(spike_order)),
-    label_colour = ifelse(as.character(threshold_label) %in% c("0.01%", "0.05%", "5.00%"), "white", "#202020")
+    label_colour = ifelse(as.character(threshold_label) %in% c("0.01%", "0.05%", "0.10%"), "white", "#202020")
   )
 
 pA <- ggplot(panelA_heatmap, aes(x = cohort_background, y = spike_label, fill = threshold_label)) +
@@ -353,27 +354,32 @@ write_csv(main_driver, file.path(opt$outdir, paste0("driver_data_at_", gsub("%",
 # ----------------------------
 # Panel B: biomarker significance versus baseline / taxonomy-side drivers
 # ----------------------------
-driver_levels <- c("Baseline abundance", "Tax detect", "Recovery error", "Recovery variability")
+driver_levels <- c(
+  "Baseline abundance\n(log10 proportion)",
+  "Target detectability\n(fraction positive)",
+  "Recovery error\n(|log2 observed/expected|)",
+  "Recovery variability\n(IQR observed/expected)"
+)
 
 relationship_tbl <- bind_rows(
   main_driver %>%
     transmute(tool, background_condition, background_study, study_label, spike_label,
-              driver = factor("Baseline abundance", levels = driver_levels),
+              driver = factor("Baseline abundance\n(log10 proportion)", levels = driver_levels),
               driver_value = baseline_log_raw,
               q_strength_raw = q_strength_raw),
   main_driver %>%
     transmute(tool, background_condition, background_study, study_label, spike_label,
-              driver = factor("Tax detect", levels = driver_levels),
+              driver = factor("Target detectability\n(fraction positive)", levels = driver_levels),
               driver_value = tax_detect_raw,
               q_strength_raw = q_strength_raw),
   main_driver %>%
     transmute(tool, background_condition, background_study, study_label, spike_label,
-              driver = factor("Recovery error", levels = driver_levels),
+              driver = factor("Recovery error\n(|log2 observed/expected|)", levels = driver_levels),
               driver_value = abs(log2(tax_recovery_raw)),
               q_strength_raw = q_strength_raw),
   main_driver %>%
     transmute(tool, background_condition, background_study, study_label, spike_label,
-              driver = factor("Recovery variability", levels = driver_levels),
+              driver = factor("Recovery variability\n(IQR observed/expected)", levels = driver_levels),
               driver_value = recovery_var_raw,
               q_strength_raw = q_strength_raw)
 ) %>%
@@ -508,7 +514,10 @@ assoc_tbl <- assoc_tbl %>%
     abs_rho = abs(spearman_rho),
     driver = fct_recode(
       driver,
-      "Detectability" = "Tax detect"
+      "Target detectability" = "Target detectability\n(fraction positive)",
+      "Baseline abundance" = "Baseline abundance\n(log10 proportion)",
+      "Recovery error" = "Recovery error\n(|log2 observed/expected|)",
+      "Recovery variability" = "Recovery variability\n(IQR observed/expected)"
     )
   )
 

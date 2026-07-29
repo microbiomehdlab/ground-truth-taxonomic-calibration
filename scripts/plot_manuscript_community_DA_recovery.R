@@ -48,7 +48,7 @@ option_list <- list(
               help = "Main figure width in inches [default %default]"),
   make_option("--main-height", type = "double", default = 18.0,
               help = "Main figure height in inches [default %default]"),
-  make_option("--dpi", type = "integer", default = 320,
+  make_option("--dpi", type = "integer", default = 450,
               help = "PNG resolution [default %default]")
 )
 
@@ -99,8 +99,8 @@ tool_labeller <- c(
 tool_levels <- unname(tool_labeller)
 
 profiler_cols <- c(
-  "Kraken2 + Bracken" = "#2A9D8F",
-  "MetaPhlAn 4" = "#7B61D1"
+  "Kraken2 + Bracken" = "#009E73",
+  "MetaPhlAn 4" = "#6F5BD3"
 )
 mode_cols <- c(
   "Independent" = "#4C78A8",
@@ -108,7 +108,7 @@ mode_cols <- c(
 )
 condition_cols <- c(
   "Adenoma" = "#D8A03A",
-  "colorectal carcinoma" = "#D95F02",
+  "CRC" = "#D95F02",
   "Control" = "#4C78A8"
 )
 
@@ -155,6 +155,7 @@ save_plot_set <- function(plot_obj, stem, width, height, dpi = 320) {
     ggsave(pdf_path, plot_obj, width = width, height = height, bg = "white")
   }
   ggsave(png_path, plot_obj, width = width, height = height, dpi = dpi, bg = "white")
+  saveRDS(plot_obj, file.path(opt$outdir, paste0(stem, ".rds")))
 }
 
 message("[INFO] Reading member detection: ", member_file)
@@ -390,7 +391,15 @@ concordance_tbl <- inner_join(
 ) %>%
   mutate(
     effective_fraction_label = factor(effective_fraction_label, levels = matched_labels),
-    background_condition = factor(background_condition, levels = c("Adenoma", "colorectal carcinoma", "Control")),
+    background_condition = factor(
+      dplyr::recode(
+        as.character(background_condition),
+        "colorectal carcinoma" = "CRC",
+        "Colorectal carcinoma" = "CRC",
+        .default = as.character(background_condition)
+      ),
+      levels = c("Adenoma", "CRC", "Control")
+    ),
     Study_short = recode(background_study, FengQ_2015 = "FengQ", ZellerG_2014 = "Zeller", .default = background_study)
   )
 
@@ -477,7 +486,7 @@ if (!nrow(community_overall)) {
        paste(main_effective_fractions, collapse = ", "), call. = FALSE)
 }
 
-make_tool_dumbbell <- function(dat, rate_col, title_text, x_label) {
+make_tool_dumbbell <- function(dat, rate_col, title_text, x_label, facets_per_row = 5) {
   pair_tbl <- dat %>%
     mutate(
       tool_short = case_when(
@@ -502,10 +511,18 @@ make_tool_dumbbell <- function(dat, rate_col, title_text, x_label) {
       linewidth = 0.50,
       lineend = "round"
     ) +
-    geom_point(aes(x = kraken, colour = "Kraken2 + Bracken"), size = 2.85, alpha = 0.96) +
-    geom_point(aes(x = metaphlan, colour = "MetaPhlAn 4"), size = 2.85, alpha = 0.96) +
+    # A small deterministic vertical separation preserves both profiler
+    # endpoints when their rates are exactly tied (common at 0% and 100%).
+    geom_point(
+      aes(x = kraken, colour = "Kraken2 + Bracken", shape = "Kraken2 + Bracken"),
+      size = 2.75, alpha = 0.98, position = position_nudge(y = 0.10)
+    ) +
+    geom_point(
+      aes(x = metaphlan, colour = "MetaPhlAn 4", shape = "MetaPhlAn 4"),
+      size = 2.75, alpha = 0.98, position = position_nudge(y = -0.10)
+    ) +
     geom_vline(xintercept = 0.5, linetype = 2, colour = "#9B9B9B", linewidth = 0.38) +
-    facet_wrap(~ effective_fraction_label, nrow = 1) +
+    facet_wrap(~ effective_fraction_label, ncol = facets_per_row) +
     scale_x_continuous(
       limits = c(-0.035, 1.035),
       breaks = c(0, 0.5, 1),
@@ -513,7 +530,16 @@ make_tool_dumbbell <- function(dat, rate_col, title_text, x_label) {
       expand = expansion(mult = c(0, 0))
     ) +
     scale_colour_manual(values = profiler_cols, name = "Profiler") +
-    labs(title = title_text, x = x_label, y = NULL) +
+    scale_shape_manual(
+      values = c("Kraken2 + Bracken" = 16, "MetaPhlAn 4" = 17),
+      name = "Profiler"
+    ) +
+    labs(
+      title = title_text,
+      subtitle = "Dashed line marks detection in 50% of runs; profiler endpoints are vertically offset to expose exact ties",
+      x = x_label,
+      y = NULL
+    ) +
     pub_theme(10.6) +
     theme(
       axis.text.y = element_text(size = 9.4, face = "bold"),
@@ -530,15 +556,16 @@ make_tool_dumbbell <- function(dat, rate_col, title_text, x_label) {
 pB <- make_tool_dumbbell(
   community_overall,
   rate_col = "positive_da_rate",
-  title_text = "C. Full-cohort community target DA detection across ultra-low and weak effective fractions",
+  title_text = "C. Community target differential-abundance detection across ultra-low and weak effective fractions",
   x_label = "Target significant and enriched (% runs)"
 )
 
 pB_all <- make_tool_dumbbell(
   community_overall_all,
   rate_col = "positive_da_rate",
-  title_text = "Supplementary. Full-cohort community target DA detection across all effective fractions",
-  x_label = "Target significant and enriched (% runs)"
+  title_text = "Community target differential-abundance detection across all effective fractions",
+  x_label = "Target significant and enriched (% runs)",
+  facets_per_row = 4
 )
 
 # Supplementary q-value intensity heatmap.
@@ -697,7 +724,15 @@ run_community_all <- run_tbl %>%
       effective_fraction_label,
       levels = fmt_fraction(sort(unique(effective_fraction)))
     ),
-    background_condition = factor(background_condition, levels = c("Adenoma", "colorectal carcinoma", "Control")),
+    background_condition = factor(
+      dplyr::recode(
+        as.character(background_condition),
+        "colorectal carcinoma" = "CRC",
+        "Colorectal carcinoma" = "CRC",
+        .default = as.character(background_condition)
+      ),
+      levels = c("Adenoma", "CRC", "Control")
+    ),
     Study_short = recode(background_study, FengQ_2015 = "FengQ", ZellerG_2014 = "Zeller", .default = background_study)
   )
 
@@ -758,16 +793,21 @@ offtarget_summary_all <- run_community_all %>%
 
 write_csv(offtarget_summary_all, file.path(opt$outdir, "supp_offtarget_summary_all_effective_fractions.csv"))
 
-pD_all <- ggplot(offtarget_summary_all, aes(x = effective_fraction_label, y = median_offtarget_enriched, color = tool, group = tool)) +
+pD_all <- ggplot(offtarget_summary_all, aes(x = effective_fraction_label, y = median_offtarget_enriched, color = tool, linetype = tool, group = tool)) +
   geom_line(linewidth = 0.75, alpha = 0.92) +
   geom_errorbar(aes(ymin = q25_offtarget_enriched, ymax = q75_offtarget_enriched),
                 width = 0.10, linewidth = 0.45, alpha = 0.72) +
   geom_point(size = 2.6, alpha = 0.96) +
   scale_color_manual(values = profiler_cols, name = "Profiler") +
+  scale_linetype_manual(
+    values = c("Kraken2 + Bracken" = "solid", "MetaPhlAn 4" = "22"),
+    name = "Profiler"
+  ) +
   labs(
-    title = "Supplementary. Off-target enriched DA burden across all community effective fractions",
+    title = "Off-target enriched differential-abundance burden across all effective fractions",
+    subtitle = "Points show medians; error bars show interquartile ranges across runs",
     x = "Effective per-species fraction",
-    y = "Off-target enriched features\nmedian and IQR across runs"
+    y = "Off-target enriched taxa\nmedian and IQR across runs"
   ) +
   pub_theme(10.7) +
   theme(
@@ -795,7 +835,7 @@ main_fig <- (pA | pB) / (pC | pD) +
 save_plot_set(pA, "panel_A_independent_vs_community_target_DA_detection_dumbbell", width = 12.0, height = 6.5, dpi = opt$dpi)
 save_plot_set(pA_concordance_supp, "supp_panel_A_background_resolved_DA_concordance", width = 11.5, height = 6.8, dpi = opt$dpi)
 save_plot_set(pB, "panel_B_community_target_DA_detection_main_effective_fractions", width = 12.5, height = 5.5, dpi = opt$dpi)
-save_plot_set(pB_all, "supp_panel_B_community_target_DA_detection_all_effective_fractions", width = 15.0, height = 5.5, dpi = opt$dpi)
+save_plot_set(pB_all, "supp_panel_B_community_target_DA_detection_all_effective_fractions", width = 10.5, height = 8.0, dpi = opt$dpi)
 save_plot_set(pB_q_supp, "supp_panel_B_community_median_neglog10q_heatmap_all_effective_fractions", width = 10.5, height = 7.2, dpi = opt$dpi)
 save_plot_set(pC, "panel_C_study_specific_community_target_DA_detection", width = 8.8, height = 4.7, dpi = opt$dpi)
 save_plot_set(pC_species_supp, "supp_panel_C_study_resolved_community_target_DA_detection_by_species", width = 12.5, height = 6.8, dpi = opt$dpi)

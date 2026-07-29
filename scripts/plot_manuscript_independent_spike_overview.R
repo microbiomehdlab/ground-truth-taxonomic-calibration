@@ -34,16 +34,16 @@ option_list <- list(
   make_option("--good-threshold", type = "double", default = 0.10,
               help = "Absolute relative-error threshold for Good class [default %default]"),
   make_option("--average-threshold", type = "double", default = 0.50,
-              help = "Absolute relative-error threshold for Average class; larger values are Bad/missed [default %default]"),
+              help = "Absolute relative-error threshold for Intermediate class; larger values are Poor/missed [default %default]"),
   make_option("--main-width", type = "double", default = 13.6,
               help = "Main figure width in inches [default %default]"),
   make_option("--main-height", type = "double", default = 10.2,
               help = "Main figure height in inches [default %default]"),
-  make_option("--supp-width", type = "double", default = 16,
+  make_option("--supp-width", type = "double", default = 13,
               help = "Supplementary figure width in inches [default %default]"),
-  make_option("--supp-height", type = "double", default = 11,
+  make_option("--supp-height", type = "double", default = 9.5,
               help = "Supplementary figure height in inches [default %default]"),
-  make_option("--dpi", type = "integer", default = 320,
+  make_option("--dpi", type = "integer", default = 450,
               help = "PNG resolution [default %default]")
 )
 
@@ -118,6 +118,7 @@ save_plot_set <- function(plot_obj, stem, width, height, dpi = 320) {
     ggsave(pdf_path, plot_obj, width = width, height = height, bg = "white")
   }
   ggsave(png_path, plot_obj, width = width, height = height, dpi = dpi, bg = "white")
+  saveRDS(plot_obj, file.path(opt$outdir, paste0(stem, ".rds")))
 }
 
 message("[INFO] Reading: ", input_file)
@@ -184,10 +185,10 @@ tbl <- tbl %>%
 
 classify_recovery <- function(abs_rel_err, ratio, good_thr, avg_thr) {
   case_when(
-    is.na(ratio) | is.na(abs_rel_err) ~ "Bad / missed",
+    is.na(ratio) | is.na(abs_rel_err) ~ "Poor / missed",
     abs_rel_err <= good_thr ~ "Good",
-    abs_rel_err <= avg_thr ~ "Average",
-    TRUE ~ "Bad / missed"
+    abs_rel_err <= avg_thr ~ "Intermediate",
+    TRUE ~ "Poor / missed"
   )
 }
 
@@ -195,7 +196,7 @@ tbl <- tbl %>%
   mutate(
     recovery_class = classify_recovery(abs_relative_error, observed_over_expected,
                                        opt$`good-threshold`, opt$`average-threshold`),
-    recovery_class = factor(recovery_class, levels = c("Good", "Average", "Bad / missed"))
+    recovery_class = factor(recovery_class, levels = c("Good", "Intermediate", "Poor / missed"))
   )
 
 main_tbl <- tbl %>% filter(spike_fraction_total %in% weak_fractions)
@@ -211,8 +212,8 @@ good_rate_summary <- function(dat) {
     summarise(
       n = n(),
       good_rate = mean(recovery_class == "Good", na.rm = TRUE),
-      avg_rate = mean(recovery_class == "Average", na.rm = TRUE),
-      bad_rate = mean(recovery_class == "Bad / missed", na.rm = TRUE),
+      avg_rate = mean(recovery_class == "Intermediate", na.rm = TRUE),
+      bad_rate = mean(recovery_class == "Poor / missed", na.rm = TRUE),
       .groups = "drop"
     )
 }
@@ -303,8 +304,8 @@ good_main <- good_main %>%
 # Panel A: paired dumbbell plot of recovery-class rates
 # ----------------------------
 profiler_cols <- c(
-  "Kraken2 + Bracken" = "#1B9E77",
-  "MetaPhlAn 4" = "#6A5ACD"
+  "Kraken2 + Bracken" = "#009E73",
+  "MetaPhlAn 4" = "#6F5BD3"
 )
 
 make_panelA_dumbbell <- function(rate_tbl, rate_col, title_text, x_label) {
@@ -335,14 +336,16 @@ make_panelA_dumbbell <- function(rate_tbl, rate_col, title_text, x_label) {
       lineend = "round"
     ) +
     geom_point(
-      aes(x = kraken, colour = "Kraken2 + Bracken"),
-      size = 3.0,
-      alpha = 0.96
+      aes(x = kraken, colour = "Kraken2 + Bracken", shape = "Kraken2 + Bracken"),
+      size = 2.9,
+      alpha = 0.98,
+      position = position_nudge(y = 0.10)
     ) +
     geom_point(
-      aes(x = metaphlan, colour = "MetaPhlAn 4"),
-      size = 3.0,
-      alpha = 0.96
+      aes(x = metaphlan, colour = "MetaPhlAn 4", shape = "MetaPhlAn 4"),
+      size = 2.9,
+      alpha = 0.98,
+      position = position_nudge(y = -0.10)
     ) +
     geom_vline(
       xintercept = 0.5,
@@ -358,6 +361,7 @@ make_panelA_dumbbell <- function(rate_tbl, rate_col, title_text, x_label) {
     ) +
     coord_cartesian(xlim = c(-0.045, 1.045), clip = "off") +
     scale_colour_manual(values = profiler_cols, name = "Profiler") +
+    scale_shape_manual(values = c("Kraken2 + Bracken" = 16, "MetaPhlAn 4" = 17), name = "Profiler") +
     labs(
       title = title_text,
       x = x_label,
@@ -398,7 +402,7 @@ pA_bad <- make_panelA_dumbbell(
   good_main,
   rate_col = "bad_rate",
   title_text = "Supplementary. Poor or missed recovery across species",
-  x_label = "% samples with poor or missed recovery (|relative error| > 50% or unavailable)"
+  x_label = "% samples with poor or missed recovery (|relative error| > 50% or undetected)"
 )
 
 # ----------------------------
@@ -519,19 +523,24 @@ class_all <- class_all %>% mutate(fraction_label = factor(fraction_label, levels
 supp_good <- ggplot(good_all, aes(x = fraction_label, y = spike_label_plot)) +
   geom_point(aes(fill = good_rate, size = good_rate), shape = 21, colour = "#3F3F3F", stroke = 0.20, alpha = 0.95) +
   facet_grid(tool ~ ., switch = "y") +
-  scale_fill_gradient(low = "#EEF6F2", high = "#1B9E77", limits = c(0, 1), labels = percent_format(accuracy = 1), name = "% good") +
+  scale_fill_gradient(low = "#EEF6F2", high = "#009E73", limits = c(0, 1), labels = percent_format(accuracy = 1), name = "Good recovery") +
   scale_size_continuous(range = c(1.8, 7.0), limits = c(0, 1), guide = "none") +
-  labs(title = "Supplementary. Reliable recovery rate across all independent species and spike fractions",
+  labs(title = "Good-recovery rate across all independent taxa and spike fractions",
+       subtitle = "Good recovery: absolute relative recovery error ≤10%",
        x = "Spike fraction", y = NULL) +
   pub_theme(10.8) +
   theme(strip.placement = "outside", strip.text.y.left = element_text(angle = 0),
-        axis.text.x = element_text(angle = 45, hjust = 1), legend.position = "right")
+        axis.text.x = element_text(angle = 0, hjust = 0.5), legend.position = "right")
 
 supp_bias_long <- bias_all %>%
   mutate(
     spike_label_chr = as.character(spike_label),
     y_base = match(spike_label_chr, display_levels),
-    y_plot = y_base
+    fraction_index = as.integer(fraction_label),
+    fraction_count = nlevels(fraction_label),
+    # Separate fraction-specific estimates slightly on the categorical y-axis
+    # so coincident values do not conceal one another.
+    y_plot = y_base + (fraction_index - (fraction_count + 1) / 2) * 0.055
   ) %>%
   pivot_longer(cols = c(median_recovery, iqr_recovery), names_to = "metric", values_to = "value") %>%
   mutate(
@@ -549,7 +558,8 @@ supp_bias <- ggplot(supp_bias_long, aes(x = value, y = y_plot, color = fraction_
   facet_grid(tool ~ metric, scales = "free_x") +
   scale_y_continuous(breaks = seq_along(display_levels), labels = display_levels,
                      expand = expansion(mult = c(0.035, 0.035))) +
-  labs(title = "Supplementary. Bias and variability across all independent species and spike fractions",
+  labs(title = "Recovery bias and variability across all independent taxa and spike fractions",
+       subtitle = "Dashed reference lines mark no bias (observed/expected = 1) and zero variability",
        x = NULL, y = NULL, color = "Spike fraction") +
   pub_theme(10.8) +
   theme(axis.text.x = element_text(size = 8.8), legend.position = "right")
@@ -559,21 +569,49 @@ supp_median <- ggplot(median_all, aes(x = fraction_label, y = spike_label_plot, 
   facet_wrap(~tool, ncol = 1) +
   scale_fill_gradient2(low = "#4575B4", mid = "#F7F7F7", high = "#D73027", midpoint = 1,
                        name = "Median\nobs/exp", breaks = c(0.5, 1, 1.5, 2)) +
-  labs(title = "Supplementary. Median observed/expected recovery across all independent species and spike fractions",
+  labs(title = "Median observed-to-expected recovery across all independent taxa and spike fractions",
        x = "Spike fraction", y = NULL) +
   pub_theme(10.8) +
   theme(axis.text.x = element_text(angle = 45, hjust = 1), legend.position = "right")
 
-class_cols <- c("Good" = "#1B9E77", "Average" = "#D9A63A", "Bad / missed" = "#D95F02")
-supp_class <- ggplot(class_all, aes(x = fraction_label, y = prop, fill = recovery_class)) +
-  geom_col(width = 0.85, color = "white", linewidth = 0.25) +
-  facet_grid(tool ~ spike_label) +
-  scale_y_continuous(labels = percent_format(accuracy = 1), expand = expansion(mult = c(0, 0.02))) +
-  scale_fill_manual(values = class_cols, name = "Recovery class") +
-  labs(title = "Supplementary. Recovery-class composition across all fractions and species",
-       x = "Spike fraction", y = "Samples") +
-  pub_theme(10.6) +
-  theme(axis.text.x = element_text(angle = 45, hjust = 1), legend.position = "bottom")
+class_cols <- c("Good" = "#009E73", "Intermediate" = "#E69F00", "Poor / missed" = "#D55E00")
+class_all_display <- class_all %>%
+  mutate(
+    recovery_class_display = dplyr::recode(
+      as.character(recovery_class),
+      "Average" = "Intermediate",
+      "Bad / missed" = "Poor / missed"
+    ),
+    recovery_class_display = factor(
+      recovery_class_display,
+      levels = c("Good", "Intermediate", "Poor / missed")
+    )
+  )
+class_taxon_blocks <- split(label_levels, ceiling(seq_along(label_levels) / 5))
+make_class_block <- function(block) {
+  dat <- class_all_display %>%
+    filter(as.character(spike_label) %in% block) %>%
+    mutate(spike_label = factor(as.character(spike_label), levels = block))
+
+  ggplot(dat, aes(x = fraction_label, y = prop, fill = recovery_class_display)) +
+    geom_col(width = 0.85, color = "white", linewidth = 0.25) +
+    facet_grid(tool ~ spike_label) +
+    scale_y_continuous(labels = percent_format(accuracy = 1), expand = expansion(mult = c(0, 0.02))) +
+    scale_fill_manual(values = class_cols, name = "Recovery class", drop = FALSE) +
+    labs(x = "Spike fraction", y = "% of samples") +
+    pub_theme(11.2) +
+    theme(axis.text.x = element_text(angle = 45, hjust = 1), legend.position = "bottom")
+}
+supp_class <- wrap_plots(
+  lapply(class_taxon_blocks, make_class_block),
+  ncol = 1,
+  guides = "collect"
+) +
+  plot_annotation(
+    title = "Recovery-class composition across all independent taxa and spike fractions",
+    subtitle = "Good ≤10%; Intermediate >10% and ≤50%; Poor / missed >50% or undetected"
+  ) &
+  theme(legend.position = "bottom")
 
 save_plot_set(pA, "panel_A_good_recovery_dumbbell_naturestyle", width = 12.0, height = 4.85, dpi = opt$dpi)
 save_plot_set(pA_avg, "supp_panel_A_average_recovery_dumbbell_naturestyle", width = 12.0, height = 4.85, dpi = opt$dpi)
@@ -584,7 +622,7 @@ save_plot_set(main_fig, "manuscript_independent_spike_overview_naturestyle_AB", 
 save_plot_set(supp_good, "supp_good_recovery_dot_heatmap_allfractions", width = opt$`supp-width`, height = opt$`supp-height`, dpi = opt$dpi)
 save_plot_set(supp_bias, "supp_bias_variability_dotplots_allfractions", width = opt$`supp-width`, height = opt$`supp-height`, dpi = opt$dpi)
 save_plot_set(supp_median, "supp_median_recovery_heatmap_allfractions", width = opt$`supp-width`, height = opt$`supp-height`, dpi = opt$dpi)
-save_plot_set(supp_class, "supp_recovery_class_composition_allfractions", width = 17, height = 8.5, dpi = opt$dpi)
+save_plot_set(supp_class, "supp_recovery_class_composition_allfractions", width = 13, height = 11, dpi = opt$dpi)
 
 readme_lines <- c(
   "Run example:",

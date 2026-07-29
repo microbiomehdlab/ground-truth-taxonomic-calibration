@@ -49,11 +49,11 @@ option_list <- list(
               help = "Number of top taxa to label per profiler in Panels B-D [default %default]"),
   make_option("--max-rank", type = "integer", default = 200,
               help = "Maximum top-N taxa to display in ranked-overlap Panel D [default %default]"),
-  make_option("--main-width", type = "double", default = 16.5,
+  make_option("--main-width", type = "double", default = 10.5,
               help = "Main figure width in inches [default %default]"),
-  make_option("--main-height", type = "double", default = 20.8,
+  make_option("--main-height", type = "double", default = 12.5,
               help = "Main figure height in inches [default %default]"),
-  make_option("--dpi", type = "integer", default = 320,
+  make_option("--dpi", type = "integer", default = 450,
               help = "PNG resolution [default %default]")
 )
 
@@ -82,7 +82,11 @@ parse_num_vector <- function(x) {
 }
 fmt_fraction <- function(x) {
   p <- as.numeric(x) * 100
-  ifelse(p < 0.01, sprintf("%.3f%%", p), sprintf("%.2f%%", p))
+  ifelse(
+    p < 0.01,
+    sprintf("%.3f%%", p),
+    ifelse(abs(p - round(p)) < 1e-10, sprintf("%.0f%%", p), sprintf("%.2f%%", p))
+  )
 }
 norm_key <- function(x) {
   x <- tolower(as.character(x))
@@ -128,8 +132,8 @@ tool_labeller <- c(
 )
 tool_levels <- unname(tool_labeller)
 profiler_cols <- c(
-  "Kraken2 + Bracken" = "#2A9D8F",
-  "MetaPhlAn 4" = "#7B61D1"
+  "Kraken2 + Bracken" = "#009E73",
+  "MetaPhlAn 4" = "#6F5BD3"
 )
 
 fraction_cols <- c(
@@ -781,12 +785,16 @@ write_csv(burden_tbl, file.path(opt$outdir, "panel_A_combined_artefact_burden.cs
 
 pA <- ggplot(
   burden_tbl,
-  aes(x = effective_fraction_label, y = burden_fraction, colour = tool, group = tool)
+  aes(x = effective_fraction_label, y = burden_fraction, colour = tool, linetype = tool, group = tool)
 ) +
   geom_line(linewidth = 0.95, alpha = 0.96) +
   geom_point(size = 2.8, alpha = 0.98) +
   facet_wrap(~ metric, ncol = 1) +
   scale_color_manual(values = profiler_cols, name = "Profiler") +
+  scale_linetype_manual(
+    values = c("Kraken2 + Bracken" = "solid", "MetaPhlAn 4" = "22"),
+    name = "Profiler"
+  ) +
   scale_y_continuous(
     labels = percent_format(accuracy = 1),
     limits = c(0, NA),
@@ -797,7 +805,7 @@ pA <- ggplot(
     x = "Effective per-species fraction",
     y = "Non-target taxa exceeding threshold (%)"
   ) +
-  pub_theme(10.7) +
+  pub_theme(12.6) +
   theme(
     legend.position = "right",
     plot.title = element_text(size = 12.3, face = "bold", margin = margin(b = 5)),
@@ -814,6 +822,8 @@ enrichment_tbl <- bind_rows(
     transmute(
       tool, effective_fraction, effective_fraction_label,
       metric = paste0("Mean absolute relative error > ", error_threshold_label),
+      n_non_target,
+      n_offtarget_DA,
       all_non_target = high_rel_error_fraction_all,
       DA_offtargets = high_rel_error_fraction_DA
     ),
@@ -821,6 +831,8 @@ enrichment_tbl <- bind_rows(
     transmute(
       tool, effective_fraction, effective_fraction_label,
       metric = paste0("SD of relative error > ", error_threshold_label),
+      n_non_target,
+      n_offtarget_DA,
       all_non_target = high_rel_sd_fraction_all,
       DA_offtargets = high_rel_sd_fraction_DA
     )
@@ -863,11 +875,24 @@ pB <- ggplot() +
     aes(x = fraction_value, y = effective_fraction_label, colour = group),
     size = 2.95, alpha = 0.99, na.rm = TRUE
   ) +
+  geom_text(
+    data = enrichment_long %>% filter(group == "Off-target DA taxa", n_offtarget_DA > 0),
+    aes(
+      x = fraction_value,
+      y = effective_fraction_label,
+      label = paste0("n=", n_offtarget_DA),
+      hjust = ifelse(fraction_value > 0.82, 1.12, -0.12)
+    ),
+    colour = "#8C1020",
+    size = 2.65,
+    show.legend = FALSE,
+    na.rm = TRUE
+  ) +
   facet_grid(metric ~ tool) +
   scale_x_continuous(
     labels = percent_format(accuracy = 1),
     breaks = c(0, 0.5, 1),
-    limits = c(-0.035, 1.035),
+    limits = c(-0.065, 1.065),
     expand = expansion(mult = c(0, 0))
   ) +
   scale_colour_manual(
@@ -877,10 +902,11 @@ pB <- ggplot() +
   guides(colour = guide_legend(override.aes = list(size = 3.0, alpha = 1))) +
   labs(
     title = "DA off-targets are enriched among artefactual taxa",
+    subtitle = "Labels report the number of off-target DA taxa contributing to each red estimate",
     x = "Fraction of taxa exceeding threshold",
     y = "Effective per-species fraction"
   ) +
-  pub_theme(10.7) +
+  pub_theme(12.6) +
   theme(
     legend.position = "bottom",
     legend.box = "horizontal",
@@ -913,7 +939,7 @@ pC <- ggplot() +
   geom_point(
     data = panel_scatter_tbl %>% filter(!any_offtarget_enriched_DA),
     aes(x = mean_abs_relative_error_pct, y = sd_relative_error_pct),
-    colour = "#C9C9C9", fill = "#C9C9C9", alpha = 0.22, size = 0.80, stroke = 0
+    colour = "#BDBDBD", fill = "#BDBDBD", alpha = 0.34, size = 0.82, stroke = 0
   ) +
   geom_point(
     data = panel_scatter_tbl %>% filter(any_offtarget_enriched_DA),
@@ -936,7 +962,7 @@ pC <- ggplot() +
     x = "Mean absolute relative error (%)",
     y = "SD of relative error (%)"
   ) +
-  pub_theme(10.3) +
+  pub_theme(12.2) +
   theme(
     legend.position = "none",
     plot.title = element_text(size = 12.1, face = "bold", margin = margin(b = 5)),
@@ -951,7 +977,7 @@ pD <- ggplot() +
   geom_point(
     data = panel_scatter_tbl %>% filter(!any_offtarget_enriched_DA),
     aes(x = mean_abs_relative_error_pct, y = sd_relative_error_pct),
-    colour = "#C9C9C9", fill = "#C9C9C9", alpha = 0.20, size = 0.80, stroke = 0
+    colour = "#BDBDBD", fill = "#BDBDBD", alpha = 0.32, size = 0.82, stroke = 0
   ) +
   geom_point(
     data = panel_scatter_tbl %>% filter(any_offtarget_enriched_DA),
@@ -971,11 +997,11 @@ pD <- ggplot() +
   scale_x_continuous(breaks = c(0, 5, 10, 15, 20), labels = label_number(accuracy = 1)) +
   scale_y_continuous(breaks = c(0, 5, 10, 15, 20), labels = label_number(accuracy = 1)) +
   labs(
-    title = "Zoomed error–variability cloud (0–20%)",
+    title = "Zoomed error–variability landscape (0–20%)",
     x = "Mean absolute relative error (%)",
     y = "SD of relative error (%)"
   ) +
-  pub_theme(10.3) +
+  pub_theme(12.2) +
   theme(
     legend.position = "none",
     plot.title = element_text(size = 12.1, face = "bold", margin = margin(b = 5)),
@@ -1018,11 +1044,11 @@ pS_rank <- ggplot(capture_plot_tbl, aes(x = top_fraction_taxa, y = cumulative_fr
   scale_x_continuous(labels = percent_format(accuracy = 1), limits = c(0, NA), expand = expansion(mult = c(0.01, 0.02))) +
   scale_y_continuous(labels = percent_format(accuracy = 1), limits = c(0, 1), expand = expansion(mult = c(0.02, 0.03))) +
   labs(
-    title = "Supplementary. High artefact-score taxa capture DA off-targets",
+    title = "High artefact-score taxa capture differential-abundance off-targets",
     x = "Top fraction of non-target taxa ranked by abundance artefact score",
     y = "Cumulative fraction of\noff-target DA calls"
   ) +
-  pub_theme(10.2) +
+  pub_theme(12.0) +
   theme(
     legend.position = "right",
     panel.grid.major = element_line(colour = "#EFEFEF", linewidth = 0.25),
@@ -1048,7 +1074,7 @@ write_csv(top_da_overlap, file.path(opt$outdir, paste0("supp_DA_offtargets_with_
 # ----------------------------
 # Main figure
 # ----------------------------
-main_title <- "Community spike-ins reveal that off-target DA calls are linked to measurable profiler-induced abundance artefacts"
+main_title <- "Off-target DA calls track profiler-induced abundance artefacts"
 
 main_fig <- (pA | pB) / (pC | pD) +
   plot_layout(heights = c(0.95, 1.28), widths = c(1.0, 1.0)) +
@@ -1057,8 +1083,8 @@ main_fig <- (pA | pB) / (pC | pD) +
     tag_levels = "A",
     tag_suffix = ".",
     theme = theme(
-      plot.title = element_text(face = "bold", size = 16.0, hjust = 0, colour = "#111111", margin = margin(b = 8)),
-      plot.tag = element_text(face = "bold", size = 13.5, colour = "#111111")
+      plot.title = element_text(face = "bold", size = 18.5, hjust = 0, colour = "#111111", margin = margin(b = 10)),
+      plot.tag = element_text(face = "bold", size = 15.0, colour = "#111111")
     )
   ) &
   theme(

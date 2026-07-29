@@ -129,8 +129,19 @@ taxon_label_map <- c(
   "Prevotella intermedia" = "Pint"
 )
 
-# Order by the short paper labels (alphabetical), matching the label column in the paper.
-taxon_order <- names(sort(taxon_label_map))
+# Shared manuscript order used in Figures 3–5 and the supplementary figures.
+taxon_order <- c(
+  "Bacteroides fragilis",
+  "Clostridium symbiosum",
+  "Dialister pneumosintes",
+  "Fusobacterium nucleatum subsp. nucleatum",
+  "Hungatella hathewayi",
+  "Parvimonas micra",
+  "Peptostreptococcus anaerobius",
+  "Peptostreptococcus stomatis",
+  "Porphyromonas asaccharolytica",
+  "Prevotella intermedia"
+)
 d$taxon_label <- unname(taxon_label_map[d$member_taxon])
 d$taxon_label[is.na(d$taxon_label)] <- d$member_taxon[is.na(d$taxon_label)]
 
@@ -588,6 +599,15 @@ theme_manuscript <- theme_bw(base_size = 10) +
   theme(panel.grid.minor = element_blank(), strip.background = element_rect(fill = "grey92"),
         legend.position = "bottom", plot.title.position = "plot")
 
+percent_axis_label <- function(x) {
+  p <- as.numeric(x) * 100
+  ifelse(
+    p < 0.01,
+    sprintf("%.3f%%", p),
+    ifelse(p < 1, sprintf("%.2f%%", p), paste0(formatC(p, format = "fg", digits = 3, drop0trailing = TRUE), "%"))
+  )
+}
+
 focus <- trimws(strsplit(args$focus_targets, ",", fixed = TRUE)[[1]])
 focus <- focus[focus %in% unique(q$member_taxon)]
 if (!length(focus)) focus <- head(unique(q$member_taxon), 4)
@@ -655,27 +675,21 @@ pA <- ggplot(plot_dat, aes(x = expected, y = observed)) +
     linewidth = 0.7
   )} +
   scale_x_log10(
-    labels = function(x) paste0(
-      format(x * 100, scientific = FALSE, trim = TRUE, digits = 10),
-      "%"
-    )
+    labels = percent_axis_label
   ) +
   scale_y_log10(
-    labels = function(x) paste0(
-      format(x * 100, scientific = FALSE, trim = TRUE, digits = 10),
-      "%"
-    )
+    labels = percent_axis_label
   ) +
   facet_grid(tool_label ~ taxon_label, scales = "free") +
-  labs(title = "A. Expected and observed total post-spike abundance",
-       subtitle = "Points are sample-level community spike observations; dashed line is the identity expectation",
+  labs(title = "A. Expected and observed abundance for representative taxa",
+       subtitle = "Points are samples; dashed line is identity; solid line is the GAM fit and ribbon is its 95% confidence interval",
        x = "Expected total post-spike abundance (%)",
        y = "Observed total post-spike abundance (%)") + theme_manuscript
 
 pA_individual <- pA + labs(title = NULL, subtitle = NULL) +
   theme(plot.title = element_blank(), plot.subtitle = element_blank())
-ggsave(file.path(args$outdir, "panel_A_expected_vs_observed_gam.pdf"), pA_individual, width = 13, height = 6.8)
-ggsave(file.path(args$outdir, "panel_A_expected_vs_observed_gam.png"), pA_individual, width = 13, height = 6.8, dpi = 300)
+ggsave(file.path(args$outdir, "panel_A_expected_vs_observed_gam.pdf"), pA_individual, width = 13, height = 6.8, device = cairo_pdf)
+ggsave(file.path(args$outdir, "panel_A_expected_vs_observed_gam.png"), pA_individual, width = 13, height = 6.8, dpi = 450)
 
 # Panel B: model comparison.
 model_order <- c("Raw identity", "Linear", "GAM")
@@ -683,14 +697,14 @@ agg$model <- factor(agg$model, levels = model_order)
 pB <- ggplot(agg, aes(x = model, y = median_abs_log_error, group = interaction(tool, taxon))) +
   geom_line(alpha = 0.25) + geom_point(size = 1.5) +
   facet_wrap(~ tool, scales = "free_y") +
-  labs(title = "B. Grouped cross-validated model performance",
+  labs(title = "B. Grouped cross-validated\nmodel performance",
        subtitle = "Lower held-out median absolute log error is better",
        x = NULL, y = "Median absolute log10 error") + theme_manuscript
 
 pB_individual <- pB + labs(title = NULL, subtitle = NULL) +
   theme(plot.title = element_blank(), plot.subtitle = element_blank())
-ggsave(file.path(args$outdir, "panel_B_model_comparison.pdf"), pB_individual, width = 8.5, height = 4.8)
-ggsave(file.path(args$outdir, "panel_B_model_comparison.png"), pB_individual, width = 8.5, height = 4.8, dpi = 300)
+ggsave(file.path(args$outdir, "panel_B_model_comparison.pdf"), pB_individual, width = 8.5, height = 4.8, device = cairo_pdf)
+ggsave(file.path(args$outdir, "panel_B_model_comparison.png"), pB_individual, width = 8.5, height = 4.8, dpi = 450)
 
 # Panel C: GAM improvement heatmap.
 gam_sum$taxon_label <- unname(taxon_label_map[gam_sum$taxon])
@@ -703,14 +717,25 @@ gam_sum$taxon_label <- factor(
 )
 pC <- ggplot(gam_sum, aes(x = tool, y = taxon_label, fill = log_error_improvement)) +
   geom_tile() +
-  geom_text(aes(label = calibratability_code), size = 3) +
+  geom_text(
+    aes(
+      label = calibratability_code,
+      colour = ifelse(
+        is.na(log_error_improvement),
+        "black",
+        ifelse(abs(log_error_improvement) >= 0.18, "white", "black")
+      )
+    ),
+    size = 3
+  ) +
+  scale_colour_identity() +
   scale_fill_gradient2(
     midpoint = 0,
-    name = "Improvement\nover raw",
+    name = "Reduction in median absolute\nlog10 error versus raw",
     na.value = "grey90"
   ) +
   labs(
-    title = "C. Evidence for profiler–taxon calibratability",
+    title = "C. Evidence for profiler–taxon\ncalibratability",
     subtitle = paste0(
       "S = strong; C = conditional; L = little evidence; ",
       "ND = insufficient detection or modelling data"
@@ -721,8 +746,8 @@ pC <- ggplot(gam_sum, aes(x = tool, y = taxon_label, fill = log_error_improvemen
 
 pC_individual <- pC + labs(title = NULL, subtitle = NULL) +
   theme(plot.title = element_blank(), plot.subtitle = element_blank())
-ggsave(file.path(args$outdir, "panel_C_calibratability_heatmap.pdf"), pC_individual, width = 7.5, height = 6.5)
-ggsave(file.path(args$outdir, "panel_C_calibratability_heatmap.png"), pC_individual, width = 7.5, height = 6.5, dpi = 300)
+ggsave(file.path(args$outdir, "panel_C_calibratability_heatmap.pdf"), pC_individual, width = 7.5, height = 6.5, device = cairo_pdf)
+ggsave(file.path(args$outdir, "panel_C_calibratability_heatmap.png"), pC_individual, width = 7.5, height = 6.5, dpi = 450)
 
 # Panel D: cross-study transfer if available.
 pD <- NULL
@@ -749,8 +774,8 @@ if (nrow(transfer)) {
     geom_point(size = 1.7, alpha = 0.9) +
     scale_colour_manual(
       values = c(
-        "Kraken2 + Bracken" = "#1B9E77",
-        "MetaPhlAn 4" = "#7570B3"
+        "Kraken2 + Bracken" = "#009E73",
+        "MetaPhlAn 4" = "#6F5BD3"
       ),
       name = "Profiler"
     ) +
@@ -760,20 +785,20 @@ if (nrow(transfer)) {
          x = NULL, y = "Median absolute log10 error") + theme_manuscript
   pD_individual <- pD + labs(title = NULL, subtitle = NULL) +
     theme(plot.title = element_blank(), plot.subtitle = element_blank())
-  ggsave(file.path(args$outdir, "panel_D_cross_study_transfer.pdf"), pD_individual, width = 9, height = 4.8)
-  ggsave(file.path(args$outdir, "panel_D_cross_study_transfer.png"), pD_individual, width = 9, height = 4.8, dpi = 300)
+  ggsave(file.path(args$outdir, "panel_D_cross_study_transfer.pdf"), pD_individual, width = 9, height = 4.8, device = cairo_pdf)
+  ggsave(file.path(args$outdir, "panel_D_cross_study_transfer.png"), pD_individual, width = 9, height = 4.8, dpi = 450)
 }
 
 if (requireNamespace("patchwork", quietly = TRUE)) {
   if (!is.null(pD)) {
     composite <- (pA / (pB | pC) / pD) + patchwork::plot_layout(heights = c(1.25, 1, 0.8))
-    h <- 16
+    h <- 8.5
   } else {
     composite <- pA / (pB | pC) + patchwork::plot_layout(heights = c(1.3, 1))
-    h <- 12
+    h <- 6.5
   }
-  ggsave(file.path(args$outdir, "manuscript_spike_calibratability_gam.pdf"), composite, width = 14, height = h)
-  ggsave(file.path(args$outdir, "manuscript_spike_calibratability_gam.png"), composite, width = 14, height = h, dpi = 300)
+  ggsave(file.path(args$outdir, "manuscript_spike_calibratability_gam.pdf"), composite, width = 7.1, height = h, device = cairo_pdf)
+  ggsave(file.path(args$outdir, "manuscript_spike_calibratability_gam.png"), composite, width = 7.1, height = h, dpi = 450)
 }
 
 writeLines(c(
