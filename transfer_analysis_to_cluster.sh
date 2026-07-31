@@ -20,8 +20,8 @@ code_files=(
   run_original_unpaired_q010_cluster.sbatch
   rerun_current_figures_only.sh
   rerun_supplementary_figures_only.sh
-  cluster_preflight_original_unpaired.sh rscript_in_container.sh
-  build_crc_spike_maaslin2_container.sh
+  cluster_preflight_original_unpaired.sh rscript_in_container.sh mash_in_container.sh
+  build_crc_spike_maaslin2_container.sh prepare_reference_audit_assets.sh
 )
 for file in "${input_files[@]}"; do
   [[ -s "$DATA_ROOT/$file" ]] || {

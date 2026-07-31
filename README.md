@@ -1,7 +1,7 @@
 # Ground-truth taxonomic calibration workflow
 
 This repository contains the complete computational workflow for the
-accompanying CRC-biomarker benchmarking study: public-read acquisition,
+accompanying CRC-biomarker evaluation study: public-read acquisition,
 controlled spike construction, taxonomic profiling, quantitative recovery,
 MaAsLin2 biomarker analysis, artefact filtering, calibratability analysis, and
 manuscript Figures 2–7. It supports the two profilers used in the paper:
@@ -76,7 +76,7 @@ are intentionally excluded from Git.
 | `run_original_unpaired_q010_cluster.sbatch` | Submit the complete statistical analysis and figure regeneration |
 | `run_publication_original_unpaired_q010.sh` | Run the same downstream workflow inside an allocated job |
 | `rerun_current_figures_only.sh` | Regenerate manuscript Figures 2–7 from a completed run without repeating upstream analyses |
-| `rerun_supplementary_figures_only.sh` | Regenerate Supplementary Figures B1–B13 from a completed run |
+| `rerun_supplementary_figures_only.sh` | Regenerate Supplementary Figures B1–B14 and, when database-audit inputs are supplied, Supplementary Table A7 |
 | `transfer_analysis_to_cluster.sh` | Transfer the reviewed analysis code and staged inputs |
 
 `R/` and `scripts/` intentionally have different roles: files under `R/`
@@ -93,8 +93,8 @@ dependencies explicit and permits individual stages to be tested or rerun.
 - an image containing ART, fastp, MetaPhlAn 4, Kraken2, and Bracken
 - a MetaPhlAn 4 database
 - a Kraken2/Bracken database built for the configured read length
-- R 4.3.3 and MaAsLin2 1.18.0 through the included analysis-container
-  definition
+- R 4.3.3, MaAsLin2 1.18.0, and Mash 2.3 through the included
+  analysis-container definition
 
 The exact database release and image digest used for a publication run should
 be recorded with the release metadata. Database contents are too large to
@@ -285,16 +285,17 @@ documented in [REQUIRED_INPUTS.md](REQUIRED_INPUTS.md).
 
 ## 9. Build or verify the analysis container
 
-The downstream benchmark is pinned to R 4.3.3 and MaAsLin2 1.18.0:
+The downstream analysis environment is pinned to R 4.3.3, MaAsLin2 1.18.0,
+and Mash 2.3:
 
 ```bash
-SIF=/path/to/crc_spike_original_unpaired_q010_r433_maaslin2_1180_v1.sif \
+SIF=/path/to/crc_spike_original_unpaired_q010_r433_maaslin2_1180_mash23_v2.sif \
 BUILD_TMPDIR=/tmp \
 bash build_crc_spike_maaslin2_container.sh
 ```
 
 The helper builds under local temporary storage, installs the final image at
-`SIF`, and verifies the R environment.
+`SIF`, and verifies the R environment and Mash executable.
 
 To transfer a staged analysis to a cluster:
 
@@ -311,7 +312,7 @@ bash transfer_analysis_to_cluster.sh
 ```bash
 GLOBAL_ENV="$PWD/config/global.env" \
 SPIKE_ENV="$PWD/spikes/spikein.env" \
-ANALYSIS_SIF=/path/to/crc_spike_original_unpaired_q010_r433_maaslin2_1180_v1.sif \
+ANALYSIS_SIF=/path/to/crc_spike_original_unpaired_q010_r433_maaslin2_1180_mash23_v2.sif \
 bash preflight_all.sh
 ```
 
@@ -327,7 +328,7 @@ Submit one clean sequential Slurm job:
 RUN_ROOT="RUNS_publication_original_unpaired_q010_$(date +%Y%m%d_%H%M%S)"
 
 PROJECT="$PWD" \
-SIF=/path/to/crc_spike_original_unpaired_q010_r433_maaslin2_1180_v1.sif \
+SIF=/path/to/crc_spike_original_unpaired_q010_r433_maaslin2_1180_mash23_v2.sif \
 RUN_ROOT="$RUN_ROOT" \
 sbatch run_original_unpaired_q010_cluster.sbatch
 ```
@@ -337,7 +338,7 @@ The authoritative runner:
 1. validates the complete 10-target × 2-profiler alias mapping;
 2. builds the spike design;
 3. computes independent/community recovery metrics;
-4. runs the original unpaired MaAsLin2 benchmark at `q ≤ 0.10`;
+4. runs the original unpaired MaAsLin2 analysis at `q ≤ 0.10`;
 5. computes biomarker-recoverability drivers;
 6. regenerates manuscript Figures 2–5;
 7. regenerates the artefact-exclusion and calibratability figures; and
@@ -364,7 +365,7 @@ To regenerate the main figures from a completed `RUN_ROOT`, use:
 
 ```bash
 PROJECT="$PWD" \
-SIF=/path/to/crc_spike_original_unpaired_q010_r433_maaslin2_1180_v1.sif \
+SIF=/path/to/crc_spike_original_unpaired_q010_r433_maaslin2_1180_mash23_v2.sif \
 RUN_ROOT=/path/to/completed/RUNS_publication_original_unpaired_q010_TIMESTAMP \
 bash rerun_current_figures_only.sh
 ```
@@ -383,7 +384,7 @@ main figures. This is the recommended command after updating this repository:
 
 ```bash
 PROJECT="$PWD" \
-SIF=/path/to/crc_spike_original_unpaired_q010_r433_maaslin2_1180_v1.sif \
+SIF=/path/to/crc_spike_original_unpaired_q010_r433_maaslin2_1180_mash23_v2.sif \
 RUN_ROOT=/path/to/completed/RUNS_publication_original_unpaired_q010_TIMESTAMP \
 RERUN_PANELS=true \
 bash rerun_current_figures_only.sh
@@ -397,19 +398,81 @@ facet strips together; directly reflowing native objects on a smaller canvas
 can clip labels and compress the data regions. The individual panel PDFs remain
 the vector masters when separate panels are required.
 
-### Regenerate Supplementary Figures B1–B13
+### Regenerate Supplementary Figures B1–B14
 
 The supplementary figures are a separate plotting-only target because B1 and
-B6–B10 additionally use original-sample FastQC read-depth information. The
+B6–B10 additionally use original-sample FastQC read-depth information. B14 is
+a taxon-resolved analysis of off-target differential-abundance calls and uses
+the completed MaAsLin2 results together with the abundance-artefact table
+generated for B13; it requires no additional raw input. The
 recommended interface requires only the stable MetaPrep root:
 
 ```bash
 PROJECT="$PWD" \
-SIF=/path/to/crc_spike_original_unpaired_q010_r433_maaslin2_1180_v1.sif \
+SIF=/path/to/crc_spike_original_unpaired_q010_r433_maaslin2_1180_mash23_v2.sif \
 RUN_ROOT=/path/to/completed/RUNS_publication_original_unpaired_q010_TIMESTAMP \
 METAPREP_ROOT=/path/to/data/processed/metaprep \
 bash rerun_supplementary_figures_only.sh
 ```
+
+The same command can additionally generate Supplementary Table A7, which
+audits representation of the ten implanted genomes in UHGG v2.0.2 and the
+MetaPhlAn 4 vJan25 database. The project can download the two required UHGG
+companion files automatically and reuse them from a persistent cache. The
+first run downloads approximately 2.3 GB; interrupted downloads are resumed:
+
+```bash
+PROJECT="$PWD" \
+SIF=/path/to/crc_spike_original_unpaired_q010_r433_maaslin2_1180_mash23_v2.sif \
+RUN_ROOT=/path/to/completed/RUNS_publication_original_unpaired_q010_TIMESTAMP \
+METAPREP_ROOT=/path/to/data/processed/metaprep \
+MPA_DB=/path/to/MetaPhlAn_4.2.2 \
+DOWNLOAD_REFERENCE_AUDIT_ASSETS=true \
+REFERENCE_AUDIT_CACHE=/path/to/persistent/reference_database_audit/uhgg_v2.0.2 \
+bash rerun_supplementary_figures_only.sh
+```
+
+The cache will contain `genomes-all_metadata.tsv`, `all_genomes.msh`, and a
+checksum/provenance record. These large generated assets are excluded from
+Git. On subsequent runs, the two completed files are reused without another
+download. If they already exist elsewhere, skip the download and instead set
+`UHGG_ROOT` to their common parent directory.
+
+The helper identifies UHGG species representatives from the metadata, searches
+the ten spike FASTAs against the official Mash sketch, and extracts matching
+named SGBs from the installed MetaPhlAn pickle. It writes TSV, CSV, and LaTeX
+versions plus input checksums under
+`RUN_ROOT/manuscript_tables/reference_database_representation/`. The reported
+similarity is explicitly `100 × (1 − Mash distance)` and is not labelled as
+ANI. By default, Mash is executed from the same pinned analysis image through
+`mash_in_container.sh`; no host Mash installation is required. `MASH_BIN` can
+still be supplied to override that wrapper. When the database-audit inputs are
+omitted, the table audit is skipped without affecting the B1–B14 figure rerun.
+
+To regenerate only Supplementary Table A7 without rerunning the supplementary
+figures, make the Mash wrapper executable and call the table generator
+directly:
+
+```bash
+chmod +x mash_in_container.sh
+
+PROJECT="$PWD" \
+SIF=/path/to/crc_spike_original_unpaired_q010_r433_maaslin2_1180_mash23_v2.sif \
+python3 scripts/build_reference_representation_table.py \
+  --spike-panel "$PWD/spike_panel.tsv" \
+  --aliases "$PWD/spike_taxon_aliases.csv" \
+  --uhgg-metadata /path/to/uhgg_v2.0.2/genomes-all_metadata.tsv \
+  --uhgg-mash-sketch /path/to/uhgg_v2.0.2/all_genomes.msh \
+  --metaphlan-pkl /path/to/MetaPhlAn_4.2.2/mpa_vJan25_CHOCOPhlAnSGB_202503.pkl \
+  --mash-bin "$PWD/mash_in_container.sh" \
+  --outdir /path/to/completed/RUN_ROOT/manuscript_tables/reference_database_representation
+```
+
+This writes the complete machine-readable audit as CSV and TSV, its provenance
+record, and the publication-formatted
+`TableA7_target_database_representation.tex`. The LaTeX table omits the
+uninformative exact-representative-ID field, while the machine-readable files
+retain that field together with the Mash P-values and shared-hash counts.
 
 The workflow reads `metadata_w_study.tsv`, resolves only those samples under
 `METAPREP_ROOT/<cohort>/sequencing/<biological-sample>/qc_before|qc_after/`.
@@ -426,7 +489,7 @@ can be supplied directly:
 
 ```bash
 PROJECT="$PWD" \
-SIF=/path/to/crc_spike_original_unpaired_q010_r433_maaslin2_1180_v1.sif \
+SIF=/path/to/crc_spike_original_unpaired_q010_r433_maaslin2_1180_mash23_v2.sif \
 RUN_ROOT=/path/to/completed/RUNS_publication_original_unpaired_q010_TIMESTAMP \
 COMMUNITY_TARGET_FILE=/path/to/community_target_level_depth_recovery.tsv \
 bash rerun_supplementary_figures_only.sh
@@ -434,7 +497,7 @@ bash rerun_supplementary_figures_only.sh
 
 The command reuses the completed recovery and MaAsLin2 outputs but actively
 reruns every plotting script, so visual revisions cannot be hidden by stale
-source panels. It writes 13 PDF/PNG pairs plus a manifest under
+source panels. It writes 14 PDF/PNG pairs plus a manifest under
 `RUN_ROOT/manuscript_figures/supplementary/`. The vector PDFs are the
 publication masters; the PNGs are 450-dpi review copies. A final validation
 step rejects blank or near-blank PNGs.
@@ -450,7 +513,13 @@ with additional spacing between spike-fraction labels; and B11 shows all seven
 effective fractions side-by-side. These PDFs are designed for a rotated
 supplementary page and should not be reflowed onto a portrait canvas. Figure
 B10 uses `G`, `I`, and `P/M` for Good, Intermediate, and Poor/missed,
-respectively.
+respectively. B14 contains four taxon-resolved panels: recurrence of individual-
+spike off-target calls by implanted target, same-genus enrichment, the
+relationship between community off-target recurrence and abundance-artefact
+magnitude, and overlap of recurrent off-target sets between the independent
+and community designs. The individual B14 panels and their supporting CSV
+tables are retained under
+`manuscript_figures/supplementary/source_panels/taxon_specific_offtarget_patterns/`.
 
 ## Reproducibility records
 
@@ -468,5 +537,6 @@ For every released run, retain:
 
 ## License and citation
 
-Code is released under the [MIT License](LICENSE). Add the final repository URL
-and paper DOI to [CITATION.cff](CITATION.cff) when they are assigned.
+Code is released under the [MIT License](LICENSE). The repository URL is
+recorded in [CITATION.cff](CITATION.cff); add the paper DOI there when it is
+assigned.

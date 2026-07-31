@@ -212,11 +212,11 @@ write.csv(artifact_stats, file.path(outdir, "artifact_statistics_by_study_tool_f
 
 
 # -----------------------------------------------------------------------------
-# Internal (within-benchmark) filtering
+# Internal (within-evaluation) filtering
 # -----------------------------------------------------------------------------
 # Internal artifact statistics are pooled across both cohorts, matching the
 # original proof-of-concept filtering analysis. These lists are applied to DA
-# contexts from the same benchmark and therefore represent internal, not
+# contexts from the same evaluation and therefore represent internal, not
 # externally transferred, performance.
 
 internal_stat_fun <- function(z) {
@@ -549,7 +549,7 @@ pA <- ggplot(enrich_sum, aes(x = group, y = fraction_flagged,
   scale_y_continuous(labels = function(x) paste0(round(100 * x), "%"), limits = c(0, 1.08), breaks = seq(0, 1, 0.25)) +
   labs(
     title = "A. Off-target DA calls are enriched among artefact-prone taxa",
-    subtitle = "Internal community benchmark; artefacts defined from abundance deviation",
+    subtitle = "Internal community-spike evaluation; artefacts defined from abundance deviation",
     x = NULL,
     y = "Median fraction flagged"
   ) + theme_manuscript
@@ -571,7 +571,7 @@ pB <- ggplot(b_long, aes(x = state, y = burden, group = context_id, colour = too
   facet_wrap(~ tool_label, scales = "free_y") +
   scale_colour_manual(values = profiler_cols, name = "Profiler", guide = "none") +
   labs(
-    title = "B. Within-benchmark filtering reduces off-target DA burden",
+    title = "B. Within-evaluation filtering reduces off-target DA burden",
     subtitle = paste0("Pooled artefact lists; threshold = ", 100 * main_threshold, "%;\nprofiler facets use separate y-scales"),
     x = NULL,
     y = "Off-target enriched taxa"
@@ -643,7 +643,7 @@ pD <- ggplot(d_sum, aes(x = state, y = value, colour = tool_label, group = tool_
 int_thr <- aggregate(f1_after ~ tool_label + threshold,
                      data = internal_results,
                      FUN = function(x) median(x, na.rm = TRUE))
-int_thr$setting <- "Within benchmark"
+int_thr$setting <- "Within evaluation"
 cross_thr <- aggregate(f1_after ~ tool_label + threshold,
                        data = crossstudy_results,
                        FUN = function(x) median(x, na.rm = TRUE))
@@ -691,7 +691,7 @@ notes <- c(
   paste0("Minimum samples per artifact estimate: ", min_samples),
   paste0("Minimum median expected abundance: ", min_median_expected),
   paste0("Minimum fraction recurrence: ", min_fraction_recurrence),
-  "Panels A-C use pooled within-benchmark artefact lists and therefore represent internal proof-of-concept performance.",
+  "Panels A-C use pooled within-evaluation artefact lists and therefore represent internal proof-of-concept performance.",
   "Panel D uses frozen artefact lists learned in one cohort and applied to the other.",
   "The script applies exclusion lists to already significant original DA calls; it does not rerun MaAsLin2 after filtering.",
   "Implanted targets and aliases are protected from exclusion by design; therefore target recall is not plotted as an empirical filtering outcome."

@@ -7,6 +7,7 @@ taxonomy/*.env
 data/
 references/
 databases/
+reference_database_audit/
 results/
 profile_results/
 runs/

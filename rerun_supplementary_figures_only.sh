@@ -8,6 +8,14 @@ QC_LIST="${QC_LIST:-}"
 COMMUNITY_TARGET_FILE="${COMMUNITY_TARGET_FILE:-}"
 METAPREP_ROOT="${METAPREP_ROOT:-}"
 METADATA="${METADATA:-}"
+UHGG_ROOT="${UHGG_ROOT:-}"
+UHGG_METADATA="${UHGG_METADATA:-}"
+UHGG_MASH_SKETCH="${UHGG_MASH_SKETCH:-}"
+MPA_DB="${MPA_DB:-}"
+METAPHLAN_PKL="${METAPHLAN_PKL:-}"
+MASH_BIN="${MASH_BIN:-$PROJECT/mash_in_container.sh}"
+DOWNLOAD_REFERENCE_AUDIT_ASSETS="${DOWNLOAD_REFERENCE_AUDIT_ASSETS:-false}"
+REFERENCE_AUDIT_CACHE="${REFERENCE_AUDIT_CACHE:-$PROJECT/reference_database_audit/uhgg_v2.0.2}"
 
 cd "$PROJECT"
 PROJECT="$(pwd -P)"
@@ -30,11 +38,12 @@ outdir="$RUN_ROOT/manuscript_figures/supplementary"
 source="$outdir/source_panels"
 qc_source="$source/community_qc_recovery"
 offtarget_source="$source/community_offtarget_artifacts"
+offtarget_taxon_source="$source/taxon_specific_offtarget_patterns"
 baseline_source="$source/baseline_all_10_targets"
 independent_source="$source/independent_all_fractions"
 community_da_source="$source/community_DA_all_fractions"
 mkdir -p \
-  "$outdir" "$source" "$qc_source" "$offtarget_source" \
+  "$outdir" "$source" "$qc_source" "$offtarget_source" "$offtarget_taxon_source" \
   "$baseline_source" "$independent_source" "$community_da_source"
 
 run_r() {
@@ -57,6 +66,60 @@ copy_pair() {
 
 echo "[INFO] Reusing completed analyses in: $RUN_ROOT"
 echo "[INFO] No MaAsLin2 or abundance-recovery analysis will be rerun."
+
+# Optional Supplementary Table A7: reference-database representation of the
+# ten implanted genomes. This database audit is generated only when its large,
+# externally stored database inputs are supplied. Figure-only reruns therefore
+# remain lightweight and backward compatible.
+if [[ "$DOWNLOAD_REFERENCE_AUDIT_ASSETS" == "true" ]]; then
+  if [[ -n "$UHGG_ROOT" ]]; then
+    REFERENCE_AUDIT_CACHE="$UHGG_ROOT"
+  fi
+  REFERENCE_AUDIT_CACHE="$REFERENCE_AUDIT_CACHE" \
+    bash "$PROJECT/prepare_reference_audit_assets.sh"
+  UHGG_ROOT="$REFERENCE_AUDIT_CACHE"
+fi
+if [[ -n "$UHGG_ROOT" ]]; then
+  UHGG_METADATA="${UHGG_METADATA:-$UHGG_ROOT/genomes-all_metadata.tsv}"
+  UHGG_MASH_SKETCH="${UHGG_MASH_SKETCH:-$UHGG_ROOT/all_genomes.msh}"
+fi
+if [[ -z "$METAPHLAN_PKL" && -n "$MPA_DB" ]]; then
+  mapfile -t metaphlan_pkls < <(
+    find "$MPA_DB" -maxdepth 1 -type f \
+      \( -name '*vJan25*.pkl' -o -name '*vJan25*.pkl.bz2' \) | sort
+  )
+  if [[ "${#metaphlan_pkls[@]}" -eq 1 ]]; then
+    METAPHLAN_PKL="${metaphlan_pkls[0]}"
+  elif [[ "${#metaphlan_pkls[@]}" -gt 1 ]]; then
+    echo "[ERROR] Multiple vJan25 MetaPhlAn pickle files found under $MPA_DB; set METAPHLAN_PKL explicitly." >&2
+    exit 1
+  fi
+fi
+
+reference_inputs=("$UHGG_METADATA" "$UHGG_MASH_SKETCH" "$METAPHLAN_PKL")
+reference_supplied=0
+for value in "${reference_inputs[@]}"; do
+  [[ -n "$value" ]] && reference_supplied=$((reference_supplied + 1))
+done
+if [[ "$reference_supplied" -gt 0 && "$reference_supplied" -lt 3 ]]; then
+  echo "[ERROR] Supplementary Table A7 requires UHGG_METADATA, UHGG_MASH_SKETCH, and METAPHLAN_PKL." >&2
+  echo "        Alternatively set UHGG_ROOT and MPA_DB for automatic path resolution." >&2
+  exit 1
+fi
+if [[ "$reference_supplied" -eq 3 ]]; then
+  table_out="$RUN_ROOT/manuscript_tables/reference_database_representation"
+  python3 "$PROJECT/scripts/build_reference_representation_table.py" \
+    --spike-panel "$PROJECT/spike_panel.tsv" \
+    --aliases "$PROJECT/spike_taxon_aliases.csv" \
+    --uhgg-metadata "$UHGG_METADATA" \
+    --uhgg-mash-sketch "$UHGG_MASH_SKETCH" \
+    --metaphlan-pkl "$METAPHLAN_PKL" \
+    --mash-bin "$MASH_BIN" \
+    --outdir "$table_out"
+  echo "[OK] Supplementary Table A7: $table_out"
+else
+  echo "[INFO] Supplementary Table A7 database audit skipped (UHGG/MetaPhlAn database inputs not supplied)."
+fi
 
 # Regenerate, rather than copy, all panels whose plot scripts may have changed.
 # This keeps a supplementary-only rerun faithful to the current repository.
@@ -164,7 +227,20 @@ run_r "$PROJECT/scripts/plot_manuscript_community_offtarget_artifacts.R" \
   --filter-mode original \
   --dpi 450
 
-# Collect the freshly rendered, publication-sized panels under stable B1--B13
+# B14 resolves the aggregate B13 signal to recurrent off-target taxa and tests
+# whether recurrence depends on the implanted taxon, genus, and spike design.
+run_r "$PROJECT/scripts/plot_supplementary_taxon_specific_offtarget_patterns.R" \
+  --significant-file "$RUN_ROOT/maaslin_spike/maaslin_significant_features_ALLFILTERS.csv" \
+  --artifact-overlap "$offtarget_source/abundance_artifact_DA_overlap_all_requested_fractions.csv" \
+  --run-manifest "$RUN_ROOT/maaslin_spike/run_design_manifest_ALLFILTERS.csv" \
+  --alias-file "$PROJECT/spike_taxon_aliases.csv" \
+  --outdir "$offtarget_taxon_source" \
+  --q-threshold 0.10 \
+  --filter-mode original \
+  --community-label CRCpanel \
+  --community-size 10
+
+# Collect the freshly rendered, publication-sized panels under stable B1--B14
 # names. PDFs are the publication masters; PNGs are high-resolution previews.
 copy_pair \
   "$qc_source/FigB8_QC_only_ABC" \
@@ -205,6 +281,9 @@ copy_pair \
 copy_pair \
   "$offtarget_source/manuscript_community_offtarget_artifacts_overview" \
   "FigB13_offtarget_DA_profiler_artefacts"
+copy_pair \
+  "$offtarget_taxon_source/supplementary_taxon_specific_offtarget_patterns" \
+  "FigB14_taxon_specific_offtarget_patterns"
 
 {
   echo "Supplementary figures regenerated from completed run: $RUN_ROOT"
@@ -215,8 +294,8 @@ copy_pair \
 
 pdf_count="$(find "$outdir" -maxdepth 1 -type f -name 'FigB*.pdf' | wc -l)"
 png_count="$(find "$outdir" -maxdepth 1 -type f -name 'FigB*.png' | wc -l)"
-if [[ "$pdf_count" -ne 13 || "$png_count" -ne 13 ]]; then
-  echo "[ERROR] Expected 13 PDFs and 13 PNGs; found $pdf_count PDFs and $png_count PNGs." >&2
+if [[ "$pdf_count" -ne 14 || "$png_count" -ne 14 ]]; then
+  echo "[ERROR] Expected 14 PDFs and 14 PNGs; found $pdf_count PDFs and $png_count PNGs." >&2
   exit 1
 fi
 
@@ -246,8 +325,8 @@ for (f in files) {
   if (!is.finite(nonwhite) || nonwhite < 0.002 || spread < 0.05) bad <- c(bad, basename(f))
 }
 if (length(bad)) stop("Blank or near-blank supplementary PNG(s): ", paste(bad, collapse = ", "))
-message("[PASS] All 13 supplementary PNGs contain non-white graphical content.")
+message("[PASS] All 14 supplementary PNGs contain non-white graphical content.")
 RS
 
-echo "[PASS] Supplementary Figures B1--B13 regenerated."
+echo "[PASS] Supplementary Figures B1--B14 regenerated."
 echo "[INFO] Output: $outdir"

@@ -4,7 +4,7 @@ From: continuumio/miniconda3:24.7.1-0
 %labels
     Author Andre-Salgado
     Project CRC-spike-MaAsLin2
-    Description R 4.3.3 and MaAsLin2 1.18.0 for manuscript reproduction
+    Description R 4.3.3, MaAsLin2 1.18.0, and Mash 2.3 for manuscript reproduction
 
 %files
     containers/environment.yml /opt/environment.yml
@@ -43,3 +43,4 @@ From: continuumio/miniconda3:24.7.1-0
 
 %test
     Rscript /opt/verify_crc_spike_environment.R
+    mash --version

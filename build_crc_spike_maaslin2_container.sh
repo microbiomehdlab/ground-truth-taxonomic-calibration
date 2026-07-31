@@ -57,6 +57,7 @@ echo "[INFO] Verifying R environment from the installed image..."
 # administrator-approved directory such as /mnt/beegfs/apptainer/images.
 apptainer exec --cleanenv "$FINAL_SIF" \
   Rscript /opt/verify_crc_spike_environment.R
+apptainer exec --cleanenv "$FINAL_SIF" mash --version
 
 ls -lh "$FINAL_SIF"
 file "$FINAL_SIF"

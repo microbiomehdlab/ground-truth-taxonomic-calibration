@@ -50,6 +50,18 @@ if [[ -n "$large" ]]; then
   bad=1
 fi
 
+stale_publication_refs="$(
+  git grep --untracked -nE \
+    'maaslin2_1180_v1[.]sif|TableA6_target_database_representation|Supplementary Table A6' \
+    -- '*.md' '*.sh' '*.py' 2>/dev/null |
+    grep -v '^scripts/check_repository[.]sh:' || true
+)"
+if [[ -n "$stale_publication_refs" ]]; then
+  echo "[ERROR] Stale publication workflow references:" >&2
+  echo "$stale_publication_refs" >&2
+  bad=1
+fi
+
 if ((bad)); then
   echo "[FAIL] Repository publication checks failed." >&2
   exit 1

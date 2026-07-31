@@ -130,7 +130,7 @@ manual copy) and run the structural check with the analysis container:
 ```bash
 chmod +x ./*.sh
 
-SIF=/path/to/crc_spike_original_unpaired_q010_r433_maaslin2_1180_v1.sif \
+SIF=/path/to/crc_spike_original_unpaired_q010_r433_maaslin2_1180_mash23_v2.sif \
 PROJECT="$PWD" \
 bash cluster_preflight_original_unpaired.sh
 ```

@@ -2,7 +2,7 @@
 set -euo pipefail
 
 # Authoritative end-to-end analysis for the manuscript's original, unpaired
-# q <= 0.10 benchmark. This intentionally excludes the paired, disjoint, and
+# q <= 0.10 analysis. This intentionally excludes the paired, disjoint, and
 # feature-refitted exploratory workflows.
 
 PROJECT="${PROJECT:-$PWD}"
@@ -62,10 +62,15 @@ required=(
   scripts/plot_internal_and_crossstudy_artefact_filter_validation.R
   scripts/plot_spike_calibratability_gam.R
   scripts/plot_manuscript_community_offtarget_artifacts.R
+  scripts/plot_supplementary_taxon_specific_offtarget_patterns.R
   scripts/plot_supp_community_depth_qc_recovery_models.R
   scripts/plot_supp_community_qc_recovery_full.R
+  scripts/build_reference_representation_table.py
   scripts/validate_taxon_aliases.R
   scripts/99_make_current_manuscript_figures.R
+  prepare_reference_audit_assets.sh
+  mash_in_container.sh
+  rerun_current_figures_only.sh
   rerun_supplementary_figures_only.sh
 )
 for path in "${required[@]}"; do
@@ -127,7 +132,7 @@ mkdir -p "$RUN_ROOT/spike_metrics"
   --taxon_aliases spike_taxon_aliases.csv \
   --outdir "$RUN_ROOT/spike_metrics"
 
-echo "[STEP 3/8] Run original unpaired MaAsLin2 benchmark"
+echo "[STEP 3/8] Run original unpaired MaAsLin2 analysis"
 mkdir -p "$RUN_ROOT/maaslin_spike"
 "$R_BIN" scripts/02_run_spike_biomarker_benchmark.R \
   --design "$RUN_ROOT/design_auto/spike_design.tsv" \
@@ -192,7 +197,7 @@ mkdir -p "$RUN_ROOT/manuscript_figures/figure7_calibratability"
 if [[ -n "${METAPREP_ROOT:-}" || -n "${QC_LIST:-}" ||
       -n "${COMMUNITY_TARGET_FILE:-}" ||
       -s "$RUN_ROOT/qc_depth_original_samples/qc_files.txt" ]]; then
-  echo "[SUPPLEMENT] Generate Supplementary Figures B1--B13"
+  echo "[SUPPLEMENT] Generate Supplementary Figures B1--B14"
   PROJECT="$PROJECT" \
   RUN_ROOT="$RUN_ROOT" \
   R_BIN="$R_BIN" \
@@ -201,7 +206,7 @@ if [[ -n "${METAPREP_ROOT:-}" || -n "${QC_LIST:-}" ||
   COMMUNITY_TARGET_FILE="${COMMUNITY_TARGET_FILE:-}" \
   bash rerun_supplementary_figures_only.sh
 else
-  echo "[WARN] Supplementary Figures B1--B13 were not generated because neither" >&2
+  echo "[WARN] Supplementary Figures B1--B14 were not generated because neither" >&2
   echo "       QC_LIST nor COMMUNITY_TARGET_FILE was supplied." >&2
   echo "       Run rerun_supplementary_figures_only.sh after supplying one of them." >&2
 fi

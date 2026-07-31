@@ -101,4 +101,3 @@ default database can change over time.
 
 Copy `config/global.env.example` to `config/global.env` and set the image and
 database paths. Run `scripts/preflight.sh` before submitting jobs.
-

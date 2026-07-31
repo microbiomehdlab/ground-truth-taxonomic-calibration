@@ -43,8 +43,17 @@ for file in \
   scripts/plot_manuscript_community_DA_recovery.R \
   scripts/plot_internal_and_crossstudy_artefact_filter_validation.R \
   scripts/plot_spike_calibratability_gam.R \
+  scripts/plot_manuscript_community_offtarget_artifacts.R \
+  scripts/plot_supplementary_taxon_specific_offtarget_patterns.R \
+  scripts/plot_supp_community_depth_qc_recovery_models.R \
+  scripts/plot_supp_community_qc_recovery_full.R \
+  scripts/build_reference_representation_table.py \
   scripts/validate_taxon_aliases.R \
-  scripts/99_make_current_manuscript_figures.R
+  scripts/99_make_current_manuscript_figures.R \
+  prepare_reference_audit_assets.sh \
+  mash_in_container.sh \
+  rerun_current_figures_only.sh \
+  rerun_supplementary_figures_only.sh
 do
   check_file "$file"
 done
@@ -94,6 +103,8 @@ if (rv != args[[1]]) stop("Expected R ", args[[1]], "; found ", rv)
 if (mv != args[[2]]) stop("Expected MaAsLin2 ", args[[2]], "; found ", mv)
 cat("[OK] R ", rv, "; MaAsLin2 ", mv, "\n", sep = "")
 RS
+
+PROJECT="$PROJECT" SIF="$SIF" "$PROJECT/mash_in_container.sh" --version
 
 PROJECT="$PROJECT" SIF="$SIF" "$R_BIN" - <<'RS'
 files <- c(
