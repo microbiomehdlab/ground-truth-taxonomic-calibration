@@ -12,7 +12,21 @@ From: mambaorg/micromamba:1.5.6
     set -eux
     export MAMBA_ROOT_PREFIX=/opt/conda
     export HOME=/root
-    /usr/local/bin/micromamba create -y -n taxonomic_tools \
+    MAMBA_BIN="$(command -v micromamba || true)"
+    if [ -z "$MAMBA_BIN" ]; then
+        for candidate in /bin/micromamba /usr/bin/micromamba /usr/local/bin/micromamba; do
+            if [ -x "$candidate" ]; then
+                MAMBA_BIN="$candidate"
+                break
+            fi
+        done
+    fi
+    if [ -z "$MAMBA_BIN" ]; then
+        echo "[ERROR] micromamba was not found in the base image" >&2
+        exit 1
+    fi
+    echo "[INFO] Using micromamba: $MAMBA_BIN"
+    "$MAMBA_BIN" create -y -n taxonomic_tools \
         -c conda-forge -c bioconda \
         python=3.11 \
         kraken2=2.1.6 \
@@ -23,18 +37,18 @@ From: mambaorg/micromamba:1.5.6
         seqtk=1.4 \
         fastqc=0.12.1 \
         fastp=0.23.4
-    /usr/local/bin/micromamba clean --all --yes
+    "$MAMBA_BIN" clean --all --yes
     chmod 0755 /opt/verify_taxonomic_tools.sh
     /opt/verify_taxonomic_tools.sh
 
 %environment
     export MAMBA_ROOT_PREFIX=/opt/conda
-    export PATH=/opt/conda/envs/taxonomic_tools/bin:/usr/local/bin:$PATH
+    export PATH=/opt/conda/envs/taxonomic_tools/bin:/bin:/usr/bin:/usr/local/bin:$PATH
     export LC_ALL=C.UTF-8
     export LANG=C.UTF-8
 
 %runscript
-    exec /usr/local/bin/micromamba run -n taxonomic_tools "$@"
+    exec /opt/conda/envs/taxonomic_tools/bin/"$@"
 
 %test
     /opt/verify_taxonomic_tools.sh

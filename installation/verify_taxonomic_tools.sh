@@ -2,8 +2,20 @@
 set -euo pipefail
 
 export MAMBA_ROOT_PREFIX="${MAMBA_ROOT_PREFIX:-/opt/conda}"
-MAMBA_BIN="${MAMBA_BIN:-/usr/local/bin/micromamba}"
-[[ -x "$MAMBA_BIN" ]] || { echo "[ERROR] micromamba missing: $MAMBA_BIN" >&2; exit 1; }
+if [[ -n "${MAMBA_BIN:-}" ]]; then
+  [[ -x "$MAMBA_BIN" ]] || { echo "[ERROR] micromamba missing: $MAMBA_BIN" >&2; exit 1; }
+else
+  MAMBA_BIN="$(command -v micromamba || true)"
+  if [[ -z "$MAMBA_BIN" ]]; then
+    for candidate in /bin/micromamba /usr/bin/micromamba /usr/local/bin/micromamba; do
+      if [[ -x "$candidate" ]]; then
+        MAMBA_BIN="$candidate"
+        break
+      fi
+    done
+  fi
+  [[ -n "$MAMBA_BIN" ]] || { echo "[ERROR] micromamba missing from the image" >&2; exit 1; }
+fi
 
 "$MAMBA_BIN" list -n taxonomic_tools --json |
   /opt/conda/envs/taxonomic_tools/bin/python -c '

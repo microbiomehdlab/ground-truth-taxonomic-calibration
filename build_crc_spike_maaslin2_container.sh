@@ -31,12 +31,11 @@ if [[ -s "$FINAL_SIF" && "${ALLOW_OVERWRITE:-false}" != "true" ]]; then
 fi
 
 echo "[INFO] Building temporary image..."
-if apptainer build --fakeroot "$TMP_SIF" "$DEF"; then
-  echo "[OK] Build finished with --fakeroot"
-else
-  echo "[WARN] Build with --fakeroot failed. Trying without --fakeroot..."
-  rm -f "$TMP_SIF"
+if [[ "${BUILD_WITHOUT_FAKEROOT:-false}" == "true" ]]; then
+  echo "[INFO] Using the site-default builder (BUILD_WITHOUT_FAKEROOT=true)"
   apptainer build "$TMP_SIF" "$DEF"
+else
+  apptainer build --fakeroot "$TMP_SIF" "$DEF"
 fi
 
 echo "[INFO] Checking temporary image..."

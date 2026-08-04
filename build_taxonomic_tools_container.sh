@@ -24,12 +24,11 @@ if [[ -s "$FINAL_SIF" && "${ALLOW_OVERWRITE:-false}" != "true" ]]; then
 fi
 
 echo "[INFO] Building upstream image under local temporary storage: $TMP_SIF"
-if apptainer build --fakeroot "$TMP_SIF" "$DEF"; then
-  echo "[OK] Build finished with --fakeroot"
-else
-  echo "[WARN] --fakeroot failed; trying the site-default builder" >&2
-  rm -f "$TMP_SIF"
+if [[ "${BUILD_WITHOUT_FAKEROOT:-false}" == "true" ]]; then
+  echo "[INFO] Using the site-default builder (BUILD_WITHOUT_FAKEROOT=true)"
   apptainer build "$TMP_SIF" "$DEF"
+else
+  apptainer build --fakeroot "$TMP_SIF" "$DEF"
 fi
 [[ -s "$TMP_SIF" ]] || { echo "[ERROR] Build produced no image: $TMP_SIF" >&2; exit 1; }
 
