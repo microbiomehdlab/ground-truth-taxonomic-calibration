@@ -35,6 +35,8 @@ required=(
   datasets/yachida/build_manifest.py
   datasets/yachida/build_pilot_design.py
   datasets/yachida/stream_sample.py
+  datasets/yachida/run_metashotgunprep.sh
+  datasets/yachida/yachida.env.example
   scripts/select_samples_deterministically.py
   scripts/assign_processing_batches.py
   spikes/scripts/spikein/organize_profile_tables_by_spike.py

@@ -86,6 +86,24 @@ samples may be rerun individually without changing their synthetic reads.
 
 ## 5. Use a verified streaming lifecycle
 
+Create the local, ignored site configuration:
+
+```bash
+cp datasets/yachida/yachida.env.example config/yachida.env
+```
+
+Edit `config/yachida.env` with the local MetaShotgunPrep checkout, pinned Git
+revision, Bowtie2 host-index prefix, and persistent QC directory. Repository
+documentation and committed scripts use placeholders only; host-specific paths
+remain exclusively in this ignored file.
+
+`run_metashotgunprep.sh` adapts the streaming R1/R2 inputs to MetaShotgunPrep's
+required directory layout without duplicating the downloads. It verifies the
+pinned MetaShotgunPrep revision and every Bowtie2 index component, deliberately
+does not request MetaShotgunPrep raw deletion, validates both cleaned gzip
+mates, preserves compact FastQC/log provenance, and writes
+`metashotgunprep_outputs.env` for downstream profiling.
+
 For every sample in the current batch:
 
 1. download both FASTQs and verify archive-provided MD5 and byte counts;
