@@ -53,6 +53,13 @@ if [[ "$observed_commit" != "$METASHOTGUNPREP_COMMIT" ]]; then
   echo "        observed: $observed_commit" >&2
   exit 1
 fi
+tracked_changes="$(git -C "$METASHOTGUNPREP_ROOT" status --porcelain --untracked-files=no)"
+if [[ -n "$tracked_changes" ]]; then
+  echo "[ERROR] MetaShotgunPrep has uncommitted changes to tracked files" >&2
+  printf '%s\n' "$tracked_changes" >&2
+  echo "        Use the exact clean revision: $METASHOTGUNPREP_COMMIT" >&2
+  exit 1
+fi
 
 # MetaShotgunPrep expects <batch>/01.RawData/<sample>/<mates> and derives names
 # from this layout. Symlinks avoid duplicating the already verified downloads.

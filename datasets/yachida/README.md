@@ -97,6 +97,12 @@ revision, Bowtie2 host-index prefix, and persistent QC directory. Repository
 documentation and committed scripts use placeholders only; host-specific paths
 remain exclusively in this ignored file.
 
+The pinned MetaShotgunPrep revision is
+`ce73992307e531912abf82a29f2df79ab2bdc623`. It records configurable output
+placement and deterministic discovery of paired host-depleted reads. The
+adapter requires this exact revision and refuses uncommitted changes to tracked
+MetaShotgunPrep files; untracked interpreter caches do not affect validation.
+
 `run_metashotgunprep.sh` adapts the streaming R1/R2 inputs to MetaShotgunPrep's
 required directory layout without duplicating the downloads. It verifies the
 pinned MetaShotgunPrep revision and every Bowtie2 index component, deliberately
