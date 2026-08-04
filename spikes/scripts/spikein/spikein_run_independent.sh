@@ -78,6 +78,9 @@ OUTROOT="$WORK/independent"
 mkdir -p "$OUTROOT"
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+SEED_HELPER="${SEED_HELPER:-$SCRIPT_DIR/stable_seed.py}"
+[[ -s "$SEED_HELPER" ]] || { echo "[ERROR] Missing seed helper: $SEED_HELPER" >&2; exit 1; }
+export SEED_HELPER
 
 cp -f "$ENV" "$OUTROOT/spikein.env.used"
 
@@ -137,7 +140,7 @@ while IFS=$'\t' read -r label taxon_name assembly fasta weight url; do
   jid=$(
     env \
       IMG="$IMG" WORK="$out" SAMPLES_TSV="$SAMPLES_TSV" \
-      POOL1="$p1" POOL2="$p2" POOL_SIZE="$pool1_n" LABEL="$label" BIND="$BIND" \
+      POOL1="$p1" POOL2="$p2" POOL_SIZE="$pool1_n" LABEL="$label" BIND="$BIND" SEED_HELPER="$SEED_HELPER" \
     sbatch --parsable \
       --array=1-"$N"%${MAX_CONCURRENT} \
       --chdir="$out" \

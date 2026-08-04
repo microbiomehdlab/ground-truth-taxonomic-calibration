@@ -16,6 +16,7 @@ umask 002
 : "${LABEL:?set LABEL}"
 : "${FRACTIONS:?set FRACTIONS (comma-separated)}"
 : "${SEED_BASE:?set SEED_BASE}"
+: "${SEED_HELPER:?set SEED_HELPER to stable_seed.py}"
 POOL_SIZE="${POOL_SIZE:-}"
 MAMBA_ENV="${MAMBA_ENV:-taxonomic_tools}"
 KEEP_TMP="${KEEP_TMP:-0}"
@@ -142,9 +143,18 @@ echo -e "sample_id\tlabel\tfraction\tR1\tR2\tR\tN_requested\tN_inserted\tf_hat\t
 : > "$manifest_part"
 
 IFS=',' read -r -a fracs <<< "$FRACTIONS"
-for idx in "${!fracs[@]}"; do
-  f="${fracs[$idx]}"
-  seed=$((SEED_BASE + task * 1000 + idx))
+for f in "${fracs[@]}"; do
+  # Stable under manifest reordering, array splitting, and fraction subsetting.
+  # The canonical decimal representation prevents 0.10 and 0.1 diverging.
+  canonical_fraction="$(python3 - "$f" <<'PY'
+import decimal, sys
+value = decimal.Decimal(sys.argv[1]).normalize()
+print(format(value, "f"))
+PY
+)"
+  seed="$(python3 "$SEED_HELPER" --base "$SEED_BASE" \
+    --namespace spike-independent-v1 \
+    "$sample_id" "$LABEL" "$canonical_fraction")"
 
   python3 - <<PY >/dev/null 2>&1
 f=float("$f")

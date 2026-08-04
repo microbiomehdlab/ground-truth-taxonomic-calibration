@@ -14,10 +14,9 @@ IFS=$'\n\t'
 : "${POOLS_DIR:?set POOLS_DIR}"
 : "${COMMUNITY_LABEL:?set COMMUNITY_LABEL}"
 : "${SEED_BASE:?set SEED_BASE}"
+: "${SEED_HELPER:?set SEED_HELPER to stable_seed.py}"
 
-# Backward-compatible:
-# - FULL_FRACTIONS preserves the original full list for seed indexing
-# - RUN_FRACTIONS is the subset to execute in this submission
+# Backward-compatible fraction variables. Seeds no longer depend on list order.
 FULL_FRACTIONS="${FULL_FRACTIONS:-${FRACTIONS:?set FULL_FRACTIONS or FRACTIONS}}"
 RUN_FRACTIONS="${RUN_FRACTIONS:-$FULL_FRACTIONS}"
 
@@ -132,13 +131,22 @@ design="$WORK/logs/${safe_sample}.${COMMUNITY_LABEL}.design.tsv"
 manifest_part="$WORK/logs/spiked_manifest_parts/${safe_sample}.tsv"
 
 if [[ ! -f "$design" ]]; then
-  echo -e "sample_id\tcommunity\tfraction\tR1\tR2\tR\tN_total\tf_hat\tseed_base" > "$design"
+  echo -e "sample_id\tcommunity\tfraction\tR1\tR2\tR\tN_total\tf_hat\tmember_seeds\tseed_scheme" > "$design"
+elif [[ "$(head -n 1 "$design")" != $'sample_id\tcommunity\tfraction\tR1\tR2\tR\tN_total\tf_hat\tmember_seeds\tseed_scheme' ]]; then
+  echo "[ERROR] Existing design log uses the legacy array-index seed format: $design" >&2
+  echo "[ERROR] Use a new WORK directory for stable-seed-v1 outputs." >&2
+  exit 1
 fi
 touch "$manifest_part"
 
 for f in "${run_fracs[@]}"; do
-  idx="$(orig_frac_idx "$f")"
-  seed_base=$((SEED_BASE + task*1000 + idx*10))
+  orig_frac_idx "$f" >/dev/null
+  canonical_fraction="$(python3 - "$f" <<'PY'
+import decimal, sys
+value = decimal.Decimal(sys.argv[1]).normalize()
+print(format(value, "f"))
+PY
+)"
 
   N_total="$(python3 - <<PY
 import math
@@ -157,6 +165,7 @@ PY
   sp1_all="$tmp/${COMMUNITY_LABEL}.${f_tag}.spike_1.fq"
   sp2_all="$tmp/${COMMUNITY_LABEL}.${f_tag}.spike_2.fq"
   : > "$sp1_all"; : > "$sp2_all"
+  member_seeds=()
 
   allocated=0
   for i in "${!labels[@]}"; do
@@ -182,7 +191,10 @@ PY
     p2="$POOLS_DIR/${lab}.pool_2.fq"
     [[ -s "$p1" && -s "$p2" ]] || { echo "[ERROR] Missing pool for $lab: $p1 / $p2" >&2; exit 1; }
 
-    seed=$((seed_base + i))
+    seed="$(python3 "$SEED_HELPER" --base "$SEED_BASE" \
+      --namespace spike-community-v1 \
+      "$sample_id" "$COMMUNITY_LABEL" "$canonical_fraction" "$lab")"
+    member_seeds+=("${lab}:${seed}")
     sp1="$tmp/${lab}.${f_tag}.sp1.fq"
     sp2="$tmp/${lab}.${f_tag}.sp2.fq"
     ids1="$tmp/${lab}.${f_tag}.ids1.txt"
@@ -232,7 +244,8 @@ PY
     '$1!=id' \
     "$manifest_part" > "${manifest_part}.tmp" && mv "${manifest_part}.tmp" "$manifest_part"
 
-  echo -e "${sample_id}\t${COMMUNITY_LABEL}\t${f}\t${R1n}\t${R2n}\t${R}\t${n1_all}\t${f_hat}\t${seed_base}" >> "$design"
+  seeds_joined="$(IFS=,; echo "${member_seeds[*]}")"
+  echo -e "${sample_id}\t${COMMUNITY_LABEL}\t${f}\t${R1n}\t${R2n}\t${R}\t${n1_all}\t${f_hat}\t${seeds_joined}\tstable-seed-v1" >> "$design"
 
   if [[ -n "$rest" && "$rest" != "$line" ]]; then
     echo -e "${spiked_id}\t${out1}\t${out2}\t${rest}" >> "$manifest_part"

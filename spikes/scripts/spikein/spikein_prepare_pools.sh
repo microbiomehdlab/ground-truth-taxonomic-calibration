@@ -20,6 +20,7 @@ It expects `fasta` paths in SPIKE_PANEL to already exist on disk.
 Writes:
   ${POOLS_DIR:-$WORK/pools}/jobs.tsv
   ${POOLS_DIR:-$WORK/pools}/pool_settings.tsv
+  ${POOLS_DIR:-$WORK/pools}/pool_seeds.tsv
   ${POOLS_DIR:-$WORK/pools}/logs/<label>.make.<jobid>.{out,err}
   ${POOLS_DIR:-$WORK/pools}/logs/<label>.fastp.<jobid>.{out,err}
 
@@ -63,6 +64,7 @@ FRAGMEAN="${FRAGMEAN:-350}"
 FRAGSD="${FRAGSD:-10}"
 THREADS="${THREADS:-4}"
 MAMBA_ENV="${MAMBA_ENV:-taxonomic_tools}"
+SEED_BASE="${SEED_BASE:-13}"
 
 # Recommended: set this explicitly in spikein.env, for example:
 # POOLS_DIR=$WORK/pools_readlen100_cov2000
@@ -70,6 +72,8 @@ POOLS_DIR="${POOLS_DIR:-$WORK/pools}"
 mkdir -p "$POOLS_DIR/logs"
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+SEED_HELPER="${SEED_HELPER:-$SCRIPT_DIR/stable_seed.py}"
+[[ -s "$SEED_HELPER" ]] || { echo "[ERROR] Missing seed helper: $SEED_HELPER" >&2; exit 1; }
 
 [[ -s "$SCRIPT_DIR/make_spike_pool.sbatch" ]] || {
   echo "[ERROR] Missing make script: $SCRIPT_DIR/make_spike_pool.sbatch" >&2
@@ -82,8 +86,10 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 JOBS_TSV="$POOLS_DIR/jobs.tsv"
 SETTINGS_TSV="$POOLS_DIR/pool_settings.tsv"
+SEEDS_TSV="$POOLS_DIR/pool_seeds.tsv"
 
 echo -e "label\tmake_jobid\tfastp_jobid\tstatus" > "$JOBS_TSV"
+echo -e "label\tassembly\tart_seed\tseed_scheme" > "$SEEDS_TSV"
 cat > "$SETTINGS_TSV" <<SETTINGS
 parameter	value
 ENV	$ENV
@@ -97,6 +103,8 @@ FRAGMEAN	$FRAGMEAN
 FRAGSD	$FRAGSD
 THREADS	$THREADS
 MAMBA_ENV	$MAMBA_ENV
+SEED_BASE	$SEED_BASE
+SEED_SCHEME	stable-seed-v1
 SCRIPT_DIR	$SCRIPT_DIR
 SETTINGS
 
@@ -135,6 +143,11 @@ while IFS=$'\t' read -r label taxon_name assembly fasta weight url extra; do
     echo "[ERROR] FASTA missing/empty for $label: $fasta" >&2
     exit 1
   }
+
+  art_seed="$(python3 "$SEED_HELPER" --base "$SEED_BASE" \
+    --namespace spike-pool-art-v1 \
+    "$label" "$assembly" "$READLEN" "$COVERAGE" "$FRAGMEAN" "$FRAGSD")"
+  echo -e "${label}\t${assembly}\t${art_seed}\tstable-seed-v1" >> "$SEEDS_TSV"
 
   raw1="$POOLS_DIR/${label}.raw_1.fq"
   raw2="$POOLS_DIR/${label}.raw_2.fq"
@@ -177,7 +190,7 @@ while IFS=$'\t' read -r label taxon_name assembly fasta weight url extra; do
     --job-name="make_${label}" \
     --output="$POOLS_DIR/logs/${label}.make.%j.out" \
     --error="$POOLS_DIR/logs/${label}.make.%j.err" \
-    --export=ALL,IMG="$IMG",WORK="$POOLS_DIR",REF_FASTA="$fasta",LABEL="$label",PAIRED=true,READLEN="$READLEN",COVERAGE="$COVERAGE",FRAGMEAN="$FRAGMEAN",FRAGSD="$FRAGSD",MAMBA_ENV="$MAMBA_ENV" \
+    --export=ALL,IMG="$IMG",WORK="$POOLS_DIR",REF_FASTA="$fasta",LABEL="$label",PAIRED=true,READLEN="$READLEN",COVERAGE="$COVERAGE",FRAGMEAN="$FRAGMEAN",FRAGSD="$FRAGSD",MAMBA_ENV="$MAMBA_ENV",ART_SEED="$art_seed" \
     "$SCRIPT_DIR/make_spike_pool.sbatch")
 
   fastp_jid=$(sbatch --parsable \
@@ -194,4 +207,5 @@ done < <(tail -n +2 "$SPIKE_PANEL")
 
 echo "[OK] Wrote $JOBS_TSV"
 echo "[OK] Wrote $SETTINGS_TSV"
+echo "[OK] Wrote $SEEDS_TSV"
 echo "[OK] Logs will be written to $POOLS_DIR/logs"

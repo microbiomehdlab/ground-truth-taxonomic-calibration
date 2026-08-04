@@ -69,8 +69,21 @@ bash spikes/scripts/spikein/spikein_run_community.sh \
 ```
 
 Every task handles one background sample and all total-community fractions.
-When rerunning only selected fractions, seed indices remain anchored to the
-full fraction list.
+Rerunning selected fractions or reordered sample manifests preserves the exact
+seed for every sample/fraction/member combination.
+
+## Deterministic seed contract
+
+`stable_seed.py` implements the frozen `stable-seed-v1` SHA-256 derivation.
+ART pool simulation uses the label, assembly, and simulation parameters.
+Independent subsampling uses sample, target, and fraction; community
+subsampling additionally uses the community and member label. Scheduler task
+IDs, manifest row positions, fraction positions, batch sizes, and filesystem
+paths are excluded. Exact seeds are recorded in the design/provenance tables.
+
+Changing `SEED_BASE` intentionally creates a different realization. Changing
+pool parameters requires a new `POOLS_DIR`; do not reuse pools created before
+the seeded ART workflow when claiming byte-for-byte reproduction.
 
 ## Outputs and provenance
 
@@ -109,4 +122,3 @@ python3 spikes/scripts/spikein/merge_profile_tables.py \
 Open-world values are never renormalized. Closed-world tables remain available
 as an optional sensitivity output through `--kind closed_world` or
 `--kind both`.
-

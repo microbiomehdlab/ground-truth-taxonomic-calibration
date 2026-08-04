@@ -12,6 +12,7 @@ IFS=$'\n\t'
 : "${IMG:?set IMG (taxonomic-tools.sif)}"
 : "${REF_FASTA:?set REF_FASTA (reference genome fasta)}"
 : "${WORK:?set WORK (output dir)}"
+: "${ART_SEED:?set ART_SEED}"
 
 LABEL="${LABEL:-Bfrag}"
 PAIRED="${PAIRED:-true}"
@@ -34,7 +35,7 @@ singularity exec \
   -B "$WORK:$WORK" \
   -B "$(dirname "$REF_FASTA")":"$(dirname "$REF_FASTA")" \
   "$IMG" bash -s -- \
-    "$WORK" "$REF_FASTA" "$LABEL" "$PAIRED" "$READLEN" "$FRAGMEAN" "$FRAGSD" "$COVERAGE" "$MAMBA_ENV" "$RUN_ID" <<'EOS'
+    "$WORK" "$REF_FASTA" "$LABEL" "$PAIRED" "$READLEN" "$FRAGMEAN" "$FRAGSD" "$COVERAGE" "$MAMBA_ENV" "$RUN_ID" "$ART_SEED" <<'EOS'
 set -euo pipefail
 IFS=$'\n\t'
 
@@ -48,6 +49,7 @@ FRAGSD="$7"
 COVERAGE="$8"
 MAMBA_ENV="$9"
 RUN_ID="${10}"
+ART_SEED="${11}"
 
 cd "$WORK"
 
@@ -68,7 +70,7 @@ if [[ "$PAIRED" == "true" ]]; then
 
     micromamba run -n "$MAMBA_ENV" art_illumina \
       -ss HS25 -i "$REF_FASTA" -l "$READLEN" -f "$COVERAGE" -p \
-      -m "$FRAGMEAN" -s "$FRAGSD" -na -o "$tmp_prefix"
+      -m "$FRAGMEAN" -s "$FRAGSD" -rs "$ART_SEED" -na -o "$tmp_prefix"
 
     test -s "$tmp1"
     test -s "$tmp2"
@@ -91,7 +93,8 @@ else
     rm -f "$tmp"
 
     micromamba run -n "$MAMBA_ENV" art_illumina \
-      -ss HS25 -i "$REF_FASTA" -l "$READLEN" -f "$COVERAGE" -na -o "$tmp_prefix"
+      -ss HS25 -i "$REF_FASTA" -l "$READLEN" -f "$COVERAGE" \
+      -rs "$ART_SEED" -na -o "$tmp_prefix"
 
     test -s "$tmp"
 

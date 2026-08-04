@@ -1,6 +1,6 @@
 # Public CRC cohorts
 
-The spike-in benchmark uses two public paired-end stool-metagenome cohorts:
+The publication analysis uses two public paired-end stool-metagenome cohorts:
 
 | Directory | Study | Samples used |
 |---|---|---:|
@@ -66,3 +66,10 @@ done < samples.tsv
 
 For a publication run, archive the exact sample manifest, study metadata,
 download date, source URLs, and checksums for all downloaded FASTQs.
+
+## External reproducibility cohort
+
+[`yachida/`](yachida/README.md) provides a frozen-manifest, deterministic
+selection, and verified low-disk streaming design for the 80 paired-end WGS
+runs in DRA006684. It is kept separate from the original two-cohort analysis
+so external validation cannot overwrite manuscript results.

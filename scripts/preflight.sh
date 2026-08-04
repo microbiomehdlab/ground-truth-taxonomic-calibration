@@ -31,6 +31,7 @@ required=(
   spikes/scripts/spikein/spikein_prepare_pools.sh
   spikes/scripts/spikein/spikein_run_independent.sh
   spikes/scripts/spikein/spikein_run_community.sh
+  spikes/scripts/spikein/stable_seed.py
   spikes/scripts/spikein/organize_profile_tables_by_spike.py
   spikes/scripts/spikein/merge_profile_tables.py
 )
@@ -58,10 +59,23 @@ do
 done
 echo "[OK] Shell syntax"
 
-for file in "$ROOT"/spikes/scripts/spikein/*.py "$ROOT"/workflows/*/*.py "$ROOT"/workflows/utils/*.py; do
+for file in \
+  "$ROOT"/spikes/scripts/spikein/*.py \
+  "$ROOT"/workflows/*/*.py "$ROOT"/workflows/utils/*.py \
+  "$ROOT"/datasets/yachida/*.py "$ROOT"/scripts/select_samples_deterministically.py
+do
   python3 -m py_compile "$file"
 done
 echo "[OK] Python syntax"
+
+expected_seed=873630871
+actual_seed="$(python3 "$ROOT/spikes/scripts/spikein/stable_seed.py" \
+  --base 13 --namespace spike-independent-v1 DRR127476 Fnuc 0.0001)"
+[[ "$actual_seed" == "$expected_seed" ]] || {
+  echo "[ERROR] stable-seed-v1 contract changed: expected=$expected_seed observed=$actual_seed" >&2
+  exit 1
+}
+echo "[OK] Stable seed contract"
 
 # shellcheck source=/dev/null
 source "$GLOBAL_ENV"

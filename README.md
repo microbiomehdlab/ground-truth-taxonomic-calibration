@@ -122,6 +122,12 @@ Bfrag, Csym, Dpne, Fnuc, Hhat, Pmic, Pana, Psto, Porp, Pint
 See [datasets/README.md](datasets/README.md). Verify the applicable study data
 access conditions before downloading or redistributing metadata.
 
+For low-disk external validation with the Yachida 2019 DRA006684 cohort, use
+the frozen-manifest and verified streaming procedure in
+[`datasets/yachida/README.md`](datasets/yachida/README.md). Sample selection and
+spike seeds remain invariant when samples are processed and deleted one at a
+time.
+
 Create a tab-separated sample manifest with:
 
 ```text
@@ -197,8 +203,10 @@ bash spikes/scripts/spikein/spikein_run_community.sh \
   --community-label CRCpanel
 ```
 
-The configured random seed and full fraction list determine all subsampling.
-Subset reruns retain the seed associated with each original fraction.
+The configured seed and stable biological identifiers determine all
+subsampling. Manifest order, Slurm array position, batch size, and fraction
+subsetting do not change a sample's seed. Exact seeds are written to the spike
+design logs.
 
 The publication design uses six independent final fractions
 (`0.01%`–`5%`) and seven total-community fractions (`0.01%`–`10%`).

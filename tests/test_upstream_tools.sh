@@ -10,6 +10,13 @@ out="$(python3 "$calc" --R 999900 --f 0.0001)"
 grep -q $'^N\t100$' <<<"$out"
 grep -q $'^f_hat\t0.00010000$' <<<"$out"
 
+seed="$ROOT/spikes/scripts/spikein/stable_seed.py"
+[[ "$(python3 "$seed" --base 13 --namespace spike-independent-v1 DRR127476 Fnuc 0.0001)" == 873630871 ]]
+! grep -Eq 'SEED_BASE[[:space:]]*\+[[:space:]]*task|task[[:space:]]*\*[[:space:]]*1000' \
+  "$ROOT/spikes/scripts/spikein/spike_one_taxon_array.sbatch" \
+  "$ROOT/spikes/scripts/spikein/spike_community_array.sbatch"
+grep -q -- '-rs "$ART_SEED"' "$ROOT/spikes/scripts/spikein/make_spike_pool.sbatch"
+
 mkdir -p \
   "$TMP_ROOT/results/S1_Bfrag_f0p0001/metaphlan4" \
   "$TMP_ROOT/results/S2_Bfrag_f0p0001/metaphlan4"

@@ -24,8 +24,8 @@ Notes:
   - Each array task processes ONE sample and loops over RUN_FRACTIONS
   - FULL_FRACTIONS comes from env FRACTIONS (or default 0.0001,0.001,0.01)
   - RUN_FRACTIONS defaults to FULL_FRACTIONS
-  - Seeds remain tied to the original FULL_FRACTIONS order, so rerunning a subset
-    of fractions reproduces the same result for those fractions
+  - Seeds derive from stable sample, community, fraction, and taxon identifiers;
+    manifest order, array indices, and fraction subsetting cannot change them
   - Concurrency is controlled by MAX_CONCURRENT (default 5): --array=...%MAX_CONCURRENT
 EOF
 }
@@ -84,6 +84,9 @@ out="$OUTROOT/$COMMUNITY_LABEL"
 mkdir -p "$out/logs"
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+SEED_HELPER="${SEED_HELPER:-$SCRIPT_DIR/stable_seed.py}"
+[[ -s "$SEED_HELPER" ]] || { echo "[ERROR] Missing seed helper: $SEED_HELPER" >&2; exit 1; }
+export SEED_HELPER
 
 # Build community file if not provided
 if [[ -z "$COMMUNITY" ]]; then
@@ -140,7 +143,7 @@ jid=$(
   env \
     IMG="$IMG" WORK="$out" SAMPLES_TSV="$SAMPLES_TSV" \
     COMMUNITY_TSV="$COMMUNITY" POOLS_DIR="$POOLS_DIR" \
-    COMMUNITY_LABEL="$COMMUNITY_LABEL" BIND="$BIND" \
+    COMMUNITY_LABEL="$COMMUNITY_LABEL" BIND="$BIND" SEED_HELPER="$SEED_HELPER" \
   sbatch --parsable \
     "${SBATCH_OPTS[@]}" \
     --array="$ARRAY_EXPR" \

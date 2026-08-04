@@ -12,6 +12,7 @@ results/
 profile_results/
 runs/
 outputs/
+work/
 datasets/yashidas2019/
 
 # Scheduler and workflow logs
