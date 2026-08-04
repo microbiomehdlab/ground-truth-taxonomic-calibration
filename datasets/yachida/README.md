@@ -147,6 +147,24 @@ independently verifies these files. Cleanup is opt-in, restricted to the exact
 per-sample scratch directory, and refused without its safety sentinel. Omit
 `--delete-inputs-after-verification` for the first validation batch.
 
+### Preprocessing smoke test
+
+Before merging a new MetaShotgunPrep revision or running profiling, submit one
+selected sample through the non-deleting smoke-test runner:
+
+```bash
+export PROJECT="$PWD"
+export YACHIDA_ENV="$PWD/config/yachida.env"
+export SAMPLE_ID=SAMD00164833
+sbatch --export=ALL run_yachida_preprocessing_smoke.sbatch
+```
+
+The job uses the source-built upstream image, verifies the manifest download,
+checks both cleaned gzip mates and MetaShotgunPrep's completion marker, retains
+QC with checksums, and deliberately leaves raw and cleaned reads under
+`work/yachida_67x3/smoke_scratch/` for inspection. It does not run profiling or
+spike generation and cannot authorize deletion of its scratch directory.
+
 ## Seed invariance
 
 ART and seqtk use `stable-seed-v1`, derived from stable sample, target,

@@ -17,18 +17,20 @@ fi
 : "${STUDY:?provided by stream_sample.py}"
 : "${METASHOTGUNPREP_ROOT:?set in YACHIDA_ENV}"
 : "${METASHOTGUNPREP_COMMIT:?set in YACHIDA_ENV}"
+: "${UPSTREAM_SIF:?set in YACHIDA_ENV}"
 : "${HOST_INDEX:?set Bowtie2 index prefix in YACHIDA_ENV}"
 : "${PERSISTENT_QC_ROOT:?set in YACHIDA_ENV}"
 
-METASHOTGUNPREP_PYTHON="${METASHOTGUNPREP_PYTHON:-python3}"
 PREPROCESS_THREADS="${PREPROCESS_THREADS:-16}"
 pipeline="$METASHOTGUNPREP_ROOT/pipeline_preprocess.py"
 [[ -s "$pipeline" ]] || { echo "[ERROR] Missing MetaShotgunPrep entry point: $pipeline" >&2; exit 1; }
+[[ -s "$UPSTREAM_SIF" ]] || { echo "[ERROR] Missing upstream image: $UPSTREAM_SIF" >&2; exit 1; }
+command -v apptainer >/dev/null 2>&1 || { echo "[ERROR] apptainer is not available" >&2; exit 1; }
 [[ -s "$RAW_R1" && -s "$RAW_R2" ]] || { echo "[ERROR] Raw mates are missing or empty" >&2; exit 1; }
 [[ "$SAMPLE_ID" =~ ^[A-Za-z0-9._-]+$ ]] || { echo "[ERROR] Unsafe sample ID: $SAMPLE_ID" >&2; exit 1; }
 [[ "$STUDY" =~ ^[A-Za-z0-9._-]+$ ]] || { echo "[ERROR] Unsafe study ID: $STUDY" >&2; exit 1; }
 
-"$METASHOTGUNPREP_PYTHON" - "$SAMPLE_WORK" "$PERSISTENT_QC_ROOT" <<'PY'
+python3 - "$SAMPLE_WORK" "$PERSISTENT_QC_ROOT" <<'PY'
 import pathlib, sys
 scratch, persistent = (pathlib.Path(value).resolve() for value in sys.argv[1:])
 if persistent == scratch or scratch in persistent.parents:
@@ -70,7 +72,10 @@ mkdir -p "$input_dir" "$output_root"
 ln -sfn "$RAW_R1" "$input_dir/${SAMPLE_ID}_1.fastq.gz"
 ln -sfn "$RAW_R2" "$input_dir/${SAMPLE_ID}_2.fastq.gz"
 
-"$METASHOTGUNPREP_PYTHON" "$pipeline" \
+container_home="$SAMPLE_WORK/container_home"
+mkdir -p "$container_home"
+apptainer exec --cleanenv --env "HOME=$container_home" "$UPSTREAM_SIF" \
+  python3 "$pipeline" \
   --sequences_dir "$input_dir" \
   --genome_index "$HOST_INDEX" \
   --output_root "$output_root" \
@@ -100,9 +105,16 @@ for directory in qc_before qc_after; do
     cp -a "$sample_output/$directory/." "$qc_out/$directory/"
   fi
 done
+if [[ -s "${UPSTREAM_SIF}.sha256" ]]; then
+  upstream_sif_sha256="$(awk 'NR == 1 {print $1}' "${UPSTREAM_SIF}.sha256")"
+else
+  upstream_sif_sha256="$(sha256sum "$UPSTREAM_SIF" | awk '{print $1}')"
+fi
 cat > "$qc_out/metashotgunprep_provenance.tsv" <<EOF
 field	value
 metashotgunprep_commit	$observed_commit
+upstream_sif	$UPSTREAM_SIF
+upstream_sif_sha256	$upstream_sif_sha256
 host_index_prefix	$HOST_INDEX
 mode	all
 threads	$PREPROCESS_THREADS
