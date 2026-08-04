@@ -98,7 +98,7 @@ documentation and committed scripts use placeholders only; host-specific paths
 remain exclusively in this ignored file.
 
 The pinned MetaShotgunPrep revision is
-`ce73992307e531912abf82a29f2df79ab2bdc623`. It records configurable output
+`43a80d6e22f1a1ffd33e9d8e6c58ab9d37ad7b0c`. It records configurable output
 placement and deterministic discovery of paired host-depleted reads. The
 adapter requires this exact revision and refuses uncommitted changes to tracked
 MetaShotgunPrep files; untracked interpreter caches do not affect validation.
