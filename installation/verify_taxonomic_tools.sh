@@ -1,25 +1,12 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-export MAMBA_ROOT_PREFIX="${MAMBA_ROOT_PREFIX:-/opt/conda}"
-if [[ -n "${MAMBA_BIN:-}" ]]; then
-  [[ -x "$MAMBA_BIN" ]] || { echo "[ERROR] micromamba missing: $MAMBA_BIN" >&2; exit 1; }
-else
-  MAMBA_BIN="$(command -v micromamba || true)"
-  if [[ -z "$MAMBA_BIN" ]]; then
-    for candidate in /bin/micromamba /usr/bin/micromamba /usr/local/bin/micromamba; do
-      if [[ -x "$candidate" ]]; then
-        MAMBA_BIN="$candidate"
-        break
-      fi
-    done
-  fi
-  [[ -n "$MAMBA_BIN" ]] || { echo "[ERROR] micromamba missing from the image" >&2; exit 1; }
-fi
+ENV_PREFIX="/opt/conda/envs/taxonomic_tools"
+PYTHON="$ENV_PREFIX/bin/python"
+[[ -x "$PYTHON" ]] || { echo "[ERROR] Environment Python missing: $PYTHON" >&2; exit 1; }
 
-"$MAMBA_BIN" list -n taxonomic_tools --json |
-  /opt/conda/envs/taxonomic_tools/bin/python -c '
-import json, sys
+"$PYTHON" -c '
+import glob, json
 expected = {
     "python": "3.11",
     "kraken2": "2.1.6",
@@ -31,7 +18,12 @@ expected = {
     "fastqc": "0.12.1",
     "fastp": "0.23.4",
 }
-observed = {item["name"]: item["version"] for item in json.load(sys.stdin)}
+metadata = glob.glob("/opt/conda/envs/taxonomic_tools/conda-meta/*.json")
+observed = {}
+for filename in metadata:
+    with open(filename, encoding="utf-8") as handle:
+        item = json.load(handle)
+    observed[item["name"]] = item["version"]
 errors = []
 for name, version in expected.items():
     actual = observed.get(name)
@@ -42,10 +34,8 @@ if errors:
 print("[OK] Pinned package versions verified")
 '
 
-"$MAMBA_BIN" run -n taxonomic_tools bash -c '
-  set -euo pipefail
-  for tool in python3 fastqc fastp bowtie2 kraken2 bracken metaphlan art_illumina seqtk; do
-    command -v "$tool" >/dev/null
-    printf "[OK] %-12s %s\n" "$tool" "$(command -v "$tool")"
-  done
-'
+export PATH="$ENV_PREFIX/bin:$PATH"
+for tool in python3 fastqc fastp bowtie2 kraken2 bracken metaphlan art_illumina seqtk; do
+  command -v "$tool" >/dev/null
+  printf "[OK] %-12s %s\n" "$tool" "$(command -v "$tool")"
+done
