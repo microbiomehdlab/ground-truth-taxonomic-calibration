@@ -15,7 +15,35 @@ The container definition pins the software used by the upstream workflow:
 
 Reference databases are kept outside the image.
 
-## Build
+## Build directly with Apptainer (recommended on Slurm clusters)
+
+The source-controlled `installation/Apptainer.def` does not require a Docker
+daemon. Build under local temporary storage, install into the site-approved
+image directory, and verify the installed image:
+
+```bash
+SIF=/approved/image/directory/taxonomic-tools_1.0.0.sif \
+bash build_taxonomic_tools_container.sh
+```
+
+The script tries `apptainer build --fakeroot`, falls back to the site-default
+builder, and never executes the temporary `/tmp` image. It records adjacent
+`.sha256` and `.inspect.txt` provenance files.
+
+To rebuild both repository images from scratch through Slurm (recommended):
+
+```bash
+PROJECT="$PWD" \
+UPSTREAM_SIF=/approved/image/directory/taxonomic-tools_1.0.0.sif \
+ANALYSIS_SIF=/approved/image/directory/crc-spike-maaslin2_1.0.0.sif \
+sbatch --export=ALL build_reproducibility_containers.sbatch
+```
+
+This writes a build manifest under `work/container_build/` containing image,
+definition, complete recipe-input, Git-commit, and Apptainer-version
+provenance. Use new versioned image names instead of overwriting prior images.
+
+## Alternative OCI/Docker build
 
 Docker:
 
@@ -25,7 +53,7 @@ docker build \
   installation/
 ```
 
-Apptainer:
+Convert a locally built Docker image to Apptainer:
 
 ```bash
 apptainer build taxonomic-tools_1.0.0.sif \

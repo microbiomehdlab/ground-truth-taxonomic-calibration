@@ -69,6 +69,8 @@ are intentionally excluded from Git.
 
 | Command | Purpose |
 |---|---|
+| `build_reproducibility_containers.sh` | Rebuild and verify both pinned images from source-controlled definitions |
+| `build_taxonomic_tools_container.sh` | Build only the preprocessing/profiling image |
 | `scripts/preflight.sh` | Validate the configured upstream profiling environment |
 | `taxonomy/run_profiling.sh` | Submit taxonomic profiling for a sample manifest |
 | `stage_required_inputs.sh` | Stage completed profiler outputs for analysis |
@@ -101,6 +103,12 @@ be recorded with the release metadata. Database contents are too large to
 store in Git.
 
 ## 1. Configure the host
+
+For a from-scratch validation, first rebuild both software images as described
+in [`installation/README.md`](installation/README.md). Existing profiler and
+host-reference databases may be reused, but their paths, releases, and checksum
+inventories must be recorded. Rebuilding images does not modify or download
+those external databases.
 
 ```bash
 cp config/global.env.example config/global.env

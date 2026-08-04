@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"
+cd "$ROOT"
 DEF="${DEF:-containers/Apptainer.def}"
 : "${SIF:?Set SIF to the desired final analysis-container path}"
 FINAL_SIF="$SIF"
@@ -58,6 +60,8 @@ echo "[INFO] Verifying R environment from the installed image..."
 apptainer exec --cleanenv "$FINAL_SIF" \
   Rscript /opt/verify_crc_spike_environment.R
 apptainer exec --cleanenv "$FINAL_SIF" mash --version
+sha256sum "$FINAL_SIF" > "${FINAL_SIF}.sha256"
+apptainer inspect "$FINAL_SIF" > "${FINAL_SIF}.inspect.txt"
 
 ls -lh "$FINAL_SIF"
 file "$FINAL_SIF"

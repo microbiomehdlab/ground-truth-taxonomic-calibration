@@ -1,0 +1,40 @@
+Bootstrap: docker
+From: mambaorg/micromamba:1.5.6
+
+%labels
+    Project Ground-truth-taxonomic-calibration
+    Description Pinned preprocessing, spike-generation, and taxonomic-profiling tools
+
+%files
+    installation/verify_taxonomic_tools.sh /opt/verify_taxonomic_tools.sh
+
+%post
+    set -eux
+    export MAMBA_ROOT_PREFIX=/opt/conda
+    export HOME=/root
+    /usr/local/bin/micromamba create -y -n taxonomic_tools \
+        -c conda-forge -c bioconda \
+        python=3.11 \
+        kraken2=2.1.6 \
+        bracken=3.1 \
+        metaphlan=4.2.2 \
+        bowtie2=2.5.4 \
+        art=2016.06.05 \
+        seqtk=1.4 \
+        fastqc=0.12.1 \
+        fastp=0.23.4
+    /usr/local/bin/micromamba clean --all --yes
+    chmod 0755 /opt/verify_taxonomic_tools.sh
+    /opt/verify_taxonomic_tools.sh
+
+%environment
+    export MAMBA_ROOT_PREFIX=/opt/conda
+    export PATH=/opt/conda/envs/taxonomic_tools/bin:/usr/local/bin:$PATH
+    export LC_ALL=C.UTF-8
+    export LANG=C.UTF-8
+
+%runscript
+    exec /usr/local/bin/micromamba run -n taxonomic_tools "$@"
+
+%test
+    /opt/verify_taxonomic_tools.sh

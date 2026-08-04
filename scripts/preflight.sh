@@ -18,6 +18,12 @@ check_file() {
 
 required=(
   README.md
+  build_taxonomic_tools_container.sh
+  build_crc_spike_maaslin2_container.sh
+  build_reproducibility_containers.sh
+  build_reproducibility_containers.sbatch
+  installation/Apptainer.def
+  installation/verify_taxonomic_tools.sh
   config/global.env.example
   config/dataset.env.example
   spikes/spikein.env.example
@@ -116,6 +122,9 @@ fi
 
 "$CTR" exec "$SIF" micromamba run -n taxonomic_tools bash -c '
   set -euo pipefail
+  command -v python3
+  command -v fastqc
+  command -v bowtie2
   command -v art_illumina
   command -v seqtk
   command -v fastp
