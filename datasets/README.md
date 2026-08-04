@@ -69,7 +69,8 @@ download date, source URLs, and checksums for all downloaded FASTQs.
 
 ## External reproducibility cohort
 
-[`yachida/`](yachida/README.md) provides a frozen-manifest, deterministic
-selection, and verified low-disk streaming design for the 80 paired-end WGS
-runs in DRA006684. It is kept separate from the original two-cohort analysis
-so external validation cannot overwrite manuscript results.
+[`yachida/`](yachida/README.md) provides a frozen-manifest, matched 67/67/67
+pilot selection, deterministic small batches, and verified low-disk streaming
+design for the curated 615-sample subset of PRJDB4176. It is kept separate
+from the original analysis so external validation cannot overwrite manuscript
+results.

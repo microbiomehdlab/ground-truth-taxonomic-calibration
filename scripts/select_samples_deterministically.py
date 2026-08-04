@@ -54,6 +54,10 @@ def main() -> None:
         writer = csv.DictWriter(handle, fieldnames=output_fields, delimiter="\t", lineterminator="\n")
         writer.writeheader()
         writer.writerows(selected)
+    digest = hashlib.sha256(args.output.read_bytes()).hexdigest()
+    args.output.with_suffix(args.output.suffix + ".sha256").write_text(
+        f"{digest}  {args.output.name}\n", encoding="utf-8"
+    )
     print(f"[OK] selected {len(selected)} samples across {len(grouped)} conditions -> {args.output}")
 
 

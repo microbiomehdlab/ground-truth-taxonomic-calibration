@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Build the frozen DRA006684 (Yachida 2019) paired-read manifest."""
+"""Join curated Yachida metadata to the complete PRJDB4176 FASTQ inventory."""
 
 from __future__ import annotations
 
@@ -8,15 +8,18 @@ import csv
 import hashlib
 import pathlib
 import urllib.request
-import xml.etree.ElementTree as ET
 
 
-DDBJ_BASE = "https://ddbj.nig.ac.jp/public/ddbj_database/dra/fastq/DRA006/DRA006684"
 ENA_REPORT = (
-    "https://www.ebi.ac.uk/ena/portal/api/filereport?accession=DRA006684"
+    "https://www.ebi.ac.uk/ena/portal/api/filereport?accession=PRJDB4176"
     "&result=read_run&fields=run_accession,sample_accession,fastq_ftp,"
     "fastq_md5,fastq_bytes&format=tsv"
 )
+EXPECTED_COUNTS = {"Control": 290, "Adenoma": 67, "CRC": 258}
+
+
+def sha256(path: pathlib.Path) -> str:
+    return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
 def fetch(url: str, path: pathlib.Path) -> None:
@@ -30,15 +33,6 @@ def fetch(url: str, path: pathlib.Path) -> None:
     partial.replace(path)
 
 
-def attributes(sample: ET.Element) -> dict[str, str]:
-    result = {}
-    for item in sample.findall("./SAMPLE_ATTRIBUTES/SAMPLE_ATTRIBUTE"):
-        tag = item.findtext("TAG", "").strip()
-        if tag:
-            result[tag] = item.findtext("VALUE", "").strip()
-    return result
-
-
 def paired(values: str, md5s: str, sizes: str) -> tuple[tuple[str, str, str], tuple[str, str, str]]:
     records = list(zip(values.split(";"), md5s.split(";"), sizes.split(";")))
     r1 = [record for record in records if record[0].endswith("_1.fastq.gz")]
@@ -48,75 +42,60 @@ def paired(values: str, md5s: str, sizes: str) -> tuple[tuple[str, str, str], tu
     return r1[0], r2[0]
 
 
+def read_unique(path: pathlib.Path, key: str) -> tuple[list[dict[str, str]], list[str]]:
+    with path.open(newline="", encoding="utf-8-sig") as handle:
+        reader = csv.DictReader(handle, delimiter="\t")
+        rows = list(reader)
+        fields = reader.fieldnames or []
+    if key not in fields:
+        raise ValueError(f"{path} lacks required column {key!r}")
+    values = [row[key].strip() for row in rows]
+    if any(not value for value in values) or len(values) != len(set(values)):
+        raise ValueError(f"{path}: {key!r} contains blank or duplicate values")
+    return rows, fields
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--study-metadata", type=pathlib.Path, required=True)
     parser.add_argument("--output", type=pathlib.Path, default=pathlib.Path("cohort_manifest.tsv"))
     parser.add_argument("--cache-dir", type=pathlib.Path, default=pathlib.Path("metadata_cache"))
     args = parser.parse_args()
 
-    files = {
-        "run": args.cache_dir / "DRA006684.run.xml",
-        "experiment": args.cache_dir / "DRA006684.experiment.xml",
-        "sample": args.cache_dir / "DRA006684.sample.xml",
-        "ena": args.cache_dir / "DRA006684.ena.tsv",
-    }
-    for kind in ("run", "experiment", "sample"):
-        fetch(f"{DDBJ_BASE}/DRA006684.{kind}.xml", files[kind])
-    fetch(ENA_REPORT, files["ena"])
+    ena_path = args.cache_dir / "PRJDB4176.ena.tsv"
+    fetch(ENA_REPORT, ena_path)
+    metadata, _ = read_unique(args.study_metadata, "Sample Source ID")
+    if len(metadata) != 615:
+        raise ValueError(f"expected 615 curated metadata samples, found {len(metadata)}")
 
-    samples = {}
-    for node in ET.parse(files["sample"]).getroot():
-        attrs = attributes(node)
-        samples[node.attrib["accession"]] = {
-            "biosample_accession": node.findtext("./IDENTIFIERS/PRIMARY_ID", "").strip(),
-            "sample_name": attrs.get("sample_name", ""),
-            "host_disease_stat": attrs.get("host_disease_stat", ""),
-            "age": attrs.get("age", ""),
-            "sex": attrs.get("sex", ""),
-        }
+    with ena_path.open(newline="", encoding="utf-8") as handle:
+        ena_rows = list(csv.DictReader(handle, delimiter="\t"))
+    by_sample: dict[str, list[dict[str, str]]] = {}
+    for row in ena_rows:
+        by_sample.setdefault(row["sample_accession"], []).append(row)
 
-    experiments = {}
-    for node in ET.parse(files["experiment"]).getroot():
-        descriptor = node.find("./DESIGN/SAMPLE_DESCRIPTOR")
-        if descriptor is None:
-            raise ValueError(f"experiment {node.attrib['accession']} lacks SAMPLE_DESCRIPTOR")
-        experiments[node.attrib["accession"]] = descriptor.attrib["accession"]
-
-    runs = {}
-    for node in ET.parse(files["run"]).getroot():
-        reference = node.find("EXPERIMENT_REF")
-        if reference is None:
-            raise ValueError(f"run {node.attrib['accession']} lacks EXPERIMENT_REF")
-        runs[node.attrib["accession"]] = reference.attrib["accession"]
-
-    with files["ena"].open(newline="", encoding="utf-8") as handle:
-        ena = {row["run_accession"]: row for row in csv.DictReader(handle, delimiter="\t")}
-
-    condition_map = {"Healthy control": "Control", "CRC (Stage III/IV)": "CRC"}
     rows = []
-    for run_accession in sorted(runs):
-        experiment_accession = runs[run_accession]
-        sample_accession = experiments[experiment_accession]
-        sample = samples[sample_accession]
-        source_condition = sample["host_disease_stat"]
-        if source_condition not in condition_map:
-            raise ValueError(f"unrecognized condition for {run_accession}: {source_condition!r}")
-        record = ena.get(run_accession)
-        if record is None:
-            raise ValueError(f"ENA report lacks {run_accession}")
+    for source in metadata:
+        biosample = source["Sample Source ID"].strip()
+        records = by_sample.get(biosample, [])
+        if len(records) != 1:
+            raise ValueError(f"{biosample}: expected exactly one PRJDB4176 run, found {len(records)}")
+        record = records[0]
         r1, r2 = paired(record["fastq_ftp"], record["fastq_md5"], record["fastq_bytes"])
+        condition = source["Study condition"].strip()
+        if condition not in EXPECTED_COUNTS:
+            raise ValueError(f"{biosample}: unrecognized Study condition {condition!r}")
         rows.append({
-            "sample_id": run_accession,
-            "run_accession": run_accession,
-            "experiment_accession": experiment_accession,
-            "sample_accession": sample_accession,
-            "biosample_accession": sample["biosample_accession"],
-            "source_sample_name": sample["sample_name"],
-            "Study": "Yachida_2019",
-            "Target_Condition": condition_map[source_condition],
-            "source_condition": source_condition,
-            "age": sample["age"],
-            "sex": sample["sex"],
+            "sample_id": biosample,
+            "run_accession": record["run_accession"],
+            "biosample_accession": biosample,
+            "Study": "YachidaS_2019",
+            "Target_Condition": condition,
+            "age": source["Age"].strip(),
+            "sex": source["Sex"].strip(),
+            "bmi": source["BMI"].strip(),
+            "tumor_stage_ajcc": source["Tumor Staging AJCC"].strip(),
+            "primary_tumor_location": source["Primary Tumor Location"].strip(),
             "fastq1_url": "https://" + r1[0],
             "fastq2_url": "https://" + r2[0],
             "fastq1_md5": r1[1],
@@ -125,23 +104,50 @@ def main() -> None:
             "fastq2_bytes": r2[2],
         })
 
-    if len(rows) != 80:
-        raise ValueError(f"expected 80 DRA006684 runs, found {len(rows)}")
-    counts = {condition: sum(row["Target_Condition"] == condition for row in rows) for condition in condition_map.values()}
-    if counts != {"Control": 40, "CRC": 40}:
-        raise ValueError(f"unexpected condition counts: {counts}")
+    rows.sort(key=lambda row: row["sample_id"])
+    counts = {condition: sum(row["Target_Condition"] == condition for row in rows)
+              for condition in EXPECTED_COUNTS}
+    if counts != EXPECTED_COUNTS:
+        raise ValueError(f"unexpected curated condition counts: {counts}")
+
+    included = {row["biosample_accession"] for row in rows}
+    excluded = sorted(
+        (row for row in ena_rows if row["sample_accession"] not in included),
+        key=lambda row: (row["sample_accession"], row["run_accession"]),
+    )
+    if len(excluded) != 30:
+        raise ValueError(f"expected 30 project runs outside curated metadata, found {len(excluded)}")
 
     args.output.parent.mkdir(parents=True, exist_ok=True)
     with args.output.open("w", newline="", encoding="utf-8") as handle:
         writer = csv.DictWriter(handle, fieldnames=list(rows[0]), delimiter="\t", lineterminator="\n")
         writer.writeheader()
         writer.writerows(rows)
-    digest = hashlib.sha256(args.output.read_bytes()).hexdigest()
-    args.output.with_suffix(args.output.suffix + ".sha256").write_text(
-        f"{digest}  {args.output.name}\n", encoding="utf-8"
-    )
-    print(f"[OK] {args.output}: 80 samples ({counts})")
-    print(f"[OK] SHA-256: {digest}")
+    excluded_path = args.output.with_name(args.output.stem + ".excluded_project_runs.tsv")
+    with excluded_path.open("w", newline="", encoding="utf-8") as handle:
+        writer = csv.DictWriter(handle, fieldnames=list(excluded[0]), delimiter="\t", lineterminator="\n")
+        writer.writeheader()
+        writer.writerows(excluded)
+    for path in (args.output, excluded_path):
+        digest = sha256(path)
+        path.with_suffix(path.suffix + ".sha256").write_text(f"{digest}  {path.name}\n", encoding="utf-8")
+    provenance_path = args.output.with_name(args.output.stem + ".provenance.tsv")
+    provenance = [
+        ("manifest_schema", "yachida-prjdb4176-manifest-v1"),
+        ("study_metadata_file", args.study_metadata.name),
+        ("study_metadata_sha256", sha256(args.study_metadata)),
+        ("ena_inventory_url", ENA_REPORT),
+        ("ena_inventory_sha256", sha256(ena_path)),
+        ("curated_samples", str(len(rows))),
+        ("excluded_project_runs", str(len(excluded))),
+        *[(f"condition_{condition}", str(counts[condition])) for condition in EXPECTED_COUNTS],
+    ]
+    with provenance_path.open("w", newline="", encoding="utf-8") as handle:
+        writer = csv.writer(handle, delimiter="\t", lineterminator="\n")
+        writer.writerow(("field", "value")); writer.writerows(provenance)
+    print(f"[OK] {args.output}: 615 curated samples ({counts})")
+    print(f"[OK] Excluded project runs not in curated metadata: {len(excluded)} -> {excluded_path}")
+    print(f"[OK] Provenance: {provenance_path}")
 
 
 if __name__ == "__main__":

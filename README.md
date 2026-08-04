@@ -122,7 +122,7 @@ Bfrag, Csym, Dpne, Fnuc, Hhat, Pmic, Pana, Psto, Porp, Pint
 See [datasets/README.md](datasets/README.md). Verify the applicable study data
 access conditions before downloading or redistributing metadata.
 
-For low-disk external validation with the Yachida 2019 DRA006684 cohort, use
+For low-disk external validation with the curated Yachida 2019 PRJDB4176 cohort, use
 the frozen-manifest and verified streaming procedure in
 [`datasets/yachida/README.md`](datasets/yachida/README.md). Sample selection and
 spike seeds remain invariant when samples are processed and deleted one at a

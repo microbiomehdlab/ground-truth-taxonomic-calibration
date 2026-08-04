@@ -32,6 +32,11 @@ required=(
   spikes/scripts/spikein/spikein_run_independent.sh
   spikes/scripts/spikein/spikein_run_community.sh
   spikes/scripts/spikein/stable_seed.py
+  datasets/yachida/build_manifest.py
+  datasets/yachida/build_pilot_design.py
+  datasets/yachida/stream_sample.py
+  scripts/select_samples_deterministically.py
+  scripts/assign_processing_batches.py
   spikes/scripts/spikein/organize_profile_tables_by_spike.py
   spikes/scripts/spikein/merge_profile_tables.py
 )
@@ -62,7 +67,9 @@ echo "[OK] Shell syntax"
 for file in \
   "$ROOT"/spikes/scripts/spikein/*.py \
   "$ROOT"/workflows/*/*.py "$ROOT"/workflows/utils/*.py \
-  "$ROOT"/datasets/yachida/*.py "$ROOT"/scripts/select_samples_deterministically.py
+  "$ROOT"/datasets/yachida/*.py \
+  "$ROOT"/scripts/select_samples_deterministically.py \
+  "$ROOT"/scripts/assign_processing_batches.py
 do
   python3 -m py_compile "$file"
 done
