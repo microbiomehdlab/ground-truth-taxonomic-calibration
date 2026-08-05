@@ -74,6 +74,18 @@ This submits ART simulation followed by fastp preprocessing for every taxon.
 Use a new `POOLS_DIR` whenever pool-generation parameters change. Existing
 paired pools are reused only after consistency checks.
 
+After all pool jobs finish, validate and checksum the final pools. The optional
+flag deletes the redundant raw ART mates only after checksum verification:
+
+```bash
+bash spikes/scripts/spikein/finalize_spike_pools.sh \
+  --env work/dataset/spikein.env \
+  --delete-raw
+```
+
+The final pool FASTQs, `pool_inventory.tsv`, `pool_files.sha256`,
+`pool_settings.tsv`, and `pool_seeds.tsv` are the persistent pool assets.
+
 ## Independent design
 
 ```bash

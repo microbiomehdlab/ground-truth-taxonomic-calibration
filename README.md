@@ -200,6 +200,11 @@ bash spikes/scripts/spikein/configure_spike_workflow.sh \
 
 bash spikes/scripts/spikein/spikein_prepare_pools.sh \
   --env work/dataset/spikein.env
+
+# Run after every submitted pool job has completed successfully.
+bash spikes/scripts/spikein/finalize_spike_pools.sh \
+  --env work/dataset/spikein.env \
+  --delete-raw
 ```
 
 ART generates paired reads from each reference genome. fastp then creates the
