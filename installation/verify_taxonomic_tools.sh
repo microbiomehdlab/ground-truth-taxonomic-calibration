@@ -17,6 +17,7 @@ expected = {
     "seqtk": "1.4",
     "fastqc": "0.12.1",
     "fastp": "0.23.4",
+    "ncbi-datasets-cli": "18.29.0",
 }
 metadata = glob.glob("/opt/conda/envs/taxonomic_tools/conda-meta/*.json")
 observed = {}
@@ -35,7 +36,7 @@ print("[OK] Pinned package versions verified")
 '
 
 export PATH="$ENV_PREFIX/bin:$PATH"
-for tool in python3 fastqc fastp bowtie2 kraken2 bracken metaphlan art_illumina seqtk; do
+for tool in python3 fastqc fastp bowtie2 kraken2 bracken metaphlan art_illumina seqtk datasets dataformat; do
   command -v "$tool" >/dev/null
   printf "[OK] %-12s %s\n" "$tool" "$(command -v "$tool")"
 done

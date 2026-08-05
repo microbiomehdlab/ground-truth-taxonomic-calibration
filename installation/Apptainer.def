@@ -36,7 +36,8 @@ From: mambaorg/micromamba:1.5.6
         art=2016.06.05 \
         seqtk=1.4 \
         fastqc=0.12.1 \
-        fastp=0.23.4
+        fastp=0.23.4 \
+        ncbi-datasets-cli=18.29.0
     "$MAMBA_BIN" clean --all --yes
     chmod 0755 /opt/verify_taxonomic_tools.sh
     /opt/verify_taxonomic_tools.sh

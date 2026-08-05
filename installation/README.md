@@ -12,6 +12,7 @@ The container definition pins the software used by the upstream workflow:
 | seqtk | 1.4 |
 | fastp | 0.23.4 |
 | FastQC | 0.12.1 |
+| NCBI Datasets CLI | 18.29.0 |
 
 Reference databases are kept outside the image.
 
