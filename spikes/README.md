@@ -46,6 +46,22 @@ reports and the pinned CLI version under `references/genomes/provenance/`, and
 writes both byte-level and header/line-wrapping-independent sequence checksums
 to `references/genomes/reference_genome_checksums.tsv`.
 
+Compare freshly downloaded FASTAs against an archived study-genome directory:
+
+```bash
+python3 scripts/audit_reference_genomes.py \
+  --panel spikes/spike_panel.tsv \
+  --fasta-root /path/to/archived/study/genomes \
+  --output work/reference_audit/original_reference_genome_checksums.tsv \
+  --expected references/genomes/reference_genome_checksums.tsv \
+  --comparison-output work/reference_audit/fresh_vs_original.tsv
+```
+
+The comparison fails on any contig-sequence, contig-count, or base-count
+difference. Byte-level SHA differences alone are reported but accepted because
+FASTA headers, wrapping, or contig order may change without changing biological
+sequence content.
+
 ## Pools
 
 ```bash
