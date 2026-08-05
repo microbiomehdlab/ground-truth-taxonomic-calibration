@@ -177,7 +177,58 @@ tail -n +2 "$PANEL" | while IFS=$'\t' read -r label taxon assembly fasta weight 
   echo "[WARN] $label has no fasta, no url, and no assembly accession; cannot fetch automatically." >&2
 done
 
-ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.." && pwd -P)"
-python3 "$ROOT/scripts/audit_reference_genomes.py" \
-  --panel "$PANEL" \
-  --output "$OUTDIR/reference_genome_checksums.tsv"
+python3 - "$PANEL" "$OUTDIR/reference_genome_checksums.tsv" <<'PY'
+import csv
+import hashlib
+import pathlib
+import sys
+
+panel = pathlib.Path(sys.argv[1])
+output = pathlib.Path(sys.argv[2])
+
+def file_hash(path):
+    digest = hashlib.sha256()
+    with path.open("rb") as handle:
+        while block := handle.read(4 * 1024 * 1024):
+            digest.update(block)
+    return digest.hexdigest()
+
+def normalized_content(path):
+    records = []
+    current = []
+    total = 0
+    with path.open(encoding="utf-8") as handle:
+        for line in handle:
+            if line.startswith(">"):
+                if current:
+                    sequence = "".join(current).upper()
+                    records.append(hashlib.sha256(sequence.encode()).hexdigest())
+                    total += len(sequence)
+                    current = []
+            else:
+                current.append("".join(line.split()))
+    if current:
+        sequence = "".join(current).upper()
+        records.append(hashlib.sha256(sequence.encode()).hexdigest())
+        total += len(sequence)
+    digest = hashlib.sha256("\n".join(sorted(records)).encode()).hexdigest()
+    return digest, len(records), total
+
+with panel.open(newline="", encoding="utf-8") as handle:
+    rows = list(csv.DictReader(handle, delimiter="\t"))
+with output.open("w", encoding="utf-8", newline="") as handle:
+    fields = ["label", "assembly", "fasta", "bytes", "sha256", "normalized_sequence_sha256", "contigs", "bases"]
+    writer = csv.DictWriter(handle, fieldnames=fields, delimiter="\t", lineterminator="\n")
+    writer.writeheader()
+    for row in rows:
+        path = pathlib.Path(row["fasta"])
+        if not path.is_file() or not path.stat().st_size:
+            raise SystemExit(f"[ERROR] Missing downloaded FASTA: {path}")
+        normalized, contigs, bases = normalized_content(path)
+        writer.writerow({
+            "label": row["label"], "assembly": row["assembly"], "fasta": path,
+            "bytes": path.stat().st_size, "sha256": file_hash(path),
+            "normalized_sequence_sha256": normalized, "contigs": contigs, "bases": bases,
+        })
+print(f"[OK] Wrote reference provenance: {output}")
+PY
