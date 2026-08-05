@@ -165,6 +165,21 @@ QC with checksums, and deliberately leaves raw and cleaned reads under
 `work/yachida_67x3/smoke_scratch/` for inspection. It does not run profiling or
 spike generation and cannot authorize deletion of its scratch directory.
 
+After preprocessing passes, reuse the retained cleaned mates for a non-deleting
+baseline profiler smoke test:
+
+```bash
+export PROJECT="$PWD"
+export YACHIDA_ENV="$PWD/config/yachida.env"
+export SAMPLE_ID=SAMD00164833
+sbatch --export=ALL run_yachida_baseline_smoke.sbatch
+```
+
+This runs Kraken2/Bracken and MetaPhlAn directly from the pinned upstream image,
+uses the configured UHGG and vJan25 databases, validates species-level output,
+and checksums the compact profiles under `work/yachida_67x3/baseline_smoke/`.
+It does not regenerate preprocessing, create spikes, or delete cleaned reads.
+
 ## Seed invariance
 
 ART and seqtk use `stable-seed-v1`, derived from stable sample, target,
