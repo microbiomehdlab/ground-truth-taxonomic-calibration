@@ -31,7 +31,7 @@ RUN_ID="${SLURM_JOB_ID:-manual_$$}"
 
 # Run container work. Arguments are passed positionally to avoid fragile quoting
 # inside bash -lc strings.
-singularity exec \
+apptainer exec --cleanenv \
   -B "$WORK:$WORK" \
   -B "$(dirname "$REF_FASTA")":"$(dirname "$REF_FASTA")" \
   "$IMG" bash -s -- \
@@ -68,7 +68,7 @@ if [[ "$PAIRED" == "true" ]]; then
   else
     rm -f "$tmp1" "$tmp2"
 
-    micromamba run -n "$MAMBA_ENV" art_illumina \
+    art_illumina \
       -ss HS25 -i "$REF_FASTA" -l "$READLEN" -f "$COVERAGE" -p \
       -m "$FRAGMEAN" -s "$FRAGSD" -rs "$ART_SEED" -na -o "$tmp_prefix"
 
@@ -92,7 +92,7 @@ else
   else
     rm -f "$tmp"
 
-    micromamba run -n "$MAMBA_ENV" art_illumina \
+    art_illumina \
       -ss HS25 -i "$REF_FASTA" -l "$READLEN" -f "$COVERAGE" \
       -rs "$ART_SEED" -na -o "$tmp_prefix"
 

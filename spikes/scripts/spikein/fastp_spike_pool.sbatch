@@ -76,23 +76,19 @@ fi
 # Clean only this job's temporary files, never final outputs.
 rm -f "$TMP1" "$TMP2" "$TMPHTML" "$TMPJSON"
 
-singularity exec -B "$WORK:$WORK" "$IMG" bash -lc "
-  set -euo pipefail
-  cd '$WORK'
-
-  micromamba run -n '$MAMBA_ENV' fastp \
-    -i '$RAW1' -I '$RAW2' \
-    -o '$TMP1' -O '$TMP2' \
+apptainer exec --cleanenv -B "$WORK:$WORK" "$IMG" \
+  fastp \
+    -i "$RAW1" -I "$RAW2" \
+    -o "$TMP1" -O "$TMP2" \
     --cut_front --cut_tail \
     --cut_window_size 4 --cut_mean_quality 20 \
     --trim_poly_g \
     --low_complexity_filter --complexity_threshold 30 \
     --length_required 60 \
     --detect_adapter_for_pe \
-    --thread '$THREADS' \
-    --html '$TMPHTML' \
-    --json '$TMPJSON'
-"
+    --thread "$THREADS" \
+    --html "$TMPHTML" \
+    --json "$TMPJSON"
 
 [[ -s "$TMP1" ]] || { echo "[ERROR] fastp produced missing/empty temporary R1 for $LABEL: $TMP1" >&2; exit 1; }
 [[ -s "$TMP2" ]] || { echo "[ERROR] fastp produced missing/empty temporary R2 for $LABEL: $TMP2" >&2; exit 1; }

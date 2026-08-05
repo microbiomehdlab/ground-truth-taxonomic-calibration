@@ -142,7 +142,7 @@ echo "[info] Host node: $(hostname)"
     export XDG_CACHE_HOME='$JOB_HOME/.cache'
     export XDG_CONFIG_HOME='$JOB_HOME/.config'
     export XDG_DATA_HOME='$JOB_HOME/.local/share'
-    micromamba run -n taxonomic_tools metaphlan --version 2>&1 | head -n 2
+    metaphlan --version 2>&1 | head -n 2
   " || true
   echo "=== Timestamp ==="
   date -Iseconds
@@ -218,7 +218,6 @@ export XDG_DATA_HOME='$JOB_HOME/.local/share'
 mkdir -p "\$HOME/.cache" "\$HOME/.config" "\$HOME/.local/share"
 
 cmd=(
-  micromamba run -n taxonomic_tools
   metaphlan
   "$MPA_INPUT"
   --input_type fastq

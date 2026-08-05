@@ -180,6 +180,12 @@ uses the configured UHGG and vJan25 databases, validates species-level output,
 and checksums the compact profiles under `work/yachida_67x3/baseline_smoke/`.
 It does not regenerate preprocessing, create spikes, or delete cleaned reads.
 
+Before the spike smoke test, freshly download and audit the exact versioned
+target assemblies using the pinned NCBI Datasets CLI in the upstream image, as
+documented in `spikes/README.md`. Spike pools are shared immutable assets and
+must be generated once from those audited FASTAs using a new parameter-specific
+pool directory.
+
 ## Seed invariance
 
 ART and seqtk use `stable-seed-v1`, derived from stable sample, target,

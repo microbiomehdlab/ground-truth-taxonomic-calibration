@@ -172,8 +172,15 @@ Download the exact reference assemblies declared in the panel:
 ```bash
 bash spikes/scripts/spikein/download_refs_ncbi.sh \
   --panel spikes/spike_panel.tsv \
-  --outdir references/genomes
+  --outdir references/genomes \
+  --image /path/to/taxonomic-tools.sif
 ```
+
+This downloads the exact versioned NCBI assemblies and records CLI, assembly
+report, FASTA SHA-256, normalized-sequence checksum, contig-count, and base-count
+provenance. For a from-scratch validation, do not prepopulate the destination
+with older FASTAs; compare the resulting normalized checksums with archived
+study inputs afterwards.
 
 Record checksums after download:
 

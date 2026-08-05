@@ -109,7 +109,7 @@ appt_exec() {
 
 container_has() {
   local tool="$1"
-  appt_exec bash -lc "command -v \"$tool\" >/dev/null 2>&1"
+  appt_exec bash -c "command -v \"$tool\" >/dev/null 2>&1"
 }
 
 resolve_runtime_mode() {

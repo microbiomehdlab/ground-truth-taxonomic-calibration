@@ -90,7 +90,7 @@ sha256sum taxonomic-tools_1.0.0.sif
 
 ```bash
 apptainer exec taxonomic-tools_1.0.0.sif \
-  micromamba run -n taxonomic_tools bash -c '
+  bash -c '
     set -euo pipefail
     art_illumina --version 2>&1 | head -n 2
     seqtk 2>&1 | head -n 2
@@ -128,7 +128,7 @@ Install the exact release used for the publication into a persistent directory:
 
 ```bash
 apptainer exec --bind "$MPA_DB:$MPA_DB" taxonomic-tools_1.0.0.sif \
-  micromamba run -n taxonomic_tools metaphlan \
+  metaphlan \
     --install \
     --db_dir "$MPA_DB"
 ```

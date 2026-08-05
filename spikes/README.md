@@ -36,8 +36,15 @@ path, and community weight. Download missing assemblies:
 ```bash
 bash spikes/scripts/spikein/download_refs_ncbi.sh \
   --panel spikes/spike_panel.tsv \
-  --outdir references/genomes
+  --outdir references/genomes \
+  --image /path/to/taxonomic-tools.sif
 ```
+
+Use a new, empty `references/genomes` directory for a from-scratch audit. The
+downloader requests the exact versioned assembly accessions, retains NCBI data
+reports and the pinned CLI version under `references/genomes/provenance/`, and
+writes both byte-level and header/line-wrapping-independent sequence checksums
+to `references/genomes/reference_genome_checksums.tsv`.
 
 ## Pools
 

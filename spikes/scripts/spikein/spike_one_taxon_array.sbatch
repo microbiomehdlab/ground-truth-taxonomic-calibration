@@ -22,10 +22,10 @@ MAMBA_ENV="${MAMBA_ENV:-taxonomic_tools}"
 KEEP_TMP="${KEEP_TMP:-0}"
 BIND="${BIND:-}"
 
-if command -v singularity >/dev/null 2>&1; then
-  CTR="singularity"
-elif command -v apptainer >/dev/null 2>&1; then
+if command -v apptainer >/dev/null 2>&1; then
   CTR="apptainer"
+elif command -v singularity >/dev/null 2>&1; then
+  CTR="singularity"
 else
   echo "[ERROR] singularity/apptainer not found on compute node" >&2
   exit 1
@@ -190,7 +190,7 @@ PY
   ids1="$tmp/${LABEL}.${f_tag}.ids1.txt"
   ids2="$tmp/${LABEL}.${f_tag}.ids2.txt"
 
-  run_in_container "micromamba run -n ${MAMBA_ENV} seqtk sample -s ${seed} '$POOL1' ${N} > '$sp1'"
+  run_in_container "seqtk sample -s ${seed} '$POOL1' ${N} > '$sp1'"
 
   awk 'NR%4==1 {gsub(/^@/,"",$1); print $1}' "$sp1" > "$ids1"
 
@@ -202,14 +202,14 @@ PY
     else if(id ~ /\.1$/){sub(/\.1$/,".2",id); print id;}
   }' "$ids1" | awk '!seen[$0]++' > "$ids2"
 
-  run_in_container "micromamba run -n ${MAMBA_ENV} seqtk subseq '$POOL2' '$ids2' > '$sp2'"
+  run_in_container "seqtk subseq '$POOL2' '$ids2' > '$sp2'"
 
   n1="$(awk 'END{print int(NR/4)}' "$sp1")"
   n2="$(awk 'END{print int(NR/4)}' "$sp2")"
 
   if [[ "$n2" != "$n1" ]]; then
     echo "[WARN] $sample_id $LABEL $f_tag mate mismatch after transformed IDs (n1=$n1 n2=$n2). Retrying with ids1." >&2
-    run_in_container "micromamba run -n ${MAMBA_ENV} seqtk subseq '$POOL2' '$ids1' > '$sp2'"
+    run_in_container "seqtk subseq '$POOL2' '$ids1' > '$sp2'"
     n2="$(awk 'END{print int(NR/4)}' "$sp2")"
   fi
 

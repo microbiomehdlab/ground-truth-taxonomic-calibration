@@ -5,7 +5,7 @@ IFS=$'\n\t'
 usage(){
   cat <<'USAGE'
 Usage:
-  download_refs_ncbi.sh --panel spike_panel.tsv --outdir refs/
+  download_refs_ncbi.sh --panel spike_panel.tsv --outdir refs/ --image taxonomic-tools.sif
 
 Downloads missing genome FASTAs for spike-in taxa.
 
@@ -20,7 +20,8 @@ Rules:
     then extract the genomic FASTA (*_genomic.fna or *_genomic.fna.gz).
 
 Requires:
-  - datasets CLI installed and in PATH (for assembly downloads)
+  - Apptainer image containing the pinned NCBI Datasets CLI (recommended), or
+    datasets installed on the host
   - unzip
   - wget or curl (for url downloads)
 
@@ -29,11 +30,12 @@ Notes:
 USAGE
 }
 
-PANEL=""; OUTDIR=""
+PANEL=""; OUTDIR=""; IMAGE=""
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --panel) PANEL="$2"; shift 2;;
     --outdir) OUTDIR="$2"; shift 2;;
+    --image) IMAGE="$2"; shift 2;;
     -h|--help) usage; exit 0;;
     *) echo "[ERROR] Unknown arg: $1" >&2; usage; exit 2;;
   esac
@@ -47,7 +49,20 @@ command -v unzip >/dev/null 2>&1 || { echo "[ERROR] unzip not found in PATH." >&
 
 have_wget=false; command -v wget >/dev/null 2>&1 && have_wget=true
 have_curl=false; command -v curl >/dev/null 2>&1 && have_curl=true
-have_datasets=false; command -v datasets >/dev/null 2>&1 && have_datasets=true
+DATASETS_CMD=()
+if [[ -n "$IMAGE" ]]; then
+  [[ -s "$IMAGE" ]] || { echo "[ERROR] Missing image: $IMAGE" >&2; exit 1; }
+  command -v apptainer >/dev/null 2>&1 || { echo "[ERROR] apptainer not found" >&2; exit 1; }
+  DATASETS_CMD=(apptainer exec --cleanenv "$IMAGE" datasets)
+elif command -v datasets >/dev/null 2>&1; then
+  DATASETS_CMD=(datasets)
+fi
+(( ${#DATASETS_CMD[@]} > 0 )) || {
+  echo "[ERROR] Provide --image containing datasets, or install datasets on the host." >&2
+  exit 1
+}
+mkdir -p "$OUTDIR/provenance"
+"${DATASETS_CMD[@]}" version > "$OUTDIR/provenance/ncbi_datasets_version.txt"
 
 download_url(){
   local url="$1"
@@ -77,16 +92,14 @@ datasets_download(){
   local asm="$1"
   local zip="$2"
 
-  $have_datasets || { echo "[ERROR] 'datasets' CLI not found in PATH." >&2; return 1; }
-
   # Try with --no-progressbar (newer CLI), then retry without it (older CLI)
   set +e
-  datasets download genome accession "$asm" --include genome --filename "$zip" --no-progressbar >/dev/null 2>&1
+  "${DATASETS_CMD[@]}" download genome accession "$asm" --include genome --filename "$zip" --no-progressbar >/dev/null 2>&1
   rc=$?
   set -e
   if [[ $rc -eq 0 ]]; then return 0; fi
 
-  datasets download genome accession "$asm" --include genome --filename "$zip"
+  "${DATASETS_CMD[@]}" download genome accession "$asm" --include genome --filename "$zip"
 }
 
 extract_genomic_fna(){
@@ -126,6 +139,11 @@ download_assembly(){
   unzip -q "$zip" -d "$unz"
   extract_genomic_fna "$unz" "$out"
 
+  report="$(find "$unz" -type f -name 'assembly_data_report.jsonl' | head -n 1 || true)"
+  catalog="$(find "$unz" -type f -name 'dataset_catalog.json' | head -n 1 || true)"
+  [[ -n "$report" ]] && cp "$report" "$OUTDIR/provenance/${label}.${asm}.assembly_data_report.jsonl"
+  [[ -n "$catalog" ]] && cp "$catalog" "$OUTDIR/provenance/${label}.${asm}.dataset_catalog.json"
+
   rm -rf "$tmpdir"
 }
 
@@ -158,3 +176,59 @@ tail -n +2 "$PANEL" | while IFS=$'\t' read -r label taxon assembly fasta weight 
 
   echo "[WARN] $label has no fasta, no url, and no assembly accession; cannot fetch automatically." >&2
 done
+
+python3 - "$PANEL" "$OUTDIR/reference_genome_checksums.tsv" <<'PY'
+import csv
+import hashlib
+import pathlib
+import sys
+
+panel = pathlib.Path(sys.argv[1])
+output = pathlib.Path(sys.argv[2])
+
+def file_hash(path):
+    digest = hashlib.sha256()
+    with path.open("rb") as handle:
+        while block := handle.read(4 * 1024 * 1024):
+            digest.update(block)
+    return digest.hexdigest()
+
+def normalized_content(path):
+    records = []
+    current = []
+    total = 0
+    with path.open(encoding="utf-8") as handle:
+        for line in handle:
+            if line.startswith(">"):
+                if current:
+                    sequence = "".join(current).upper()
+                    records.append(hashlib.sha256(sequence.encode()).hexdigest())
+                    total += len(sequence)
+                    current = []
+            else:
+                current.append("".join(line.split()))
+    if current:
+        sequence = "".join(current).upper()
+        records.append(hashlib.sha256(sequence.encode()).hexdigest())
+        total += len(sequence)
+    digest = hashlib.sha256("\n".join(sorted(records)).encode()).hexdigest()
+    return digest, len(records), total
+
+with panel.open(newline="", encoding="utf-8") as handle:
+    rows = list(csv.DictReader(handle, delimiter="\t"))
+with output.open("w", encoding="utf-8", newline="") as handle:
+    fields = ["label", "assembly", "fasta", "bytes", "sha256", "normalized_sequence_sha256", "contigs", "bases"]
+    writer = csv.DictWriter(handle, fieldnames=fields, delimiter="\t", lineterminator="\n")
+    writer.writeheader()
+    for row in rows:
+        path = pathlib.Path(row["fasta"])
+        if not path.is_file() or not path.stat().st_size:
+            raise SystemExit(f"[ERROR] Missing downloaded FASTA: {path}")
+        normalized, contigs, bases = normalized_content(path)
+        writer.writerow({
+            "label": row["label"], "assembly": row["assembly"], "fasta": path,
+            "bytes": path.stat().st_size, "sha256": file_hash(path),
+            "normalized_sequence_sha256": normalized, "contigs": contigs, "bases": bases,
+        })
+print(f"[OK] Wrote reference provenance: {output}")
+PY
