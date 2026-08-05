@@ -193,8 +193,13 @@ find references/genomes -type f -name '*.fa' -print0 |
 Then generate the pools:
 
 ```bash
+bash spikes/scripts/spikein/configure_spike_workflow.sh \
+  --site-env config/dataset.env \
+  --work-dir work/dataset \
+  --reference-dir references/genomes
+
 bash spikes/scripts/spikein/spikein_prepare_pools.sh \
-  --env spikes/spikein.env
+  --env work/dataset/spikein.env
 ```
 
 ART generates paired reads from each reference genome. fastp then creates the

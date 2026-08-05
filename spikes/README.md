@@ -20,6 +20,23 @@ equal weights.
 
 ## Configuration
 
+Generate a local configuration and a panel whose FASTA paths point to the
+downloaded references:
+
+```bash
+bash spikes/scripts/spikein/configure_spike_workflow.sh \
+  --site-env config/dataset.env \
+  --work-dir work/dataset \
+  --reference-dir references/genomes
+```
+
+This writes ignored, host-specific files under `work/dataset/`. A sample table
+is not required to build the shared pools. For spike insertion, either rerun
+the command with `--samples-tsv` or export `SAMPLES_TSV` as a batch-specific
+table whose first three columns are sample ID, cleaned R1, and cleaned R2.
+
+For manual configuration or non-standard parameters:
+
 ```bash
 cp spikes/spikein.env.example spikes/spikein.env
 ```
@@ -50,7 +67,7 @@ to `references/genomes/reference_genome_checksums.tsv`.
 
 ```bash
 bash spikes/scripts/spikein/spikein_prepare_pools.sh \
-  --env spikes/spikein.env
+  --env work/dataset/spikein.env
 ```
 
 This submits ART simulation followed by fastp preprocessing for every taxon.

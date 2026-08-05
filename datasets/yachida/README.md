@@ -186,6 +186,21 @@ documented in `spikes/README.md`. Spike pools are shared immutable assets and
 must be generated once from those audited FASTAs using a new parameter-specific
 pool directory.
 
+Create the local Yachida spike configuration without editing a template:
+
+```bash
+bash spikes/scripts/spikein/configure_spike_workflow.sh \
+  --site-env config/yachida.env \
+  --work-dir work/yachida_67x3 \
+  --reference-dir references/genomes
+```
+
+The generated `work/yachida_67x3/spikein.env` deliberately defers
+`SAMPLES_TSV`: the cohort manifest contains download metadata, not cleaned-read
+paths. The streaming runner supplies a three-column, batch-specific cleaned-read
+manifest when it performs spike insertion. Pool generation does not require a
+sample manifest.
+
 ## Seed invariance
 
 ART and seqtk use `stable-seed-v1`, derived from stable sample, target,
