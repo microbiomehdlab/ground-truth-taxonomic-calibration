@@ -219,6 +219,20 @@ first audit. No cohort-scale processing or deletion is authorized by this job.
 The explicit `single_pass` setting uses the implementation that passed the
 byte-identity benchmark; the smoke provenance records this mode.
 
+Before cohort-scale use, exercise both sampling modes through the production
+independent and community scripts on small temporary background/pool subsets:
+
+```bash
+export PROJECT="$PWD"
+export YACHIDA_ENV="$PWD/config/yachida.env"
+export SAMPLE_ID=SAMD00164833
+sbatch --export=ALL run_yachida_sampling_integration.sbatch
+```
+
+This test generates three fractions in both modes and requires identical
+decompressed paired FASTQs and design records. It neither profiles the test
+FASTQs nor modifies the finalized pools or the completed full-sample smoke run.
+
 ## Seed invariance
 
 ART and seqtk use `stable-seed-v1`, derived from stable sample, target,
