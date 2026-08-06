@@ -208,6 +208,7 @@ test on the retained preprocessing-smoke sample:
 export PROJECT="$PWD"
 export YACHIDA_ENV="$PWD/config/yachida.env"
 export SAMPLE_ID=SAMD00164833
+export SAMPLING_MODE=single_pass
 sbatch --export=ALL run_yachida_spike_smoke.sbatch
 ```
 
@@ -215,6 +216,8 @@ The job generates an independent Fnuc spike and a ten-member community spike,
 both at 0.01% total abundance, validates their paired FASTQs, and profiles each
 with Kraken2/Bracken and MetaPhlAn 4. Synthetic FASTQs are retained for this
 first audit. No cohort-scale processing or deletion is authorized by this job.
+The explicit `single_pass` setting uses the implementation that passed the
+byte-identity benchmark; the smoke provenance records this mode.
 
 ## Seed invariance
 
