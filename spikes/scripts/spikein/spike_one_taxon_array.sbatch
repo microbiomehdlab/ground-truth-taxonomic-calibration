@@ -21,6 +21,9 @@ POOL_SIZE="${POOL_SIZE:-}"
 MAMBA_ENV="${MAMBA_ENV:-taxonomic_tools}"
 KEEP_TMP="${KEEP_TMP:-0}"
 BIND="${BIND:-}"
+SAMPLING_MODE="${SAMPLING_MODE:-legacy}"
+MULTI_SAMPLER="${MULTI_SAMPLER:-$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/sample_paired_pool_multi.sh}"
+[[ "$SAMPLING_MODE" == legacy || "$SAMPLING_MODE" == single_pass ]] || { echo "[ERROR] SAMPLING_MODE must be legacy or single_pass" >&2; exit 1; }
 
 if command -v apptainer >/dev/null 2>&1; then
   CTR="apptainer"
@@ -143,6 +146,32 @@ echo -e "sample_id\tlabel\tfraction\tR1\tR2\tR\tN_requested\tN_inserted\tf_hat\t
 : > "$manifest_part"
 
 IFS=',' read -r -a fracs <<< "$FRACTIONS"
+
+if [[ "$SAMPLING_MODE" == "single_pass" ]]; then
+  requests="$tmp/${LABEL}.multi_requests.tsv"
+  printf 'tag\tseed\tn\n' > "$requests"
+  for f in "${fracs[@]}"; do
+    canonical_fraction="$(python3 - "$f" <<'PY'
+import decimal, sys
+print(format(decimal.Decimal(sys.argv[1]).normalize(), "f"))
+PY
+)"
+    seed="$(python3 "$SEED_HELPER" --base "$SEED_BASE" --namespace spike-independent-v1 "$sample_id" "$LABEL" "$canonical_fraction")"
+    N="$(python3 - <<PY
+R=int($R); f=float("$f"); print(int(round((f/(1.0-f))*R)))
+PY
+)"
+    (( N <= 0 )) && continue
+    (( N <= POOL_SIZE )) || { echo "[ERROR] Requested N=$N exceeds pool size $POOL_SIZE" >&2; exit 1; }
+    f_tag="$(python3 - <<PY
+f=float("$f"); s=("{:.6f}".format(f)).rstrip("0").rstrip("."); print("f"+s.replace(".","p"))
+PY
+)"
+    printf '%s\t%s\t%s\n' "${LABEL}.${f_tag}.spike" "$seed" "$N" >> "$requests"
+  done
+  bash "$MULTI_SAMPLER" "$IMG" "$POOL1" "$POOL2" "$requests" "$tmp" "$tmp/multi_sampler"
+fi
+
 for f in "${fracs[@]}"; do
   # Stable under manifest reordering, array splitting, and fraction subsetting.
   # The canonical decimal representation prevents 0.10 and 0.1 diverging.
@@ -190,9 +219,14 @@ PY
   ids1="$tmp/${LABEL}.${f_tag}.ids1.txt"
   ids2="$tmp/${LABEL}.${f_tag}.ids2.txt"
 
-  run_in_container "seqtk sample -s ${seed} '$POOL1' ${N} > '$sp1'"
+  if [[ "$SAMPLING_MODE" == "single_pass" ]]; then
+    pre="$tmp/${LABEL}.${f_tag}.spike"
+    mv "$pre"_1.fq "$sp1"
+    mv "$pre"_2.fq "$sp2"
+  else
+    run_in_container "seqtk sample -s ${seed} '$POOL1' ${N} > '$sp1'"
 
-  awk 'NR%4==1 {gsub(/^@/,"",$1); print $1}' "$sp1" > "$ids1"
+    awk 'NR%4==1 {gsub(/^@/,"",$1); print $1}' "$sp1" > "$ids1"
 
   awk '{
     o=$1; print o;
@@ -202,12 +236,13 @@ PY
     else if(id ~ /\.1$/){sub(/\.1$/,".2",id); print id;}
   }' "$ids1" | awk '!seen[$0]++' > "$ids2"
 
-  run_in_container "seqtk subseq '$POOL2' '$ids2' > '$sp2'"
+    run_in_container "seqtk subseq '$POOL2' '$ids2' > '$sp2'"
+  fi
 
   n1="$(awk 'END{print int(NR/4)}' "$sp1")"
   n2="$(awk 'END{print int(NR/4)}' "$sp2")"
 
-  if [[ "$n2" != "$n1" ]]; then
+  if [[ "$SAMPLING_MODE" == "legacy" && "$n2" != "$n1" ]]; then
     echo "[WARN] $sample_id $LABEL $f_tag mate mismatch after transformed IDs (n1=$n1 n2=$n2). Retrying with ids1." >&2
     run_in_container "seqtk subseq '$POOL2' '$ids1' > '$sp2'"
     n2="$(awk 'END{print int(NR/4)}' "$sp2")"
@@ -247,3 +282,4 @@ done
 
 echo "[OK] Done sample=$sample_id label=$LABEL"
 echo "[OK] Design log: $design"
+echo "[OK] Sampling mode: $SAMPLING_MODE"

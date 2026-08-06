@@ -99,6 +99,21 @@ independent fractions. It does not modify the finalized pools or production
 workflow; production remains on the repeated-scan implementation until this
 equivalence gate passes on the target installation.
 
+The production scripts also contain an opt-in implementation for full-scale
+equivalence testing:
+
+```bash
+SAMPLING_MODE=single_pass
+```
+
+`legacy` remains the generated configuration default. In `single_pass` mode,
+all independently seeded fraction selections consume the same pool byte stream
+through concurrent `seqtk` processes. Seeds, requested pair counts, mate lookup,
+background concatenation, output names, and design records are unchanged. Do
+not use this mode for reported analyses until full-pool independent and
+community outputs have passed byte-level comparison with `legacy` on the target
+installation.
+
 ## Independent design
 
 ```bash

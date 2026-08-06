@@ -23,6 +23,9 @@ RUN_FRACTIONS="${RUN_FRACTIONS:-$FULL_FRACTIONS}"
 MAMBA_ENV="${MAMBA_ENV:-taxonomic_tools}"
 BIND="${BIND:-}"
 KEEP_TMP="${KEEP_TMP:-0}"
+SAMPLING_MODE="${SAMPLING_MODE:-legacy}"
+MULTI_SAMPLER="${MULTI_SAMPLER:-$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/sample_paired_pool_multi.sh}"
+[[ "$SAMPLING_MODE" == legacy || "$SAMPLING_MODE" == single_pass ]] || { echo "[ERROR] SAMPLING_MODE must be legacy or single_pass" >&2; exit 1; }
 
 if command -v apptainer >/dev/null 2>&1; then
   CTR="apptainer"
@@ -149,6 +152,47 @@ elif [[ "$(head -n 1 "$design")" != $'sample_id\tcommunity\tfraction\tR1\tR2\tR\
 fi
 touch "$manifest_part"
 
+if [[ "$SAMPLING_MODE" == "single_pass" ]]; then
+  declare -A request_files=()
+  for lab in "${labels[@]}"; do
+    request_files["$lab"]="$tmp/${lab}.multi_requests.tsv"
+    printf 'tag\tseed\tn\n' > "${request_files[$lab]}"
+  done
+  for f in "${run_fracs[@]}"; do
+    orig_frac_idx "$f" >/dev/null
+    canonical_fraction="$(python3 - "$f" <<'PY'
+import decimal, sys
+print(format(decimal.Decimal(sys.argv[1]).normalize(), "f"))
+PY
+)"
+    N_total="$(python3 - <<PY
+R=int($R); f=float("$f"); print(int(round((f/(1.0-f))*R)))
+PY
+)"
+    (( N_total <= 0 )) && continue
+    f_tag="$(frac_tag "$f")"; allocated=0
+    for i in "${!labels[@]}"; do
+      lab="${labels[$i]}"; w="${weights[$i]}"
+      if (( i == ${#labels[@]} - 1 )); then
+        Ni=$((N_total-allocated))
+      else
+        Ni="$(python3 - <<PY
+N=int($N_total); w=float("$w"); s=float("$sumw"); print(int(round(N*(w/s))))
+PY
+)"
+        (( Ni < 0 )) && Ni=0; allocated=$((allocated+Ni))
+      fi
+      (( Ni <= 0 )) && continue
+      seed="$(python3 "$SEED_HELPER" --base "$SEED_BASE" --namespace spike-community-v1 "$sample_id" "$COMMUNITY_LABEL" "$canonical_fraction" "$lab")"
+      printf '%s\t%s\t%s\n' "${lab}.${f_tag}.sp" "$seed" "$Ni" >> "${request_files[$lab]}"
+    done
+  done
+  for lab in "${labels[@]}"; do
+    bash "$MULTI_SAMPLER" "$IMG" "$POOLS_DIR/${lab}.pool_1.fq" "$POOLS_DIR/${lab}.pool_2.fq" \
+      "${request_files[$lab]}" "$tmp" "$tmp/multi_${lab}"
+  done
+fi
+
 for f in "${run_fracs[@]}"; do
   orig_frac_idx "$f" >/dev/null
   canonical_fraction="$(python3 - "$f" <<'PY'
@@ -205,21 +249,23 @@ PY
       --namespace spike-community-v1 \
       "$sample_id" "$COMMUNITY_LABEL" "$canonical_fraction" "$lab")"
     member_seeds+=("${lab}:${seed}")
-    sp1="$tmp/${lab}.${f_tag}.sp1.fq"
-    sp2="$tmp/${lab}.${f_tag}.sp2.fq"
+    sp1="$tmp/${lab}.${f_tag}.sp_1.fq"
+    sp2="$tmp/${lab}.${f_tag}.sp_2.fq"
     ids1="$tmp/${lab}.${f_tag}.ids1.txt"
     ids2="$tmp/${lab}.${f_tag}.ids2.txt"
 
-    run_in_container "seqtk sample -s ${seed} '$p1' ${Ni} > '$sp1'"
-    awk 'NR%4==1 {gsub(/^@/,"",$1); print $1}' "$sp1" > "$ids1"
-    awk '{
+    if [[ "$SAMPLING_MODE" == "legacy" ]]; then
+      run_in_container "seqtk sample -s ${seed} '$p1' ${Ni} > '$sp1'"
+      awk 'NR%4==1 {gsub(/^@/,"",$1); print $1}' "$sp1" > "$ids1"
+      awk '{
       o=$1; print o;
       id=o;
       if(id ~ /\/1$/){sub(/\/1$/,"/2",id); print id;}
       else if(id ~ /_1$/){sub(/_1$/,"_2",id); print id;}
       else if(id ~ /\.1$/){sub(/\.1$/,".2",id); print id;}
     }' "$ids1" | awk '!seen[$0]++' > "$ids2"
-    run_in_container "seqtk subseq '$p2' '$ids2' > '$sp2'"
+      run_in_container "seqtk subseq '$p2' '$ids2' > '$sp2'"
+    fi
 
     n1="$(awk 'END{print int(NR/4)}' "$sp1")"
     n2="$(awk 'END{print int(NR/4)}' "$sp2")"
@@ -269,3 +315,4 @@ PY
 done
 
 echo "[OK] Done $sample_id community=$COMMUNITY_LABEL run_fractions=$RUN_FRACTIONS"
+echo "[OK] Sampling mode: $SAMPLING_MODE"

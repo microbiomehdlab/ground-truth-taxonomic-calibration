@@ -70,6 +70,7 @@ SEED_BASE="${SEED_BASE:-13}"
 MAMBA_ENV="${MAMBA_ENV:-taxonomic_tools}"
 MAX_CONCURRENT="${MAX_CONCURRENT:-5}"
 BIND="${BIND:-}"
+SAMPLING_MODE="${SAMPLING_MODE:-legacy}"
 
 # Keep the original full fraction list available for seed reproducibility.
 # FRACTIONS is kept for backward compatibility.
@@ -143,7 +144,7 @@ jid=$(
   env \
     IMG="$IMG" WORK="$out" SAMPLES_TSV="$SAMPLES_TSV" \
     COMMUNITY_TSV="$COMMUNITY" POOLS_DIR="$POOLS_DIR" \
-    COMMUNITY_LABEL="$COMMUNITY_LABEL" BIND="$BIND" SEED_HELPER="$SEED_HELPER" \
+    COMMUNITY_LABEL="$COMMUNITY_LABEL" BIND="$BIND" SEED_HELPER="$SEED_HELPER" SAMPLING_MODE="$SAMPLING_MODE" \
   sbatch --parsable \
     "${SBATCH_OPTS[@]}" \
     --array="$ARRAY_EXPR" \
@@ -158,3 +159,4 @@ echo "[SUBMITTED] community=$COMMUNITY_LABEL array_job=$jid array=$ARRAY_EXPR ma
 echo "[INFO] Community file used: $COMMUNITY"
 echo "[INFO] FULL_FRACTIONS=$FULL_FRACTIONS"
 echo "[INFO] RUN_FRACTIONS=$RUN_FRACTIONS"
+echo "[INFO] Sampling mode: $SAMPLING_MODE"

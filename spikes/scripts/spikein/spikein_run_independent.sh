@@ -58,6 +58,7 @@ SEED_BASE="${SEED_BASE:-13}"
 MAMBA_ENV="${MAMBA_ENV:-taxonomic_tools}"
 MAX_CONCURRENT="${MAX_CONCURRENT:-5}"
 BIND="${BIND:-}"
+SAMPLING_MODE="${SAMPLING_MODE:-legacy}"
 
 export FRACTIONS SEED_BASE MAMBA_ENV
 echo "[INFO] Independent final fractions: $FRACTIONS"
@@ -140,7 +141,7 @@ while IFS=$'\t' read -r label taxon_name assembly fasta weight url; do
   jid=$(
     env \
       IMG="$IMG" WORK="$out" SAMPLES_TSV="$SAMPLES_TSV" \
-      POOL1="$p1" POOL2="$p2" POOL_SIZE="$pool1_n" LABEL="$label" BIND="$BIND" SEED_HELPER="$SEED_HELPER" \
+      POOL1="$p1" POOL2="$p2" POOL_SIZE="$pool1_n" LABEL="$label" BIND="$BIND" SEED_HELPER="$SEED_HELPER" SAMPLING_MODE="$SAMPLING_MODE" \
     sbatch --parsable \
       --array=1-"$N"%${MAX_CONCURRENT} \
       --chdir="$out" \
@@ -173,3 +174,4 @@ fi
 echo "[OK] Submitted $submitted independent taxon job(s)"
 echo "[INFO] Panel used: $PANEL_USED"
 echo "[INFO] Output root: $OUTROOT"
+echo "[INFO] Sampling mode: $SAMPLING_MODE"
