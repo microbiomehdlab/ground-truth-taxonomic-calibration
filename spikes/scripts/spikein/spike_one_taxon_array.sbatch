@@ -42,7 +42,7 @@ run_in_container() {
     "${bind_args[@]}" \
     -B "$WORK:$WORK" \
     --env XDG_CACHE_HOME="$cache" \
-    "$IMG" bash -lc "$cmd"
+    "$IMG" bash -c "$cmd"
 }
 
 count_reads() {
