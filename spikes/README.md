@@ -86,6 +86,19 @@ bash spikes/scripts/spikein/finalize_spike_pools.sh \
 The final pool FASTQs, `pool_inventory.tsv`, `pool_files.sha256`,
 `pool_settings.tsv`, and `pool_seeds.tsv` are the persistent pool assets.
 
+Before enabling the optional single-read fan-out optimization, benchmark it
+against repeated `seqtk` scans using the same pool records and seeds:
+
+```bash
+bash spikes/scripts/spikein/benchmark_single_pass_sampling.sh \
+  --env work/dataset/spikein.env
+```
+
+The benchmark requires byte-identical R1 and R2 selections for all six
+independent fractions. It does not modify the finalized pools or production
+workflow; production remains on the repeated-scan implementation until this
+equivalence gate passes on the target installation.
+
 ## Independent design
 
 ```bash
