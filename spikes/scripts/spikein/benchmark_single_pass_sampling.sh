@@ -52,6 +52,11 @@ pool2="$POOLS_DIR/${LABEL}.pool_2.fq"
 [[ -s "$pool1" && -s "$pool2" ]] || { echo "[ERROR] Missing finalized pool for $LABEL" >&2; exit 1; }
 command -v apptainer >/dev/null 2>&1 || { echo "[ERROR] apptainer not found" >&2; exit 1; }
 
+# Apptainer bind destinations must be absolute. Accept a convenient relative
+# --outdir from users, but canonicalize it before constructing any bind.
+mkdir -p "$(dirname "$OUTDIR")"
+OUTDIR="$(cd "$(dirname "$OUTDIR")" && pwd -P)/$(basename "$OUTDIR")"
+
 rm -rf -- "$OUTDIR.tmp"
 mkdir -p "$OUTDIR.tmp"/{subset,legacy,single,tmp}
 bench="$OUTDIR.tmp"
