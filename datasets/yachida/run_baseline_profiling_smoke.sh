@@ -25,10 +25,21 @@ PROFILE_ROOT="${YACHIDA_BASELINE_SMOKE_ROOT:?set the persistent baseline-smoke o
 [[ -s "$UPSTREAM_SIF" ]] || { echo "[ERROR] Missing upstream image: $UPSTREAM_SIF" >&2; exit 1; }
 command -v apptainer >/dev/null 2>&1 || { echo "[ERROR] apptainer is unavailable" >&2; exit 1; }
 
-handoff="$SAMPLE_WORK/metashotgunprep_outputs.env"
-[[ -s "$handoff" ]] || { echo "[ERROR] Missing preprocessing handoff: $handoff" >&2; exit 1; }
-# shellcheck source=/dev/null
-source "$handoff"
+if [[ -n "${PROFILE_R1:-}" || -n "${PROFILE_R2:-}" ]]; then
+  [[ -n "${PROFILE_R1:-}" && -n "${PROFILE_R2:-}" ]] || {
+    echo "[ERROR] Set both PROFILE_R1 and PROFILE_R2" >&2
+    exit 1
+  }
+  CLEAN_R1="$PROFILE_R1"
+  CLEAN_R2="$PROFILE_R2"
+  input_source="explicit_profile_pair"
+else
+  handoff="$SAMPLE_WORK/metashotgunprep_outputs.env"
+  [[ -s "$handoff" ]] || { echo "[ERROR] Missing preprocessing handoff: $handoff" >&2; exit 1; }
+  # shellcheck source=/dev/null
+  source "$handoff"
+  input_source="metashotgunprep_handoff"
+fi
 for file in "$CLEAN_R1" "$CLEAN_R2"; do
   [[ -s "$file" ]] || { echo "[ERROR] Missing cleaned mate: $file" >&2; exit 1; }
   gzip -t -- "$file"
@@ -79,6 +90,9 @@ appt=(apptainer exec --cleanenv --home "$container_home" "$UPSTREAM_SIF")
 cat > "$parameters" <<EOF
 field	value
 sample_id	$SAMPLE_ID
+input_source	$input_source
+input_r1	$CLEAN_R1
+input_r2	$CLEAN_R2
 kraken2_db	$KRAKEN2_DB
 metaphlan_db	$METAPHLAN_DB
 metaphlan_index	$METAPHLAN_INDEX

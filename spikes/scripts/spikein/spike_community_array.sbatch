@@ -22,6 +22,7 @@ RUN_FRACTIONS="${RUN_FRACTIONS:-$FULL_FRACTIONS}"
 
 MAMBA_ENV="${MAMBA_ENV:-taxonomic_tools}"
 BIND="${BIND:-}"
+KEEP_TMP="${KEEP_TMP:-0}"
 
 if command -v apptainer >/dev/null 2>&1; then
   CTR="apptainer"
@@ -83,6 +84,15 @@ mkdir -p "$WORK/spiked_fastqs" "$WORK/logs" "$WORK/logs/spiked_manifest_parts" "
 safe_sample="$(echo "$sample_id" | tr '/ ' '__')"
 tmp="$WORK/tmp/${safe_sample}"
 mkdir -p "$tmp"
+
+cleanup() {
+  if [[ "$KEEP_TMP" == "1" ]]; then
+    echo "[INFO] KEEP_TMP=1, preserving tmp dir: $tmp"
+  else
+    rm -rf -- "$tmp"
+  fi
+}
+trap cleanup EXIT
 
 IFS=',' read -r -a full_fracs <<< "$FULL_FRACTIONS"
 IFS=',' read -r -a run_fracs <<< "$RUN_FRACTIONS"
@@ -222,6 +232,10 @@ PY
   n1_all="$(awk 'END{print int(NR/4)}' "$sp1_all")"
   n2_all="$(awk 'END{print int(NR/4)}' "$sp2_all")"
   [[ "$n1_all" == "$n2_all" ]] || { echo "[ERROR] Community mate mismatch total (n1=$n1_all n2=$n2_all)" >&2; exit 1; }
+  [[ "$n1_all" -eq "$N_total" ]] || {
+    echo "[ERROR] Community sampling returned $n1_all pairs but requested $N_total" >&2
+    exit 1
+  }
 
   out1="$WORK/spiked_fastqs/${sample_id}_${COMMUNITY_LABEL}_${f_tag}_1.fq.gz"
   out2="$WORK/spiked_fastqs/${sample_id}_${COMMUNITY_LABEL}_${f_tag}_2.fq.gz"

@@ -201,6 +201,21 @@ paths. The streaming runner supplies a three-column, batch-specific cleaned-read
 manifest when it performs spike insertion. Pool generation does not require a
 sample manifest.
 
+After finalizing the shared pools, run the non-deleting end-to-end spike smoke
+test on the retained preprocessing-smoke sample:
+
+```bash
+export PROJECT="$PWD"
+export YACHIDA_ENV="$PWD/config/yachida.env"
+export SAMPLE_ID=SAMD00164833
+sbatch --export=ALL run_yachida_spike_smoke.sbatch
+```
+
+The job generates an independent Fnuc spike and a ten-member community spike,
+both at 0.01% total abundance, validates their paired FASTQs, and profiles each
+with Kraken2/Bracken and MetaPhlAn 4. Synthetic FASTQs are retained for this
+first audit. No cohort-scale processing or deletion is authorized by this job.
+
 ## Seed invariance
 
 ART and seqtk use `stable-seed-v1`, derived from stable sample, target,
