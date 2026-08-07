@@ -220,9 +220,10 @@ PY
   ids2="$tmp/${LABEL}.${f_tag}.ids2.txt"
 
   if [[ "$SAMPLING_MODE" == "single_pass" ]]; then
-    pre="$tmp/${LABEL}.${f_tag}.spike"
-    mv "$pre"_1.fq "$sp1"
-    mv "$pre"_2.fq "$sp2"
+    # sample_paired_pool_multi.sh already writes the canonical filenames
+    # assigned to sp1/sp2. Moving either path onto itself fails in GNU mv.
+    [[ -s "$sp1" ]] || { echo "[ERROR] Missing single-pass R1 selection: $sp1" >&2; exit 1; }
+    [[ -s "$sp2" ]] || { echo "[ERROR] Missing single-pass R2 selection: $sp2" >&2; exit 1; }
   else
     run_in_container "seqtk sample -s ${seed} '$POOL1' ${N} > '$sp1'"
 
