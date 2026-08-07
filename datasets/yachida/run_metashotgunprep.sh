@@ -105,6 +105,13 @@ for directory in qc_before qc_after; do
     cp -a "$sample_output/$directory/." "$qc_out/$directory/"
   fi
 done
+for file in preprocessing_qc.json preprocessing_qc.tsv fastqc_modules_long.tsv preprocessing_qc_warnings.tsv; do
+  [[ -s "$sample_output/$file" ]] && cp -f "$sample_output/$file" "$qc_out/$file"
+done
+if [[ -d "$sample_output/qc_metrics_sources" ]]; then
+  mkdir -p "$qc_out/qc_metrics_sources"
+  cp -a "$sample_output/qc_metrics_sources/." "$qc_out/qc_metrics_sources/"
+fi
 if [[ -s "${UPSTREAM_SIF}.sha256" ]]; then
   upstream_sif_sha256="$(awk 'NR == 1 {print $1}' "${UPSTREAM_SIF}.sha256")"
 else

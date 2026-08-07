@@ -100,6 +100,11 @@ def main() -> None:
     if verified_marker.is_file() and receipt.is_file():
         outputs = verify_receipt(receipt, work)
         print(f"[SKIP] already verified {len(outputs)} retained outputs for {args.sample_id}")
+        if args.delete_inputs_after_verification and work.exists():
+            if not (work / SENTINEL).is_file():
+                raise SystemExit(f"[ERROR] cleanup sentinel missing: {work / SENTINEL}")
+            shutil.rmtree(work)
+            print(f"[CLEANED] deleted previously verified disposable inputs: {work}")
         return
 
     work.mkdir(parents=True, exist_ok=True)
@@ -120,6 +125,8 @@ def main() -> None:
         "RECEIPT": str(receipt),
         "TARGET_CONDITION": row["Target_Condition"],
         "STUDY": row["Study"],
+        "BATCH_ID": row.get("batch_id", ""),
+        "BATCH_POSITION": row.get("batch_position", ""),
     })
     subprocess.run([str(args.runner.resolve())], check=True, env=environment)
     outputs = verify_receipt(receipt, work)

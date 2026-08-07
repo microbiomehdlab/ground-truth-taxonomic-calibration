@@ -98,8 +98,9 @@ documentation and committed scripts use placeholders only; host-specific paths
 remain exclusively in this ignored file.
 
 The pinned MetaShotgunPrep revision is
-`43a80d6e22f1a1ffd33e9d8e6c58ab9d37ad7b0c`. It records configurable output
-placement and deterministic discovery of paired host-depleted reads. The
+`5923619824799457e89bd78b211ed481b7cb6f3f`. It includes configurable output
+placement, deterministic discovery of paired host-depleted reads, and
+standardized persistent QC exports. The
 adapter requires this exact revision and refuses uncommitted changes to tracked
 MetaShotgunPrep files; untracked interpreter caches do not affect validation.
 
@@ -232,6 +233,79 @@ sbatch --export=ALL run_yachida_sampling_integration.sbatch
 This test generates three fractions in both modes and requires identical
 decompressed paired FASTQs and design records. It neither profiles the test
 FASTQs nor modifies the finalized pools or the completed full-sample smoke run.
+
+## 6. Storage-aware full batch lifecycle
+
+The full runner processes one sample per Slurm array task and one target at a
+time. For each target, all currently missing fractions are selected in one
+pool scan; their synthetic FASTQs are then profiled and deleted one pair at a
+time, immediately after both profilers have produced and independently
+verified their compact receipt. Community fractions follow the same lifecycle.
+Raw and cleaned reads remain protected by `stream_sample.py` until all expected
+sample outputs pass a final persistent receipt.
+
+First create the one-time pool pair-count index. This validates synchronized
+mate counts in one scan and avoids rescanning the large finalized pools merely
+to determine their sizes during every fraction. The finalization checksum
+manifest must already exist; the index records its checksum without repeating
+the separate full-file hash scan:
+
+```bash
+export PROJECT="$PWD"
+export SPIKE_ENV="$PWD/work/yachida_67x3/spikein.env"
+sbatch --export=ALL run_index_yachida_pools.sbatch
+```
+
+Configure these ignored site paths in `config/yachida.env`:
+
+```text
+PERSISTENT_RESULTS_ROOT=/private/persistent/yachida/results
+YACHIDA_SCRATCH_ROOT=/disposable/yachida/scratch
+YACHIDA_STATE_DIR=/private/persistent/yachida/state
+```
+
+Validate the first position of a frozen batch without deleting raw or cleaned
+reads:
+
+```bash
+export PROJECT="$PWD"
+export YACHIDA_ENV="$PWD/config/yachida.env"
+bash datasets/yachida/submit_batch.sh \
+  --manifest work/yachida_67x3/metadata/batches/batch_001.tsv \
+  --array-indices 1 \
+  --max-concurrent 1
+```
+
+After inspecting that sample, rerun the full batch with verified cleanup
+enabled. The already verified first task is not recomputed; it only removes its
+sentinel-protected scratch if it still exists:
+
+```bash
+bash datasets/yachida/submit_batch.sh \
+  --manifest work/yachida_67x3/metadata/batches/batch_001.tsv \
+  --max-concurrent 1 \
+  --delete-verified-inputs
+```
+
+Only increase `--max-concurrent` after measuring peak scratch usage. Failed or
+interrupted tasks retain their exact per-sample scratch and resume from verified
+profile receipts. They never authorize deletion.
+
+After every array task completes, independently seal the batch in a short
+Slurm job (the audit rehashes compact retained outputs and should not be run on
+a login node):
+
+```bash
+export PROJECT="$PWD"
+export YACHIDA_ENV="$PWD/config/yachida.env"
+export BATCH_MANIFEST="$PWD/work/yachida_67x3/metadata/batches/batch_001.tsv"
+sbatch --export=ALL run_yachida_batch_audit.sbatch
+```
+
+The audit rehashes every retained output and writes a batch-level `SUCCESS`
+receipt. A sample outside the nested 30-sample independent subset must have one
+baseline and seven community profiles. A nested sample must additionally have
+60 independent profiles (ten taxa by six fractions).
 
 ## Seed invariance
 

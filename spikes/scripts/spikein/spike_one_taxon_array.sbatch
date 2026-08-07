@@ -142,8 +142,14 @@ extract_first_n_lines_gz "$r2" "$nlines" "$bg2"
 design="$WORK/logs/${safe_sample}.spike_design.tsv"
 manifest_part="$WORK/logs/spiked_manifest_parts/${safe_sample}.tsv"
 
-echo -e "sample_id\tlabel\tfraction\tR1\tR2\tR\tN_requested\tN_inserted\tf_hat\tseed\toutput_r1\toutput_r2\tpool1\tpool2" > "$design"
-: > "$manifest_part"
+design_header=$'sample_id\tlabel\tfraction\tR1\tR2\tR\tN_requested\tN_inserted\tf_hat\tseed\toutput_r1\toutput_r2\tpool1\tpool2'
+if [[ ! -f "$design" ]]; then
+  printf '%s\n' "$design_header" > "$design"
+elif [[ "$(head -n 1 "$design")" != "$design_header" ]]; then
+  echo "[ERROR] Existing independent design has an incompatible header: $design" >&2
+  exit 1
+fi
+touch "$manifest_part"
 
 IFS=',' read -r -a fracs <<< "$FRACTIONS"
 
@@ -271,9 +277,16 @@ print("{:.8f}".format(N/(R+N)))
 PY
 )"
 
+  spiked_id="${sample_id}_${LABEL}_${f_tag}"
+  # Fraction-at-a-time streaming reruns replace only their own stable record.
+  awk -F'\t' -v label="$LABEL" -v fraction="$f" \
+    'NR == 1 || !($2 == label && $3 == fraction)' \
+    "$design" > "${design}.tmp" && mv "${design}.tmp" "$design"
+  awk -F'\t' -v id="$spiked_id" '$1 != id' \
+    "$manifest_part" > "${manifest_part}.tmp" && mv "${manifest_part}.tmp" "$manifest_part"
+
   echo -e "${sample_id}\t${LABEL}\t${f}\t${R1n}\t${R2n}\t${R}\t${N}\t${n1}\t${f_hat}\t${seed}\t${out1}\t${out2}\t${POOL1}\t${POOL2}" >> "$design"
 
-  spiked_id="${sample_id}_${LABEL}_${f_tag}"
   if [[ -n "$rest" && "$rest" != "$line" ]]; then
     echo -e "${spiked_id}\t${out1}\t${out2}\t${rest}" >> "$manifest_part"
   else
