@@ -24,8 +24,13 @@ MAMBA_ENV="${MAMBA_ENV:-taxonomic_tools}"
 BIND="${BIND:-}"
 KEEP_TMP="${KEEP_TMP:-0}"
 SAMPLING_MODE="${SAMPLING_MODE:-legacy}"
+FASTQ_ASSEMBLY_MODE="${FASTQ_ASSEMBLY_MODE:-recompress}"
 MULTI_SAMPLER="${MULTI_SAMPLER:-$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/sample_paired_pool_multi.sh}"
 [[ "$SAMPLING_MODE" == legacy || "$SAMPLING_MODE" == single_pass ]] || { echo "[ERROR] SAMPLING_MODE must be legacy or single_pass" >&2; exit 1; }
+[[ "$FASTQ_ASSEMBLY_MODE" == recompress || "$FASTQ_ASSEMBLY_MODE" == gzip_members ]] || {
+  echo "[ERROR] FASTQ_ASSEMBLY_MODE must be recompress or gzip_members" >&2
+  exit 1
+}
 
 if command -v apptainer >/dev/null 2>&1; then
   CTR="apptainer"
@@ -58,6 +63,21 @@ count_reads() {
   else
     awk 'END{print int(NR/4)}' "$fq"
   fi
+}
+
+assemble_spiked_fastq() {
+  local background="$1" spike="$2" output="$3"
+  local temporary="${output}.tmp.$$" member="${output}.spike-member.tmp.$$"
+  rm -f -- "$temporary" "$member"
+  if [[ "$FASTQ_ASSEMBLY_MODE" == recompress ]]; then
+    ( gzip -cd -- "$background"; cat "$spike" ) | gzip -c > "$temporary"
+  else
+    gzip -c -- "$spike" > "$member"
+    cat "$background" "$member" > "$temporary"
+  fi
+  gzip -t -- "$temporary"
+  mv -f -- "$temporary" "$output"
+  rm -f -- "$member"
 }
 
 frac_tag() {
@@ -135,10 +155,15 @@ if (( R1n < R2n )); then R="$R1n"; else R="$R2n"; fi
 [[ "$R" -gt 0 ]] || { echo "[ERROR] Zero pairs for $sample_id" >&2; exit 1; }
 nlines=$((R*4))
 
-bg1="$tmp/bg_1.fq.gz"
-bg2="$tmp/bg_2.fq.gz"
-if [[ "$r1" == *.gz ]]; then zcat "$r1" | head -n "$nlines" | gzip -c > "$bg1"; else head -n "$nlines" "$r1" | gzip -c > "$bg1"; fi
-if [[ "$r2" == *.gz ]]; then zcat "$r2" | head -n "$nlines" | gzip -c > "$bg2"; else head -n "$nlines" "$r2" | gzip -c > "$bg2"; fi
+if [[ "$R1n" -eq "$R2n" && "$r1" == *.gz && "$r2" == *.gz ]]; then
+  bg1="$r1"
+  bg2="$r2"
+else
+  bg1="$tmp/bg_1.fq.gz"
+  bg2="$tmp/bg_2.fq.gz"
+  if [[ "$r1" == *.gz ]]; then zcat "$r1" | head -n "$nlines" | gzip -c > "$bg1"; else head -n "$nlines" "$r1" | gzip -c > "$bg1"; fi
+  if [[ "$r2" == *.gz ]]; then zcat "$r2" | head -n "$nlines" | gzip -c > "$bg2"; else head -n "$nlines" "$r2" | gzip -c > "$bg2"; fi
+fi
 
 design="$WORK/logs/${safe_sample}.${COMMUNITY_LABEL}.design.tsv"
 manifest_part="$WORK/logs/spiked_manifest_parts/${safe_sample}.tsv"
@@ -285,8 +310,8 @@ PY
 
   out1="$WORK/spiked_fastqs/${sample_id}_${COMMUNITY_LABEL}_${f_tag}_1.fq.gz"
   out2="$WORK/spiked_fastqs/${sample_id}_${COMMUNITY_LABEL}_${f_tag}_2.fq.gz"
-  ( zcat "$bg1"; cat "$sp1_all" ) | gzip -c > "$out1"
-  ( zcat "$bg2"; cat "$sp2_all" ) | gzip -c > "$out2"
+  assemble_spiked_fastq "$bg1" "$sp1_all" "$out1"
+  assemble_spiked_fastq "$bg2" "$sp2_all" "$out2"
 
   f_hat="$(python3 - <<PY
 R=int($R); N=int($n1_all)
@@ -316,3 +341,4 @@ done
 
 echo "[OK] Done $sample_id community=$COMMUNITY_LABEL run_fractions=$RUN_FRACTIONS"
 echo "[OK] Sampling mode: $SAMPLING_MODE"
+echo "[OK] FASTQ assembly mode: $FASTQ_ASSEMBLY_MODE"

@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 #SBATCH --job-name=yachida_sampling_test
-#SBATCH --cpus-per-task=4
-#SBATCH --mem=16G
+#SBATCH --cpus-per-task=16
+#SBATCH --mem=64G
 #SBATCH --time=04:00:00
 #SBATCH --output=yachida_sampling_test.%j.out
 #SBATCH --error=yachida_sampling_test.%j.err

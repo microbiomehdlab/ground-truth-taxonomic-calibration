@@ -25,6 +25,25 @@ source "$SPIKE_ENV"
 : "${POOLS_DIR:?set in spike environment}"
 : "${SEED_BASE:?set in spike environment}"
 
+POOLS_DIR="${YACHIDA_POOLS_DIR:-$POOLS_DIR}"
+FASTQ_ASSEMBLY_MODE="${FASTQ_ASSEMBLY_MODE:-recompress}"
+PROFILE_CONCURRENCY="${PROFILE_CONCURRENCY:-1}"
+[[ "$FASTQ_ASSEMBLY_MODE" == recompress || "$FASTQ_ASSEMBLY_MODE" == gzip_members ]] || {
+  echo "[ERROR] FASTQ_ASSEMBLY_MODE must be recompress or gzip_members" >&2
+  exit 1
+}
+[[ "$PROFILE_CONCURRENCY" =~ ^[1-9][0-9]*$ ]] || {
+  echo "[ERROR] PROFILE_CONCURRENCY must be a positive integer" >&2
+  exit 1
+}
+if [[ -n "${SLURM_CPUS_PER_TASK:-}" ]]; then
+  required_cpus=$(( PROFILE_CONCURRENCY * ${K2_THREADS:-16} ))
+  (( SLURM_CPUS_PER_TASK >= required_cpus )) || {
+    echo "[ERROR] PROFILE_CONCURRENCY=$PROFILE_CONCURRENCY requires at least $required_cpus CPUs; Slurm allocated $SLURM_CPUS_PER_TASK" >&2
+    exit 1
+  }
+fi
+
 SAMPLING_MODE=single_pass
 INDEPENDENT_FRACTIONS="${INDEPENDENT_FRACTIONS:-0.0001,0.0005,0.001,0.005,0.01,0.05}"
 COMMUNITY_FRACTIONS="${COMMUNITY_FRACTIONS:-0.0001,0.0005,0.001,0.005,0.01,0.05,0.10}"
@@ -33,13 +52,28 @@ pair_index="$POOLS_DIR/pool_pair_counts.tsv"
   echo "[ERROR] Run index_finalized_pools.sh before streaming samples" >&2
   exit 1
 }
-sha256sum -c "$POOLS_DIR/pool_pair_counts.tsv.sha256"
+expected_pair_index_sha="$(awk 'NR == 1 {print $1}' "$POOLS_DIR/pool_pair_counts.tsv.sha256")"
+actual_pair_index_sha="$(sha256sum "$pair_index" | awk '{print $1}')"
+[[ "$actual_pair_index_sha" == "$expected_pair_index_sha" ]] || {
+  echo "[ERROR] Pool pair-count index checksum mismatch: $pair_index" >&2
+  exit 1
+}
+echo "$pair_index: OK"
 
 sample_root="$PERSISTENT_RESULTS_ROOT/$STUDY/$SAMPLE_ID"
 profile_root="$sample_root/profiles"
 design_root="$sample_root/spike_design"
 quarantine_root="$PERSISTENT_RESULTS_ROOT/quarantine/$STUDY/$SAMPLE_ID"
 mkdir -p "$profile_root" "$design_root/independent" "$design_root/community"
+scratch_usage="$sample_root/scratch_usage.tsv"
+[[ -f "$scratch_usage" ]] || printf 'timestamp_utc\tstage\tbytes\n' > "$scratch_usage"
+
+record_scratch_usage() {
+  local stage="$1" bytes
+  bytes="$(du -sb -- "$SAMPLE_WORK" | awk 'NR == 1 {print $1}')"
+  printf '%s\t%s\t%s\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$stage" "$bytes" >> "$scratch_usage"
+  echo "[SPACE] stage=$stage scratch_bytes=$bytes"
+}
 python3 - "$SAMPLE_WORK" "$sample_root" "$PERSISTENT_QC_ROOT" <<'PY'
 import pathlib, sys
 scratch, results, qc = (pathlib.Path(value).resolve() for value in sys.argv[1:])
@@ -91,6 +125,31 @@ profile_pair() {
   verify_profile "$expected" || { echo "[ERROR] Profile verification failed: $profile_id" >&2; exit 1; }
 }
 
+profile_and_cleanup() {
+  local profile_group="$1" profile_id="$2" r1="$3" r2="$4" description="$5"
+  profile_pair "$profile_group" "$profile_id" "$r1" "$r2"
+  rm -f -- "$r1" "$r2"
+  echo "[CLEANED] Verified $description spike FASTQs: $profile_id"
+}
+
+profile_pids=()
+wait_profile_batch() {
+  local failed=0 pid
+  for pid in "${profile_pids[@]}"; do
+    if ! wait "$pid"; then failed=1; fi
+  done
+  profile_pids=()
+  (( failed == 0 )) || { echo "[ERROR] One or more concurrent profiles failed" >&2; exit 1; }
+}
+
+launch_profile() {
+  profile_and_cleanup "$@" &
+  profile_pids+=("$!")
+  if (( ${#profile_pids[@]} >= PROFILE_CONCURRENCY )); then
+    wait_profile_batch
+  fi
+}
+
 handoff="$SAMPLE_WORK/metashotgunprep_outputs.env"
 reuse_cleaned=0
 if [[ -s "$handoff" ]]; then
@@ -104,6 +163,7 @@ if (( reuse_cleaned == 0 )); then
   bash "$PROJECT/datasets/yachida/run_metashotgunprep.sh"
   source "$handoff"
 fi
+record_scratch_usage preprocessing_complete
 
 profile_pair "$profile_root/baseline" "$SAMPLE_ID" "$CLEAN_R1" "$CLEAN_R2"
 
@@ -167,20 +227,22 @@ if (( is_independent == 1 )); then
         POOL1="$POOLS_DIR/${label}.pool_1.fq" POOL2="$POOLS_DIR/${label}.pool_2.fq" \
         POOL_SIZE="$pool_size" LABEL="$label" FRACTIONS="$(join_by_comma "${missing[@]}")" \
         SEED_BASE="$SEED_BASE" SEED_HELPER="$seed_helper" BIND="${BIND:-}" \
-        SAMPLING_MODE="$SAMPLING_MODE" SLURM_ARRAY_TASK_ID=1 KEEP_TMP=0 \
+        SAMPLING_MODE="$SAMPLING_MODE" FASTQ_ASSEMBLY_MODE="$FASTQ_ASSEMBLY_MODE" \
+        SLURM_ARRAY_TASK_ID=1 KEEP_TMP=0 \
         bash "$PROJECT/spikes/scripts/spikein/spike_one_taxon_array.sbatch"
       mkdir -p "$design_root/independent"
       cp -f "$work/logs/${SAMPLE_ID}.spike_design.tsv" "$design_root/independent/${label}.tsv"
+      record_scratch_usage "independent_${label}_constructed"
       for fraction in "${missing[@]}"; do
         tag="$(frac_tag "$fraction")"
         profile_id="${SAMPLE_ID}_${label}_${tag}"
         profile_group="$profile_root/independent/$label"
         r1="$work/spiked_fastqs/${profile_id}_1.fq.gz"
         r2="$work/spiked_fastqs/${profile_id}_2.fq.gz"
-        profile_pair "$profile_group" "$profile_id" "$r1" "$r2"
-        rm -f -- "$r1" "$r2"
-        echo "[CLEANED] Verified independent spike FASTQs: $profile_id"
+        launch_profile "$profile_group" "$profile_id" "$r1" "$r2" independent
       done
+      wait_profile_batch
+      record_scratch_usage "independent_${label}_profiled"
     fi
   done < "$SPIKE_PANEL"
 else
@@ -214,18 +276,20 @@ if (( ${#missing[@]} > 0 )); then
     POOLS_DIR="$POOLS_DIR" COMMUNITY_LABEL=CRCpanel FULL_FRACTIONS="$COMMUNITY_FRACTIONS" \
     RUN_FRACTIONS="$(join_by_comma "${missing[@]}")" SEED_BASE="$SEED_BASE" SEED_HELPER="$seed_helper" \
     BIND="${BIND:-}" SAMPLING_MODE="$SAMPLING_MODE" SLURM_ARRAY_TASK_ID=1 KEEP_TMP=0 \
+    FASTQ_ASSEMBLY_MODE="$FASTQ_ASSEMBLY_MODE" \
     bash "$PROJECT/spikes/scripts/spikein/spike_community_array.sbatch"
   cp -f "$work/logs/${SAMPLE_ID}.CRCpanel.design.tsv" "$design_root/community/CRCpanel.tsv"
+  record_scratch_usage community_constructed
   for fraction in "${missing[@]}"; do
     tag="$(frac_tag "$fraction")"
     profile_id="${SAMPLE_ID}_CRCpanel_${tag}"
     profile_group="$profile_root/community"
     r1="$work/spiked_fastqs/${profile_id}_1.fq.gz"
     r2="$work/spiked_fastqs/${profile_id}_2.fq.gz"
-    profile_pair "$profile_group" "$profile_id" "$r1" "$r2"
-    rm -f -- "$r1" "$r2"
-    echo "[CLEANED] Verified community spike FASTQs: $profile_id"
+    launch_profile "$profile_group" "$profile_id" "$r1" "$r2" community
   done
+  wait_profile_batch
+  record_scratch_usage community_profiled
 fi
 
 expected_profiles=8
@@ -259,6 +323,8 @@ printf '%s\t%s\n' \
   batch_id "${BATCH_ID:-}" \
   batch_position "${BATCH_POSITION:-}" \
   sampling_mode "$SAMPLING_MODE" \
+  fastq_assembly_mode "$FASTQ_ASSEMBLY_MODE" \
+  profile_concurrency "$PROFILE_CONCURRENCY" \
   independent_subset "$is_independent" \
   expected_profiles "$expected_profiles" \
   observed_profiles "$observed_profiles" \

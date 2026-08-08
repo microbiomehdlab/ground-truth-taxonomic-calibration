@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 #SBATCH --job-name=yachida_full_sample
-#SBATCH --cpus-per-task=16
-#SBATCH --mem=64G
+#SBATCH --cpus-per-task=32
+#SBATCH --mem=128G
 #SBATCH --time=3-00:00:00
 
 set -euo pipefail

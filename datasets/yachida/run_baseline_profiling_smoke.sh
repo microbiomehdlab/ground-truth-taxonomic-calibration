@@ -75,7 +75,7 @@ parameters="$outdir/profiling_parameters.tsv"
 receipt="$outdir/retained_outputs.tsv"
 rm -f -- "$outdir/SUCCESS"
 mapout="$SAMPLE_WORK/${SAMPLE_ID}.baseline_smoke.mapout.bz2"
-container_home="$SAMPLE_WORK/baseline_profile_home"
+container_home="$SAMPLE_WORK/profile_homes/$SAMPLE_ID"
 mkdir -p "$container_home/.cache" "$container_home/.config" "$container_home/.local/share"
 
 appt=(apptainer exec --cleanenv --home "$container_home" "$UPSTREAM_SIF")

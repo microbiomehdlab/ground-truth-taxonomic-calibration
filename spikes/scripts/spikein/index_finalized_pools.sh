@@ -32,7 +32,10 @@ while IFS=$'\t' read -r label _taxon _assembly _fasta _weight _url; do
   echo "[OK] $label: $n1 pairs"
 done < "$SPIKE_PANEL"
 mv -f "$tmp" "$POOLS_DIR/pool_pair_counts.tsv"
-sha256sum "$POOLS_DIR/pool_pair_counts.tsv" > "$POOLS_DIR/pool_pair_counts.tsv.sha256"
+(
+  cd "$POOLS_DIR"
+  sha256sum pool_pair_counts.tsv > pool_pair_counts.tsv.sha256
+)
 sha256sum "$POOLS_DIR/pool_files.sha256" > "$POOLS_DIR/pool_files.sha256.sha256"
 trap - EXIT
 echo "[PASS] Finalized pool pair-count index written: $POOLS_DIR/pool_pair_counts.tsv"

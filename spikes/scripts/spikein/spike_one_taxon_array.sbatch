@@ -22,8 +22,13 @@ MAMBA_ENV="${MAMBA_ENV:-taxonomic_tools}"
 KEEP_TMP="${KEEP_TMP:-0}"
 BIND="${BIND:-}"
 SAMPLING_MODE="${SAMPLING_MODE:-legacy}"
+FASTQ_ASSEMBLY_MODE="${FASTQ_ASSEMBLY_MODE:-recompress}"
 MULTI_SAMPLER="${MULTI_SAMPLER:-$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/sample_paired_pool_multi.sh}"
 [[ "$SAMPLING_MODE" == legacy || "$SAMPLING_MODE" == single_pass ]] || { echo "[ERROR] SAMPLING_MODE must be legacy or single_pass" >&2; exit 1; }
+[[ "$FASTQ_ASSEMBLY_MODE" == recompress || "$FASTQ_ASSEMBLY_MODE" == gzip_members ]] || {
+  echo "[ERROR] FASTQ_ASSEMBLY_MODE must be recompress or gzip_members" >&2
+  exit 1
+}
 
 if command -v apptainer >/dev/null 2>&1; then
   CTR="apptainer"
@@ -74,6 +79,21 @@ with opener_in(inp, "rt", encoding="utf-8", errors="ignore") as fin, gzip.open(o
             break
         fout.write(line)
 PY
+}
+
+assemble_spiked_fastq() {
+  local background="$1" spike="$2" output="$3"
+  local temporary="${output}.tmp.$$" member="${output}.spike-member.tmp.$$"
+  rm -f -- "$temporary" "$member"
+  if [[ "$FASTQ_ASSEMBLY_MODE" == recompress ]]; then
+    ( gzip -cd -- "$background"; cat "$spike" ) | gzip -c > "$temporary"
+  else
+    gzip -c -- "$spike" > "$member"
+    cat "$background" "$member" > "$temporary"
+  fi
+  gzip -t -- "$temporary"
+  mv -f -- "$temporary" "$output"
+  rm -f -- "$member"
 }
 
 task="${SLURM_ARRAY_TASK_ID:?need SLURM_ARRAY_TASK_ID}"
@@ -132,12 +152,18 @@ fi
   exit 1
 }
 
-bg1="$tmp/bg_1.fq.gz"
-bg2="$tmp/bg_2.fq.gz"
 nlines=$((R * 4))
-
-extract_first_n_lines_gz "$r1" "$nlines" "$bg1"
-extract_first_n_lines_gz "$r2" "$nlines" "$bg2"
+if [[ "$R1n" -eq "$R2n" && "$r1" == *.gz && "$r2" == *.gz ]]; then
+  # Reuse complete synchronized gzip mates instead of recompressing them once
+  # for every target.
+  bg1="$r1"
+  bg2="$r2"
+else
+  bg1="$tmp/bg_1.fq.gz"
+  bg2="$tmp/bg_2.fq.gz"
+  extract_first_n_lines_gz "$r1" "$nlines" "$bg1"
+  extract_first_n_lines_gz "$r2" "$nlines" "$bg2"
+fi
 
 design="$WORK/logs/${safe_sample}.spike_design.tsv"
 manifest_part="$WORK/logs/spiked_manifest_parts/${safe_sample}.tsv"
@@ -267,8 +293,8 @@ PY
   out1="$WORK/spiked_fastqs/${sample_id}_${LABEL}_${f_tag}_1.fq.gz"
   out2="$WORK/spiked_fastqs/${sample_id}_${LABEL}_${f_tag}_2.fq.gz"
 
-  ( gzip -cd -- "$bg1"; cat "$sp1" ) | gzip -c > "$out1"
-  ( gzip -cd -- "$bg2"; cat "$sp2" ) | gzip -c > "$out2"
+  assemble_spiked_fastq "$bg1" "$sp1" "$out1"
+  assemble_spiked_fastq "$bg2" "$sp2" "$out2"
 
   f_hat="$(python3 - <<PY
 R=int($R)
@@ -297,3 +323,4 @@ done
 echo "[OK] Done sample=$sample_id label=$LABEL"
 echo "[OK] Design log: $design"
 echo "[OK] Sampling mode: $SAMPLING_MODE"
+echo "[OK] FASTQ assembly mode: $FASTQ_ASSEMBLY_MODE"

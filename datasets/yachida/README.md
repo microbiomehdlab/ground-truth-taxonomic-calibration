@@ -238,11 +238,12 @@ FASTQs nor modifies the finalized pools or the completed full-sample smoke run.
 
 The full runner processes one sample per Slurm array task and one target at a
 time. For each target, all currently missing fractions are selected in one
-pool scan; their synthetic FASTQs are then profiled and deleted one pair at a
-time, immediately after both profilers have produced and independently
-verified their compact receipt. Community fractions follow the same lifecycle.
-Raw and cleaned reads remain protected by `stream_sample.py` until all expected
-sample outputs pass a final persistent receipt.
+pool scan. A configurable number of fractions are then profiled concurrently;
+each synthetic pair is deleted immediately after both profilers have produced
+and independently verified their compact receipt. Community fractions follow
+the same lifecycle. Raw and cleaned reads remain protected by
+`stream_sample.py` until all expected sample outputs pass a final persistent
+receipt.
 
 First create the one-time pool pair-count index. This validates synchronized
 mate counts in one scan and avoids rescanning the large finalized pools merely
@@ -264,6 +265,46 @@ YACHIDA_SCRATCH_ROOT=/disposable/yachida/scratch
 YACHIDA_STATE_DIR=/private/persistent/yachida/state
 ```
 
+Disposable scratch should be on the site's high-throughput scratch filesystem,
+not a nearly full persistent NFS volume. Persistent results, QC and state may
+remain on backed-up storage. Finalized pools may optionally be cached on the
+same fast filesystem. Stage and verify that immutable cache in a Slurm job:
+
+```bash
+export PROJECT="$PWD"
+export SOURCE_POOLS_DIR=/path/to/finalized/spike_pools_readlen100_cov2000
+export DESTINATION_POOLS_DIR=/path/to/ssd/cache/spike_pools_readlen100_cov2000
+sbatch --export=ALL run_stage_yachida_pools.sbatch
+```
+
+Before enabling fast gzip-member assembly, rerun the production integration
+test with profiler equivalence enabled:
+
+```bash
+export PROJECT="$PWD"
+export YACHIDA_ENV="$PWD/config/yachida.env"
+export SAMPLE_ID=SAMD00164833
+export RUN_PROFILE_EQUIVALENCE=1
+sbatch --export=ALL run_yachida_sampling_integration.sbatch
+```
+
+The test requires identical decompressed FASTQs and design records between the
+legacy recompression and concatenated-gzip implementations. It also requires
+identical Kraken2 reports, Bracken tables and MetaPhlAn biological result rows
+for a representative pair. Only after this test passes, configure:
+
+```text
+YACHIDA_POOLS_DIR=/path/to/ssd/cache/spike_pools_readlen100_cov2000
+FASTQ_ASSEMBLY_MODE=gzip_members
+PROFILE_CONCURRENCY=2
+```
+
+The two-way profile configuration requests 32 CPUs and 128 GB per sample task,
+which deliberately targets higher-memory nodes. The runner records scratch
+bytes after preprocessing, construction and verified cleanup in each sample's
+`scratch_usage.tsv`; use the observed maximum plus at least 25% headroom when
+choosing array concurrency.
+
 Validate the first position of a frozen batch without deleting raw or cleaned
 reads:
 
@@ -283,7 +324,7 @@ sentinel-protected scratch if it still exists:
 ```bash
 bash datasets/yachida/submit_batch.sh \
   --manifest work/yachida_67x3/metadata/batches/batch_001.tsv \
-  --max-concurrent 1 \
+  --max-concurrent 5 \
   --delete-verified-inputs
 ```
 

@@ -61,7 +61,7 @@ for mode in legacy single_pass; do
     POOL1="$root/pools/Fnuc.pool_1.fq" POOL2="$root/pools/Fnuc.pool_2.fq" \
     LABEL=Fnuc FRACTIONS="$FRACTIONS" SEED_BASE="$SEED_BASE" \
     SEED_HELPER="$seed_helper" BIND="${BIND:-}" SAMPLING_MODE="$mode" \
-    SLURM_ARRAY_TASK_ID=1 KEEP_TMP=0 \
+    FASTQ_ASSEMBLY_MODE=recompress SLURM_ARRAY_TASK_ID=1 KEEP_TMP=0 \
     bash "$PROJECT/spikes/scripts/spikein/spike_one_taxon_array.sbatch"
 
   echo "[RUN] Community production script: $mode"
@@ -69,9 +69,26 @@ for mode in legacy single_pass; do
     COMMUNITY_TSV="$community" POOLS_DIR="$root/pools" COMMUNITY_LABEL=CRCpanel \
     FULL_FRACTIONS="$FRACTIONS" RUN_FRACTIONS="$FRACTIONS" \
     SEED_BASE="$SEED_BASE" SEED_HELPER="$seed_helper" BIND="${BIND:-}" \
-    SAMPLING_MODE="$mode" SLURM_ARRAY_TASK_ID=1 KEEP_TMP=0 \
+    SAMPLING_MODE="$mode" FASTQ_ASSEMBLY_MODE=recompress SLURM_ARRAY_TASK_ID=1 KEEP_TMP=0 \
     bash "$PROJECT/spikes/scripts/spikein/spike_community_array.sbatch"
 done
+
+echo "[RUN] Independent production script: single_pass + gzip_members"
+env IMG="$IMG" WORK="$root/gzip_members/independent/Fnuc" SAMPLES_TSV="$samples" \
+  POOL1="$root/pools/Fnuc.pool_1.fq" POOL2="$root/pools/Fnuc.pool_2.fq" \
+  LABEL=Fnuc FRACTIONS="$FRACTIONS" SEED_BASE="$SEED_BASE" \
+  SEED_HELPER="$seed_helper" BIND="${BIND:-}" SAMPLING_MODE=single_pass \
+  FASTQ_ASSEMBLY_MODE=gzip_members SLURM_ARRAY_TASK_ID=1 KEEP_TMP=0 \
+  bash "$PROJECT/spikes/scripts/spikein/spike_one_taxon_array.sbatch"
+
+echo "[RUN] Community production script: single_pass + gzip_members"
+env IMG="$IMG" WORK="$root/gzip_members/community/CRCpanel" SAMPLES_TSV="$samples" \
+  COMMUNITY_TSV="$community" POOLS_DIR="$root/pools" COMMUNITY_LABEL=CRCpanel \
+  FULL_FRACTIONS="$FRACTIONS" RUN_FRACTIONS="$FRACTIONS" \
+  SEED_BASE="$SEED_BASE" SEED_HELPER="$seed_helper" BIND="${BIND:-}" \
+  SAMPLING_MODE=single_pass FASTQ_ASSEMBLY_MODE=gzip_members \
+  SLURM_ARRAY_TASK_ID=1 KEEP_TMP=0 \
+  bash "$PROJECT/spikes/scripts/spikein/spike_community_array.sbatch"
 
 compare_fastqs() {
   local legacy_root="$1" single_root="$2" count=0 file relative other left right
@@ -90,17 +107,49 @@ compare_fastqs() {
 
 compare_fastqs "$root/legacy/independent/Fnuc/spiked_fastqs" "$root/single_pass/independent/Fnuc/spiked_fastqs"
 compare_fastqs "$root/legacy/community/CRCpanel/spiked_fastqs" "$root/single_pass/community/CRCpanel/spiked_fastqs"
+compare_fastqs "$root/single_pass/independent/Fnuc/spiked_fastqs" "$root/gzip_members/independent/Fnuc/spiked_fastqs"
+compare_fastqs "$root/single_pass/community/CRCpanel/spiked_fastqs" "$root/gzip_members/community/CRCpanel/spiked_fastqs"
 
 cut -f1-10 "$root/legacy/independent/Fnuc/logs/${SAMPLE_ID}_integration.spike_design.tsv" > "$root/legacy.independent.key.tsv"
 cut -f1-10 "$root/single_pass/independent/Fnuc/logs/${SAMPLE_ID}_integration.spike_design.tsv" > "$root/single.independent.key.tsv"
 cmp "$root/legacy.independent.key.tsv" "$root/single.independent.key.tsv"
 cmp "$root/legacy/community/CRCpanel/logs/${SAMPLE_ID}_integration.CRCpanel.design.tsv" \
     "$root/single_pass/community/CRCpanel/logs/${SAMPLE_ID}_integration.CRCpanel.design.tsv"
+cut -f1-10 "$root/gzip_members/independent/Fnuc/logs/${SAMPLE_ID}_integration.spike_design.tsv" > "$root/gzip_members.independent.key.tsv"
+cmp "$root/single.independent.key.tsv" "$root/gzip_members.independent.key.tsv"
+cmp "$root/single_pass/community/CRCpanel/logs/${SAMPLE_ID}_integration.CRCpanel.design.tsv" \
+    "$root/gzip_members/community/CRCpanel/logs/${SAMPLE_ID}_integration.CRCpanel.design.tsv"
+
+if [[ "${RUN_PROFILE_EQUIVALENCE:-0}" == 1 ]]; then
+  echo "[RUN] Profiler equivalence: recompress versus gzip_members"
+  tag="$(python3 - "${FRACTIONS%%,*}" <<'PY'
+import sys
+value = float(sys.argv[1])
+print("f" + (f"{value:.6f}").rstrip("0").rstrip(".").replace(".", "p"))
+PY
+)"
+  for assembly in single_pass gzip_members; do
+    profile_id="assembly_${assembly}"
+    input="$root/$assembly/independent/Fnuc/spiked_fastqs/${SAMPLE_ID}_integration_Fnuc_${tag}"
+    env YACHIDA_ENV="$YACHIDA_ENV" SAMPLE_ID="$profile_id" SAMPLE_WORK="$root" \
+      PROFILE_R1="${input}_1.fq.gz" PROFILE_R2="${input}_2.fq.gz" \
+      YACHIDA_BASELINE_SMOKE_ROOT="$root/profiles/$assembly" \
+      bash "$PROJECT/datasets/yachida/run_baseline_profiling_smoke.sh"
+  done
+  left="$root/profiles/single_pass/assembly_single_pass"
+  right="$root/profiles/gzip_members/assembly_gzip_members"
+  cmp "$left/assembly_single_pass.kraken2.report" "$right/assembly_gzip_members.kraken2.report"
+  cmp "$left/assembly_single_pass.bracken.S.tsv" "$right/assembly_gzip_members.bracken.S.tsv"
+  grep -v '^#' "$left/assembly_single_pass.metaphlan.tsv" > "$root/metaphlan.recompress.data.tsv"
+  grep -v '^#' "$right/assembly_gzip_members.metaphlan.tsv" > "$root/metaphlan.gzip_members.data.tsv"
+  cmp "$root/metaphlan.recompress.data.tsv" "$root/metaphlan.gzip_members.data.tsv"
+  echo "[OK] Both profilers produced identical biological result tables"
+fi
 
 printf 'field\tvalue\nbackground_pairs\t%s\npool_pairs\t%s\nfractions\t%s\ncomparison\tdecompressed_sha256\n' \
   "$BACKGROUND_PAIRS" "$POOL_PAIRS" "$FRACTIONS" > "$root/integration_test.tsv"
 touch "$root/SUCCESS"
 rm -rf -- "$TEST_ROOT"
 mv "$root" "$TEST_ROOT"
-echo "[PASS] Legacy and single-pass production outputs are sequence-identical"
+echo "[PASS] Sampling and FASTQ-assembly modes produce sequence-identical outputs"
 echo "[OK] Results: $TEST_ROOT"
