@@ -70,7 +70,7 @@ SEED_BASE="${SEED_BASE:-13}"
 MAMBA_ENV="${MAMBA_ENV:-taxonomic_tools}"
 MAX_CONCURRENT="${MAX_CONCURRENT:-5}"
 BIND="${BIND:-}"
-SAMPLING_MODE="${SAMPLING_MODE:-legacy}"
+SAMPLING_MODE="${SAMPLING_MODE:-single_pass}"
 
 # Keep the original full fraction list available for seed reproducibility.
 # FRACTIONS is kept for backward compatibility.

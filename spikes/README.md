@@ -85,34 +85,11 @@ bash spikes/scripts/spikein/finalize_spike_pools.sh \
 
 The final pool FASTQs, `pool_inventory.tsv`, `pool_files.sha256`,
 `pool_settings.tsv`, and `pool_seeds.tsv` are the persistent pool assets.
-
-Before enabling the optional single-read fan-out optimization, benchmark it
-against repeated `seqtk` scans using the same pool records and seeds:
-
-```bash
-bash spikes/scripts/spikein/benchmark_single_pass_sampling.sh \
-  --env work/dataset/spikein.env
-```
-
-The benchmark requires byte-identical R1 and R2 selections for all six
-independent fractions. It does not modify the finalized pools or production
-workflow; production remains on the repeated-scan implementation until this
-equivalence gate passes on the target installation.
-
-The production scripts also contain an opt-in implementation for full-scale
-equivalence testing:
-
-```bash
-SAMPLING_MODE=single_pass
-```
-
-`legacy` remains the generated configuration default. In `single_pass` mode,
-all independently seeded fraction selections consume the same pool byte stream
-through concurrent `seqtk` processes. Seeds, requested pair counts, mate lookup,
-background concatenation, output names, and design records are unchanged. Do
-not use this mode for reported analyses until full-pool independent and
-community outputs have passed byte-level comparison with `legacy` on the target
-installation.
+Production spike generation uses deterministic single-pass paired selection:
+all requested fractions consume one pool stream while retaining independent,
+stable seeds for every sample, target, and fraction. The selected R1 records
+define the synchronized R2 records, and the resulting design tables record the
+requested and inserted pair counts, realized fractions, and seeds.
 
 ## Independent design
 

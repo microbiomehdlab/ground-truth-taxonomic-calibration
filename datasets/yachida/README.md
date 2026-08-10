@@ -209,7 +209,6 @@ test on the retained preprocessing-smoke sample:
 export PROJECT="$PWD"
 export YACHIDA_ENV="$PWD/config/yachida.env"
 export SAMPLE_ID=SAMD00164833
-export SAMPLING_MODE=single_pass
 sbatch --export=ALL run_yachida_spike_smoke.sbatch
 ```
 
@@ -217,11 +216,11 @@ The job generates an independent Fnuc spike and a ten-member community spike,
 both at 0.01% total abundance, validates their paired FASTQs, and profiles each
 with Kraken2/Bracken and MetaPhlAn 4. Synthetic FASTQs are retained for this
 first audit. No cohort-scale processing or deletion is authorized by this job.
-The explicit `single_pass` setting uses the implementation that passed the
-byte-identity benchmark; the smoke provenance records this mode.
+The production workflow uses deterministic paired single-pass selection and
+records its sampling mode and seeds in the retained provenance.
 
-Before cohort-scale use, exercise both sampling modes through the production
-independent and community scripts on small temporary background/pool subsets:
+Before cohort-scale use, run the supplied integration check on small temporary
+background and pool subsets:
 
 ```bash
 export PROJECT="$PWD"
@@ -230,9 +229,8 @@ export SAMPLE_ID=SAMD00164833
 sbatch --export=ALL run_yachida_sampling_integration.sbatch
 ```
 
-This test generates three fractions in both modes and requires identical
-decompressed paired FASTQs and design records. It neither profiles the test
-FASTQs nor modifies the finalized pools or the completed full-sample smoke run.
+This verifies deterministic paired selection, FASTQ construction, and design
+records without modifying the finalized pools or completed smoke run.
 
 ## 6. Storage-aware full batch lifecycle
 
@@ -265,45 +263,33 @@ YACHIDA_SCRATCH_ROOT=/disposable/yachida/scratch
 YACHIDA_STATE_DIR=/private/persistent/yachida/state
 ```
 
-Disposable scratch should be on the site's high-throughput scratch filesystem,
-not a nearly full persistent NFS volume. Persistent results, QC and state may
-remain on backed-up storage. Finalized pools may optionally be cached on the
-same fast filesystem. Stage and verify that immutable cache in a Slurm job:
+Disposable scratch should be on the site's high-throughput scratch filesystem.
+Persistent results, QC, and state should remain on backed-up storage. Finalized
+pools may optionally be cached on the same fast filesystem when site capacity
+permits. Stage and verify that immutable cache in a Slurm job:
 
 ```bash
 export PROJECT="$PWD"
 export SOURCE_POOLS_DIR=/path/to/finalized/spike_pools_readlen100_cov2000
-export DESTINATION_POOLS_DIR=/path/to/ssd/cache/spike_pools_readlen100_cov2000
+export DESTINATION_POOLS_DIR=/path/to/fast/cache/spike_pools_readlen100_cov2000
 sbatch --export=ALL run_stage_yachida_pools.sbatch
 ```
 
-Before enabling fast gzip-member assembly, rerun the production integration
-test with profiler equivalence enabled:
-
-```bash
-export PROJECT="$PWD"
-export YACHIDA_ENV="$PWD/config/yachida.env"
-export SAMPLE_ID=SAMD00164833
-export RUN_PROFILE_EQUIVALENCE=1
-sbatch --export=ALL run_yachida_sampling_integration.sbatch
-```
-
-The test requires identical decompressed FASTQs and design records between the
-legacy recompression and concatenated-gzip implementations. It also requires
-identical Kraken2 reports, Bracken tables and MetaPhlAn biological result rows
-for a representative pair. Only after this test passes, configure:
+Use these production settings:
 
 ```text
-YACHIDA_POOLS_DIR=/path/to/ssd/cache/spike_pools_readlen100_cov2000
+YACHIDA_POOLS_DIR=/path/to/finalized/spike_pools_readlen100_cov2000
 FASTQ_ASSEMBLY_MODE=gzip_members
 PROFILE_CONCURRENCY=2
 ```
 
-The two-way profile configuration requests 32 CPUs and 128 GB per sample task,
-which deliberately targets higher-memory nodes. The runner records scratch
-bytes after preprocessing, construction and verified cleanup in each sample's
+`gzip_members` produces a standards-compliant multi-member gzip file without a
+redundant decompression/recompression pass. The two-way profile configuration
+requests 32 CPUs and 128 GB per sample task. The runner records scratch bytes
+after preprocessing, construction, and verified cleanup in each sample's
 `scratch_usage.tsv`; use the observed maximum plus at least 25% headroom when
-choosing array concurrency.
+choosing array concurrency. Begin with one task, then raise concurrency only
+after confirming filesystem and scheduler capacity.
 
 Validate the first position of a frozen batch without deleting raw or cleaned
 reads:

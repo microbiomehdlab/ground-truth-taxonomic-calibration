@@ -21,7 +21,7 @@ POOL_SIZE="${POOL_SIZE:-}"
 MAMBA_ENV="${MAMBA_ENV:-taxonomic_tools}"
 KEEP_TMP="${KEEP_TMP:-0}"
 BIND="${BIND:-}"
-SAMPLING_MODE="${SAMPLING_MODE:-legacy}"
+SAMPLING_MODE="${SAMPLING_MODE:-single_pass}"
 FASTQ_ASSEMBLY_MODE="${FASTQ_ASSEMBLY_MODE:-recompress}"
 MULTI_SAMPLER="${MULTI_SAMPLER:-$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/sample_paired_pool_multi.sh}"
 [[ "$SAMPLING_MODE" == legacy || "$SAMPLING_MODE" == single_pass ]] || { echo "[ERROR] SAMPLING_MODE must be legacy or single_pass" >&2; exit 1; }

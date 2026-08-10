@@ -18,7 +18,7 @@ source "$SPIKE_ENV"
 if [[ -n "$requested_sampling_mode" ]]; then
   SAMPLING_MODE="$requested_sampling_mode"
 fi
-SAMPLING_MODE="${SAMPLING_MODE:-legacy}"
+SAMPLING_MODE="${SAMPLING_MODE:-single_pass}"
 [[ "$SAMPLING_MODE" == legacy || "$SAMPLING_MODE" == single_pass ]] || {
   echo "[ERROR] SAMPLING_MODE must be legacy or single_pass" >&2
   exit 1

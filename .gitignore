@@ -1,6 +1,8 @@
 # Host-specific configuration
 config/global.env
 config/yachida.env
+config/*.env
+!config/*.env.example
 spikes/spikein.env
 taxonomy/*.env
 

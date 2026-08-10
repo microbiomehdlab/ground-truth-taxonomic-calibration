@@ -26,8 +26,8 @@ source "$SPIKE_ENV"
 : "${SEED_BASE:?set in spike environment}"
 
 POOLS_DIR="${YACHIDA_POOLS_DIR:-$POOLS_DIR}"
-FASTQ_ASSEMBLY_MODE="${FASTQ_ASSEMBLY_MODE:-recompress}"
-PROFILE_CONCURRENCY="${PROFILE_CONCURRENCY:-1}"
+FASTQ_ASSEMBLY_MODE="${FASTQ_ASSEMBLY_MODE:-gzip_members}"
+PROFILE_CONCURRENCY="${PROFILE_CONCURRENCY:-2}"
 [[ "$FASTQ_ASSEMBLY_MODE" == recompress || "$FASTQ_ASSEMBLY_MODE" == gzip_members ]] || {
   echo "[ERROR] FASTQ_ASSEMBLY_MODE must be recompress or gzip_members" >&2
   exit 1
