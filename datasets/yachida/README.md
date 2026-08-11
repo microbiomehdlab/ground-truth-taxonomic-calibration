@@ -334,6 +334,24 @@ receipt. A sample outside the nested 30-sample independent subset must have one
 baseline and seven community profiles. A nested sample must additionally have
 60 independent profiles (ten taxa by six fractions).
 
+### Optional target-abundance equivalence audit
+
+To compare two independently generated result trees for the same nested sample,
+use the read-only target audit. It resolves profiler-specific aliases, checks all
+60 independent and 70 community target values, and reports abundances in percent:
+
+```bash
+python3 datasets/yachida/compare_target_abundances.py \
+  --reference-root /path/to/reference/results/YachidaS_2019/SAMPLE_ID \
+  --candidate-root /path/to/candidate/results/YachidaS_2019/SAMPLE_ID \
+  --panel spikes/spike_panel.tsv \
+  --aliases examples/spike_taxon_aliases.csv \
+  --output work/private_validation/SAMPLE_ID.target_abundance_comparison.tsv \
+  --tolerance-pp 0.001
+```
+
+The generated comparison is local run output and is ignored by Git.
+
 ## Seed invariance
 
 ART and seqtk use `stable-seed-v1`, derived from stable sample, target,
