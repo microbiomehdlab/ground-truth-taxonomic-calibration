@@ -338,7 +338,8 @@ baseline and seven community profiles. A nested sample must additionally have
 
 To compare two independently generated result trees for the same nested sample,
 use the read-only target audit. It resolves profiler-specific aliases, checks all
-60 independent and 70 community target values, and reports abundances in percent:
+60 independent and 70 community target values per profiler, treats features
+absent from a profiler table as zero abundance, and reports values in percent:
 
 ```bash
 python3 datasets/yachida/compare_target_abundances.py \

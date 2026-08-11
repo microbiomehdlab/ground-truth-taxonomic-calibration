@@ -70,7 +70,11 @@ def metaphlan_abundances(path):
 
 def lookup(values, names):
     matches = [(name, values[normalize_name(name)]) for name in names if normalize_name(name) in values]
-    if len(matches) != 1:
+    # Profiler tables conventionally omit zero-abundance features. Absence is
+    # therefore a valid zero, whereas more than one matching alias is ambiguous.
+    if not matches:
+        return "", 0.0, 0
+    if len(matches) > 1:
         return "", math.nan, len(matches)
     return matches[0][0], matches[0][1], 1
 
@@ -114,9 +118,10 @@ def main():
                 names = target["aliases"][tool]
                 reference_name, reference_value, reference_matches = lookup(reference_values, names)
                 candidate_name, candidate_value, candidate_matches = lookup(candidate_values, names)
-                difference = abs(candidate_value - reference_value) if reference_matches == candidate_matches == 1 else math.nan
+                unambiguous = reference_matches <= 1 and candidate_matches <= 1
+                difference = abs(candidate_value - reference_value) if unambiguous else math.nan
                 relative_difference = (difference / abs(reference_value) * 100.0
-                                       if reference_matches == candidate_matches == 1 and reference_value != 0 else math.nan)
+                                       if unambiguous and reference_value != 0 else math.nan)
                 rows.append({
                     "design": design, "profile_id": profile_id,
                     "spike_fraction": f"{fraction_from_id(profile_id):.10g}",
@@ -125,7 +130,7 @@ def main():
                     "reference_abundance_pct": reference_value, "candidate_abundance_pct": candidate_value,
                     "absolute_difference_pp": difference, "relative_difference_pct": relative_difference,
                     "reference_matches": reference_matches, "candidate_matches": candidate_matches,
-                    "within_tolerance": reference_matches == candidate_matches == 1 and difference <= args.tolerance_pp,
+                    "within_tolerance": unambiguous and difference <= args.tolerance_pp,
                 })
     if not rows:
         raise SystemExit("[ERROR] No spiked profiles were found")
