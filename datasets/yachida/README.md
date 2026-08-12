@@ -107,9 +107,17 @@ MetaShotgunPrep files; untracked interpreter caches do not affect validation.
 `run_metashotgunprep.sh` adapts the streaming R1/R2 inputs to MetaShotgunPrep's
 required directory layout without duplicating the downloads. It verifies the
 pinned MetaShotgunPrep revision and every Bowtie2 index component, deliberately
-does not request MetaShotgunPrep raw deletion, validates both cleaned gzip
-mates, preserves compact FastQC/log provenance, and writes
+does not request MetaShotgunPrep raw deletion, performs a complete
+FASTQ-structure and normalized mate-identifier synchronization scan, preserves
+the resulting pair count/read-characteristics table with compact FastQC/log
+provenance, and writes
 `metashotgunprep_outputs.env` for downstream profiling.
+
+The default technical eligibility rule is intentionally non-selective:
+`MIN_POST_QC_PAIRS=1` retains every non-empty, structurally valid synchronized
+library. If a higher sequencing-depth exclusion is scientifically required,
+set and document it before processing any cohort; do not choose it after
+examining biomarker results.
 
 For every sample in the current batch:
 
@@ -231,6 +239,30 @@ sbatch --export=ALL run_yachida_sampling_integration.sbatch
 
 This verifies deterministic paired selection, FASTQ construction, and design
 records without modifying the finalized pools or completed smoke run.
+
+### Required pre-production gate
+
+After the smoke and integration tests, run the one-time fail-closed gate before
+submitting any additional cohort batches:
+
+```bash
+export PROJECT="$PWD"
+export YACHIDA_ENV="$PWD/config/yachida.env"
+export SPIKE_ENV="$PWD/work/yachida_67x3/spikein.env"
+AUDIT_JOB=$(sbatch --parsable --export=ALL \
+  run_yachida_preproduction_audit.sbatch)
+sacct -j "$AUDIT_JOB" --format=JobID,JobName,State,Elapsed,ExitCode
+```
+
+The job verifies the frozen 67/67/67 pilot, nested 10/10/10 independent subset,
+ten-target panel, synchronized pool-count index, checksum-manifest seal, all 20
+pool file checksums, complete pool FASTQ/mate-ID integrity, and deterministic
+exact community allocation for integer totals from 1 through 1000. It writes a
+private, Git-ignored report and pool read-characteristics tables under
+`work/yachida_67x3/preproduction_audit/`. A `COMPLETED` Slurm state, exit code
+`0:0`, and `SUCCESS` file are required before production. Set
+`VERIFY_POOL_CONTENTS=0` only for subsequent repeat audits after the same pool
+files have already passed the full checksum scan.
 
 ## 6. Storage-aware full batch lifecycle
 

@@ -3,6 +3,7 @@
 set -euo pipefail
 IFS=$'\n\t'
 umask 002
+ROOT="${PROJECT:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd -P)}"
 
 if [[ -n "${YACHIDA_ENV:-}" ]]; then
   [[ -s "$YACHIDA_ENV" ]] || { echo "[ERROR] Missing YACHIDA_ENV: $YACHIDA_ENV" >&2; exit 1; }
@@ -22,6 +23,7 @@ fi
 : "${PERSISTENT_QC_ROOT:?set in YACHIDA_ENV}"
 
 PREPROCESS_THREADS="${PREPROCESS_THREADS:-16}"
+MIN_POST_QC_PAIRS="${MIN_POST_QC_PAIRS:-1}"
 pipeline="$METASHOTGUNPREP_ROOT/pipeline_preprocess.py"
 [[ -s "$pipeline" ]] || { echo "[ERROR] Missing MetaShotgunPrep entry point: $pipeline" >&2; exit 1; }
 [[ -s "$UPSTREAM_SIF" ]] || { echo "[ERROR] Missing upstream image: $UPSTREAM_SIF" >&2; exit 1; }
@@ -89,6 +91,12 @@ for file in "$clean_r1" "$clean_r2"; do
   [[ -s "$file" ]] || { echo "[ERROR] Cleaned mate missing/empty: $file" >&2; exit 1; }
   gzip -t -- "$file"
 done
+paired_integrity="$sample_output/paired_fastq_integrity.tsv"
+python3 "$ROOT/scripts/validate_paired_fastq.py" \
+  --r1 "$clean_r1" \
+  --r2 "$clean_r2" \
+  --minimum-pairs "$MIN_POST_QC_PAIRS" \
+  --output "$paired_integrity"
 grep -q 'Pipeline completed successfully' "$sample_output/pipeline.log" || {
   echo "[ERROR] MetaShotgunPrep completion marker absent: $sample_output/pipeline.log" >&2
   exit 1
@@ -105,7 +113,7 @@ for directory in qc_before qc_after; do
     cp -a "$sample_output/$directory/." "$qc_out/$directory/"
   fi
 done
-for file in preprocessing_qc.json preprocessing_qc.tsv fastqc_modules_long.tsv preprocessing_qc_warnings.tsv; do
+for file in preprocessing_qc.json preprocessing_qc.tsv fastqc_modules_long.tsv preprocessing_qc_warnings.tsv paired_fastq_integrity.tsv; do
   [[ -s "$sample_output/$file" ]] && cp -f "$sample_output/$file" "$qc_out/$file"
 done
 if [[ -d "$sample_output/qc_metrics_sources" ]]; then
@@ -126,6 +134,7 @@ host_index_prefix	$HOST_INDEX
 mode	all
 threads	$PREPROCESS_THREADS
 minimum_length	60
+minimum_post_qc_pairs	$MIN_POST_QC_PAIRS
 EOF
 
 # Shell-safe handoff consumed by the site runner.

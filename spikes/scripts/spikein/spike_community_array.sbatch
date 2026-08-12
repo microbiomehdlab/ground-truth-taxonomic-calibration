@@ -26,6 +26,8 @@ KEEP_TMP="${KEEP_TMP:-0}"
 SAMPLING_MODE="${SAMPLING_MODE:-single_pass}"
 FASTQ_ASSEMBLY_MODE="${FASTQ_ASSEMBLY_MODE:-recompress}"
 MULTI_SAMPLER="${MULTI_SAMPLER:-$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/sample_paired_pool_multi.sh}"
+ALLOCATOR="${ALLOCATOR:-$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/allocate_community_reads.py}"
+[[ -s "$ALLOCATOR" ]] || { echo "[ERROR] Missing community allocator: $ALLOCATOR" >&2; exit 1; }
 [[ "$SAMPLING_MODE" == legacy || "$SAMPLING_MODE" == single_pass ]] || { echo "[ERROR] SAMPLING_MODE must be legacy or single_pass" >&2; exit 1; }
 [[ "$FASTQ_ASSEMBLY_MODE" == recompress || "$FASTQ_ASSEMBLY_MODE" == gzip_members ]] || {
   echo "[ERROR] FASTQ_ASSEMBLY_MODE must be recompress or gzip_members" >&2
@@ -149,6 +151,20 @@ PY
 done < "$COMMUNITY_TSV"
 (( ${#labels[@]} > 0 )) || { echo "[ERROR] COMMUNITY_TSV has no taxa" >&2; exit 1; }
 
+write_allocation() {
+  local total="$1" output="$2" lab w i
+  local arguments=(--total "$total")
+  for i in "${!labels[@]}"; do
+    lab="${labels[$i]}"; w="${weights[$i]}"
+    arguments+=(--member "${lab}:${w}")
+  done
+  python3 "$ALLOCATOR" "${arguments[@]}" > "$output"
+  [[ "$(awk 'NR > 1 {sum += $2} END {print sum+0}' "$output")" -eq "$total" ]] || {
+    echo "[ERROR] Community allocation does not sum to $total" >&2
+    exit 1
+  }
+}
+
 R1n="$(count_reads "$r1")"
 R2n="$(count_reads "$r2")"
 if (( R1n < R2n )); then R="$R1n"; else R="$R2n"; fi
@@ -195,22 +211,15 @@ R=int($R); f=float("$f"); print(int(round((f/(1.0-f))*R)))
 PY
 )"
     (( N_total <= 0 )) && continue
-    f_tag="$(frac_tag "$f")"; allocated=0
-    for i in "${!labels[@]}"; do
-      lab="${labels[$i]}"; w="${weights[$i]}"
-      if (( i == ${#labels[@]} - 1 )); then
-        Ni=$((N_total-allocated))
-      else
-        Ni="$(python3 - <<PY
-N=int($N_total); w=float("$w"); s=float("$sumw"); print(int(round(N*(w/s))))
-PY
-)"
-        (( Ni < 0 )) && Ni=0; allocated=$((allocated+Ni))
-      fi
+    f_tag="$(frac_tag "$f")"
+    allocation="$tmp/${COMMUNITY_LABEL}.${f_tag}.allocation.tsv"
+    write_allocation "$N_total" "$allocation"
+    while IFS=$'\t' read -r lab Ni; do
+      [[ "$lab" == label ]] && continue
       (( Ni <= 0 )) && continue
       seed="$(python3 "$SEED_HELPER" --base "$SEED_BASE" --namespace spike-community-v1 "$sample_id" "$COMMUNITY_LABEL" "$canonical_fraction" "$lab")"
       printf '%s\t%s\t%s\n' "${lab}.${f_tag}.sp" "$seed" "$Ni" >> "${request_files[$lab]}"
-    done
+    done < "$allocation"
   done
   for lab in "${labels[@]}"; do
     bash "$MULTI_SAMPLER" "$IMG" "$POOLS_DIR/${lab}.pool_1.fq" "$POOLS_DIR/${lab}.pool_2.fq" \
@@ -245,25 +254,10 @@ PY
   sp2_all="$tmp/${COMMUNITY_LABEL}.${f_tag}.spike_2.fq"
   : > "$sp1_all"; : > "$sp2_all"
   member_seeds=()
-
-  allocated=0
-  for i in "${!labels[@]}"; do
-    lab="${labels[$i]}"
-    w="${weights[$i]}"
-
-    if (( i == ${#labels[@]} - 1 )); then
-      Ni=$((N_total - allocated))
-    else
-      Ni="$(python3 - <<PY
-import math
-N=int($N_total)
-w=float("$w"); s=float("$sumw")
-print(int(round(N*(w/s))))
-PY
-)"
-      (( Ni < 0 )) && Ni=0
-      allocated=$((allocated + Ni))
-    fi
+  allocation="$tmp/${COMMUNITY_LABEL}.${f_tag}.allocation.tsv"
+  [[ -s "$allocation" ]] || write_allocation "$N_total" "$allocation"
+  while IFS=$'\t' read -r lab Ni; do
+    [[ "$lab" == label ]] && continue
     (( Ni <= 0 )) && continue
 
     p1="$POOLS_DIR/${lab}.pool_1.fq"
@@ -298,7 +292,7 @@ PY
 
     cat "$sp1" >> "$sp1_all"
     cat "$sp2" >> "$sp2_all"
-  done
+  done < "$allocation"
 
   n1_all="$(awk 'END{print int(NR/4)}' "$sp1_all")"
   n2_all="$(awk 'END{print int(NR/4)}' "$sp2_all")"

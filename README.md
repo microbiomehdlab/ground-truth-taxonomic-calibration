@@ -134,7 +134,8 @@ For low-disk external validation with the curated Yachida 2019 PRJDB4176 cohort,
 the frozen-manifest and verified streaming procedure in
 [`datasets/yachida/README.md`](datasets/yachida/README.md). Sample selection and
 spike seeds remain invariant when samples are processed and deleted one at a
-time.
+time. That procedure includes a required one-time pre-production audit of the
+frozen manifests, finalized pools, checksums, and integer community allocation.
 
 Create a tab-separated sample manifest with:
 
