@@ -64,7 +64,27 @@ python3 scripts/select_samples_deterministically.py \
 This selects 10 Control, 10 Adenoma, and 10 CRC samples from within the frozen
 201-sample pilot. The recommended first analysis uses all 201 samples for
 baseline and community-spike profiling, and these nested 30 samples for the
-more expensive independent-species design.
+more expensive independent-species design. This second selection is balanced
+by condition but is not rematched on age or sex. It uses no profiling,
+recovery, or biomarker outcome.
+
+Before production, freeze both selection stages in an unambiguous provenance
+table and inspect descriptive covariate balance:
+
+```bash
+python3 datasets/yachida/audit_selection_balance.py \
+  --pilot-manifest work/yachida_67x3/metadata/pilot_67_per_condition.tsv \
+  --independent-manifest work/yachida_67x3/metadata/independent_10_per_condition.tsv \
+  --output-dir work/yachida_67x3/selection_audit
+
+cd work/yachida_67x3/selection_audit
+sha256sum -c SHA256SUMS
+```
+
+The generated report is descriptive rather than an outcome-dependent pass/fail
+test. Decide whether the frozen subset is acceptable before examining recovery
+or biomarker results. The output is private run evidence under Git-ignored
+`work/`.
 
 ## 4. Create processing batches of at most 10
 
@@ -365,6 +385,23 @@ The audit rehashes every retained output and writes a batch-level `SUCCESS`
 receipt. A sample outside the nested 30-sample independent subset must have one
 baseline and seven community profiles. A nested sample must additionally have
 60 independent profiles (ten taxa by six fractions).
+
+When a validation rule is added after early samples were completed, audit which
+samples lack its persistent evidence rather than assuming uniform processing:
+
+```bash
+source config/yachida.env
+python3 datasets/yachida/audit_processing_consistency.py \
+  --manifest work/yachida_67x3/metadata/pilot_batched.tsv \
+  --results-root "$PERSISTENT_RESULTS_ROOT" \
+  --qc-root "$PERSISTENT_QC_ROOT" \
+  --output work/yachida_67x3/processing_consistency.tsv
+```
+
+Rows marked `reprocess_with_final_pipeline` have completed results but lack the
+final paired-FASTQ integrity record. Reprocess those samples from verified raw
+inputs before forming the manuscript dataset. Do not mix them silently with
+final-pipeline outputs.
 
 ### Optional target-abundance equivalence audit
 

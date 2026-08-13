@@ -40,6 +40,8 @@ required=(
   spikes/scripts/spikein/stable_seed.py
   datasets/yachida/build_manifest.py
   datasets/yachida/build_pilot_design.py
+  datasets/yachida/audit_selection_balance.py
+  datasets/yachida/audit_processing_consistency.py
   datasets/yachida/stream_sample.py
   datasets/yachida/run_metashotgunprep.sh
   datasets/yachida/yachida.env.example
