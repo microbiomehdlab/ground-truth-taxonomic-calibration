@@ -9,6 +9,12 @@ ROOT = pathlib.Path(__file__).resolve().parents[1]
 
 
 class PreproductionIntegrityTests(unittest.TestCase):
+    def test_preproduction_gate_clears_stale_success_marker(self):
+        script = (ROOT / "run_yachida_preproduction_audit.sh").read_text()
+        marker_cleanup = 'rm -f -- "$AUDIT_DIR/SUCCESS"'
+        self.assertIn(marker_cleanup, script)
+        self.assertLess(script.index(marker_cleanup), script.index("python3 \"$ROOT/datasets/yachida/preproduction_audit.py\""))
+
     def test_generic_bracken_threshold_is_not_cpu_thread_count(self):
         script = (ROOT / "workflows/kraken2_bracken/classify_bracken.sbatch").read_text()
         self.assertIn('BRACKEN_THRESHOLD="${BRACKEN_THRESHOLD:-10}"', script)
