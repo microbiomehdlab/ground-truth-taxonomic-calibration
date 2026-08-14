@@ -28,12 +28,17 @@ source "$SPIKE_ENV"
 POOLS_DIR="${YACHIDA_POOLS_DIR:-$POOLS_DIR}"
 FASTQ_ASSEMBLY_MODE="${FASTQ_ASSEMBLY_MODE:-gzip_members}"
 PROFILE_CONCURRENCY="${PROFILE_CONCURRENCY:-2}"
+BRACKEN_THRESHOLD="${BRACKEN_THRESHOLD:-10}"
 [[ "$FASTQ_ASSEMBLY_MODE" == recompress || "$FASTQ_ASSEMBLY_MODE" == gzip_members ]] || {
   echo "[ERROR] FASTQ_ASSEMBLY_MODE must be recompress or gzip_members" >&2
   exit 1
 }
 [[ "$PROFILE_CONCURRENCY" =~ ^[1-9][0-9]*$ ]] || {
   echo "[ERROR] PROFILE_CONCURRENCY must be a positive integer" >&2
+  exit 1
+}
+[[ "$BRACKEN_THRESHOLD" == 10 ]] || {
+  echo "[ERROR] The frozen Yachida protocol requires BRACKEN_THRESHOLD=10; observed $BRACKEN_THRESHOLD" >&2
   exit 1
 }
 if [[ -n "${SLURM_CPUS_PER_TASK:-}" ]]; then
@@ -325,6 +330,7 @@ printf '%s\t%s\n' \
   sampling_mode "$SAMPLING_MODE" \
   fastq_assembly_mode "$FASTQ_ASSEMBLY_MODE" \
   profile_concurrency "$PROFILE_CONCURRENCY" \
+  bracken_threshold "$BRACKEN_THRESHOLD" \
   independent_subset "$is_independent" \
   expected_profiles "$expected_profiles" \
   observed_profiles "$observed_profiles" \

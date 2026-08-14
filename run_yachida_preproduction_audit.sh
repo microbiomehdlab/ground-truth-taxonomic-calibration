@@ -9,6 +9,11 @@ YACHIDA_ENV="${YACHIDA_ENV:-$ROOT/config/yachida.env}"
 source "$YACHIDA_ENV"
 
 : "${YACHIDA_POOLS_DIR:?set YACHIDA_POOLS_DIR}"
+: "${BRACKEN_THRESHOLD:?set BRACKEN_THRESHOLD in YACHIDA_ENV}"
+[[ "$BRACKEN_THRESHOLD" == 10 ]] || {
+  echo "[ERROR] The frozen Yachida protocol requires BRACKEN_THRESHOLD=10; observed $BRACKEN_THRESHOLD" >&2
+  exit 1
+}
 SPIKE_ENV="${SPIKE_ENV:-$ROOT/work/yachida_67x3/spikein.env}"
 [[ -s "$SPIKE_ENV" ]] || { echo "[ERROR] Missing spike environment: $SPIKE_ENV" >&2; exit 1; }
 source "$SPIKE_ENV"

@@ -41,6 +41,11 @@ PAIRED="${PAIRED:-false}"
 # -----------------------------
 READ_LEN="${READ_LEN:-150}"
 THREADS="${K2_THREADS:-${SLURM_CPUS_PER_TASK:-4}}"
+BRACKEN_THRESHOLD="${BRACKEN_THRESHOLD:-10}"
+[[ "$BRACKEN_THRESHOLD" =~ ^[1-9][0-9]*$ ]] || {
+  echo "[error] BRACKEN_THRESHOLD must be a positive integer" >&2
+  exit 1
+}
 MEM_GB="${K2_MEM:-${SLURM_MEM_PER_NODE:-16}}"
 
 # Prefer direct tool execution in the container.
@@ -224,7 +229,7 @@ else
   echo "[info] single-end"
 fi
 echo "[info] OUT_DIR=$OUT_DIR"
-echo "[info] THREADS=$THREADS MEM_GB=$MEM_GB READ_LEN=$READ_LEN"
+echo "[info] THREADS=$THREADS MEM_GB=$MEM_GB READ_LEN=$READ_LEN BRACKEN_THRESHOLD=$BRACKEN_THRESHOLD"
 echo "[info] RUNTIME_MODE=$RUNTIME_MODE"
 
 {
@@ -240,7 +245,7 @@ echo "[info] RUNTIME_MODE=$RUNTIME_MODE"
 
 cat > "$PARAMS_JSON" <<EOF
 {"sample":"$SAMPLE","dataset":"$DATASET","paired":"$PAIRED",
- "r1":"$R1","r2":"${R2:-}","threads":$THREADS,"mem_gb":$MEM_GB,
+ "r1":"$R1","r2":"${R2:-}","threads":$THREADS,"mem_gb":$MEM_GB,"bracken_threshold":$BRACKEN_THRESHOLD,
  "kraken_db":"$K2_DB","read_len":$READ_LEN,"runtime_mode":"$RUNTIME_MODE"}
 EOF
 
@@ -291,7 +296,7 @@ run_tool bracken \
   -o "$BRACKEN_S" \
   -r "$READ_LEN" \
   -l S \
-  -t "$THREADS"
+  -t "$BRACKEN_THRESHOLD"
 
 # -----------------------------
 # Optional Bracken genus
@@ -303,7 +308,7 @@ if [[ "$KEEP_BRACKEN_GENUS" == "1" ]]; then
     -o "$BRACKEN_G" \
     -r "$READ_LEN" \
     -l G \
-    -t "$THREADS"
+    -t "$BRACKEN_THRESHOLD"
 fi
 
 # -----------------------------

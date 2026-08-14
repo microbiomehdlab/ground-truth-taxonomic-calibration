@@ -21,6 +21,18 @@ BRACKEN_THRESHOLD="${BRACKEN_THRESHOLD:-10}"
 METAPHLAN_INDEX="${METAPHLAN_INDEX:-mpa_vJan25_CHOCOPhlAnSGB_202503}"
 PROFILE_ROOT="${YACHIDA_BASELINE_SMOKE_ROOT:?set the persistent baseline-smoke output root}"
 
+[[ "$K2_THREADS" =~ ^[1-9][0-9]*$ ]] || { echo "[ERROR] K2_THREADS must be a positive integer" >&2; exit 1; }
+[[ "$MPA_THREADS" =~ ^[1-9][0-9]*$ ]] || { echo "[ERROR] MPA_THREADS must be a positive integer" >&2; exit 1; }
+[[ "$READ_LEN" =~ ^[1-9][0-9]*$ ]] || { echo "[ERROR] READ_LEN must be a positive integer" >&2; exit 1; }
+[[ "$BRACKEN_THRESHOLD" =~ ^[1-9][0-9]*$ ]] || {
+  echo "[ERROR] BRACKEN_THRESHOLD must be a positive integer" >&2
+  exit 1
+}
+[[ "$BRACKEN_THRESHOLD" == 10 ]] || {
+  echo "[ERROR] The frozen Yachida protocol requires BRACKEN_THRESHOLD=10; observed $BRACKEN_THRESHOLD" >&2
+  exit 1
+}
+
 [[ "$SAMPLE_ID" =~ ^[A-Za-z0-9._-]+$ ]] || { echo "[ERROR] Unsafe sample ID: $SAMPLE_ID" >&2; exit 1; }
 [[ -s "$UPSTREAM_SIF" ]] || { echo "[ERROR] Missing upstream image: $UPSTREAM_SIF" >&2; exit 1; }
 command -v apptainer >/dev/null 2>&1 || { echo "[ERROR] apptainer is unavailable" >&2; exit 1; }

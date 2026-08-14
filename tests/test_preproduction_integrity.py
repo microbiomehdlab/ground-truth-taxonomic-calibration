@@ -9,6 +9,12 @@ ROOT = pathlib.Path(__file__).resolve().parents[1]
 
 
 class PreproductionIntegrityTests(unittest.TestCase):
+    def test_generic_bracken_threshold_is_not_cpu_thread_count(self):
+        script = (ROOT / "workflows/kraken2_bracken/classify_bracken.sbatch").read_text()
+        self.assertIn('BRACKEN_THRESHOLD="${BRACKEN_THRESHOLD:-10}"', script)
+        self.assertIn('-t "$BRACKEN_THRESHOLD"', script)
+        self.assertNotIn('-t "$THREADS"', script)
+
     def test_community_allocation_is_exact_and_nonnegative(self):
         script = ROOT / "spikes/scripts/spikein/allocate_community_reads.py"
         for total in range(1, 101):

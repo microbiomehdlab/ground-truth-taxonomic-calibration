@@ -139,6 +139,12 @@ library. If a higher sequencing-depth exclusion is scientifically required,
 set and document it before processing any cohort; do not choose it after
 examining biomarker results.
 
+The frozen Yachida profiling protocol uses `BRACKEN_THRESHOLD=10`. This is
+Bracken's minimum read-count threshold (`-t`), not a thread count. Kraken2 CPU
+allocation is controlled independently by `K2_THREADS`. The pre-production
+gate and per-profile runner both fail if the threshold differs from 10, and
+every profile records it in `profiling_parameters.tsv`.
+
 For every sample in the current batch:
 
 1. download both FASTQs and verify archive-provided MD5 and byte counts;
