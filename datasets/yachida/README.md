@@ -338,18 +338,20 @@ Use these production settings:
 ```text
 YACHIDA_POOLS_DIR=/path/to/finalized/spike_pools_readlen100_cov2000
 FASTQ_ASSEMBLY_MODE=gzip_members
-PROFILE_CONCURRENCY=2
+PROFILE_CONCURRENCY=1
 ```
 
 `gzip_members` produces a standards-compliant multi-member gzip file without a
-redundant decompression/recompression pass. The two-way profile configuration
-requests 32 CPUs and 96 GB per sample task. This allocation accommodates two
-concurrent profiler processes while allowing tasks to run on cluster nodes with
-approximately 126 GB RAM; it changes scheduling only, not analytical output.
+redundant decompression/recompression pass. The production configuration runs
+one profiler at a time and requests 16 CPUs and 60 GB per sample task. Completed
+two-way profiling jobs consistently peaked near 69.5 GiB; serializing profiles
+removes the duplicated profiler/database memory footprint and permits two
+sample tasks to share a 126 GB, 40-CPU node. This changes scheduling only, not
+analytical output.
 The runner records scratch bytes
 after preprocessing, construction, and verified cleanup in each sample's
 `scratch_usage.tsv`; use the observed maximum plus at least 25% headroom when
-choosing array concurrency. Begin with one task, then raise concurrency only
+choosing array concurrency. Begin conservatively, then raise concurrency only
 after confirming filesystem and scheduler capacity.
 
 Validate the first position of a frozen batch without deleting raw or cleaned

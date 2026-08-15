@@ -11,8 +11,10 @@ ROOT = pathlib.Path(__file__).resolve().parents[1]
 class PreproductionIntegrityTests(unittest.TestCase):
     def test_yachida_production_resources_fit_standard_nodes(self):
         script = (ROOT / "run_yachida_batch_sample.sbatch").read_text()
-        self.assertIn("#SBATCH --cpus-per-task=32", script)
-        self.assertIn("#SBATCH --mem=96G", script)
+        self.assertIn("#SBATCH --cpus-per-task=16", script)
+        self.assertIn("#SBATCH --mem=60G", script)
+        runner = (ROOT / "datasets/yachida/run_full_streaming_sample.sh").read_text()
+        self.assertIn('PROFILE_CONCURRENCY="${PROFILE_CONCURRENCY:-1}"', runner)
 
     def test_preproduction_gate_clears_stale_success_marker(self):
         script = (ROOT / "run_yachida_preproduction_audit.sh").read_text()
