@@ -9,6 +9,11 @@ ROOT = pathlib.Path(__file__).resolve().parents[1]
 
 
 class PreproductionIntegrityTests(unittest.TestCase):
+    def test_yachida_production_resources_fit_standard_nodes(self):
+        script = (ROOT / "run_yachida_batch_sample.sbatch").read_text()
+        self.assertIn("#SBATCH --cpus-per-task=32", script)
+        self.assertIn("#SBATCH --mem=96G", script)
+
     def test_preproduction_gate_clears_stale_success_marker(self):
         script = (ROOT / "run_yachida_preproduction_audit.sh").read_text()
         marker_cleanup = 'rm -f -- "$AUDIT_DIR/SUCCESS"'

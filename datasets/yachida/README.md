@@ -343,7 +343,10 @@ PROFILE_CONCURRENCY=2
 
 `gzip_members` produces a standards-compliant multi-member gzip file without a
 redundant decompression/recompression pass. The two-way profile configuration
-requests 32 CPUs and 128 GB per sample task. The runner records scratch bytes
+requests 32 CPUs and 96 GB per sample task. This allocation accommodates two
+concurrent profiler processes while allowing tasks to run on cluster nodes with
+approximately 126 GB RAM; it changes scheduling only, not analytical output.
+The runner records scratch bytes
 after preprocessing, construction, and verified cleanup in each sample's
 `scratch_usage.tsv`; use the observed maximum plus at least 25% headroom when
 choosing array concurrency. Begin with one task, then raise concurrency only
