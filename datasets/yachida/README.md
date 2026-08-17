@@ -343,9 +343,10 @@ PROFILE_CONCURRENCY=1
 
 `gzip_members` produces a standards-compliant multi-member gzip file without a
 redundant decompression/recompression pass. The production configuration runs
-one profiler at a time and requests 16 CPUs and 60 GB per sample task. Completed
-two-way profiling jobs consistently peaked near 69.5 GiB; serializing profiles
-removes the duplicated profiler/database memory footprint and permits two
+one profiler at a time and requests 16 CPUs and 48 GB per sample task. Completed
+two-way profiling jobs consistently peaked near 69.5 GiB; after serializing
+profiles, seven final-production tasks consistently peaked at 34.76--34.78 GiB.
+The 48 GB request therefore retains approximately 38% headroom and permits two
 sample tasks to share a 126 GB, 40-CPU node. This changes scheduling only, not
 analytical output.
 The runner records scratch bytes
