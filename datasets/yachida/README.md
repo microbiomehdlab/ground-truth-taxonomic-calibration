@@ -434,6 +434,27 @@ python3 datasets/yachida/compare_target_abundances.py \
 
 The generated comparison is local run output and is ignored by Git.
 
+### Paired host-retention policy audit
+
+Bowtie2 `--un-conc-gz` retains pairs that fail concordant alignment; this is
+not identical to requiring the primary records for both mates to be unmapped.
+Before changing a frozen preprocessing policy, compare both rules on the same
+post-fastp reads with the read-only audit workflow:
+
+```bash
+export PROJECT="$PWD"
+export YACHIDA_ENV="$PWD/config/yachida.env"
+export SAMPLE_ID=SAMPLE_ID
+sbatch --export=ALL run_yachida_host_policy_audit.sbatch
+```
+
+The job reruns the pinned fastp command once, applies `--un-conc-gz`, then
+applies the strict SAM flag rule (both read and mate unmapped; primary records
+only). It validates paired FASTQ structure and synchronization and writes the
+private result under `work/private_host_policy_audit/`. It does not modify or
+delete production results. The retained audit FASTQs can subsequently be
+profiled for a sensitivity analysis if the pair-count difference is material.
+
 ## Seed invariance
 
 ART and seqtk use `stable-seed-v1`, derived from stable sample, target,
