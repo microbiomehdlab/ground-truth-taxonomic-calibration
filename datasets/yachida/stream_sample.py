@@ -17,6 +17,9 @@ import os
 import pathlib
 import shutil
 import subprocess
+import sys
+import time
+import urllib.error
 import urllib.request
 
 
@@ -31,20 +34,56 @@ def checksum(path: pathlib.Path, algorithm: str) -> str:
     return digest.hexdigest()
 
 
+def positive_environment_integer(name: str, default: int) -> int:
+    value = os.environ.get(name, str(default))
+    try:
+        parsed = int(value)
+    except ValueError as error:
+        raise SystemExit(f"[ERROR] {name} must be a positive integer; observed {value!r}") from error
+    if parsed < 1:
+        raise SystemExit(f"[ERROR] {name} must be a positive integer; observed {value!r}")
+    return parsed
+
+
 def download(url: str, destination: pathlib.Path, expected_md5: str, expected_bytes: int) -> None:
     if destination.is_file() and destination.stat().st_size == expected_bytes:
         if checksum(destination, "md5") == expected_md5:
             print(f"[SKIP] verified download: {destination}")
             return
+
+    attempts = positive_environment_integer("YACHIDA_DOWNLOAD_ATTEMPTS", 4)
+    retry_seconds = positive_environment_integer("YACHIDA_DOWNLOAD_RETRY_SECONDS", 15)
+    timeout_seconds = positive_environment_integer("YACHIDA_DOWNLOAD_TIMEOUT_SECONDS", 120)
     partial = destination.with_suffix(destination.suffix + ".partial")
-    partial.unlink(missing_ok=True)
-    with urllib.request.urlopen(url) as response, partial.open("wb") as output:
-        while block := response.read(4 * 1024 * 1024):
-            output.write(block)
-    if partial.stat().st_size != expected_bytes or checksum(partial, "md5") != expected_md5:
+
+    for attempt in range(1, attempts + 1):
         partial.unlink(missing_ok=True)
-        raise SystemExit(f"[ERROR] size/MD5 verification failed: {url}")
-    partial.replace(destination)
+        try:
+            with urllib.request.urlopen(url, timeout=timeout_seconds) as response, partial.open("wb") as output:
+                while block := response.read(4 * 1024 * 1024):
+                    output.write(block)
+            observed_bytes = partial.stat().st_size
+            observed_md5 = checksum(partial, "md5")
+            if observed_bytes != expected_bytes or observed_md5 != expected_md5:
+                raise RuntimeError(
+                    "size/MD5 verification failed "
+                    f"(bytes={observed_bytes}/{expected_bytes}, md5={observed_md5}/{expected_md5})"
+                )
+            partial.replace(destination)
+            return
+        except (OSError, urllib.error.URLError, RuntimeError) as error:
+            partial.unlink(missing_ok=True)
+            if attempt == attempts:
+                raise SystemExit(
+                    f"[ERROR] download failed after {attempts} attempts: {url}: {error}"
+                ) from error
+            delay = retry_seconds * attempt
+            print(
+                f"[WARN] Download attempt {attempt}/{attempts} failed: {url}: {error}; "
+                f"retrying in {delay}s",
+                file=sys.stderr,
+            )
+            time.sleep(delay)
 
 
 def verify_receipt(receipt: pathlib.Path, scratch: pathlib.Path) -> list[dict[str, str]]:

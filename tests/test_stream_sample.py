@@ -2,17 +2,78 @@
 from __future__ import annotations
 
 import hashlib
+import http.client
+import importlib.util
+import io
 import pathlib
 import subprocess
 import tempfile
 import unittest
+from unittest import mock
 
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 SCRIPT = ROOT / "datasets/yachida/stream_sample.py"
+SPEC = importlib.util.spec_from_file_location("yachida_stream_sample", SCRIPT)
+STREAM_SAMPLE = importlib.util.module_from_spec(SPEC)
+assert SPEC.loader is not None
+SPEC.loader.exec_module(STREAM_SAMPLE)
+
+
+class FakeResponse(io.BytesIO):
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        self.close()
 
 
 class StreamSampleResumeTests(unittest.TestCase):
+    def test_download_retries_disconnect_and_checksum_failure(self) -> None:
+        payload = b"verified payload"
+        expected_md5 = hashlib.md5(payload).hexdigest()
+        with tempfile.TemporaryDirectory() as directory, mock.patch.dict(
+            STREAM_SAMPLE.os.environ,
+            {
+                "YACHIDA_DOWNLOAD_ATTEMPTS": "4",
+                "YACHIDA_DOWNLOAD_RETRY_SECONDS": "1",
+                "YACHIDA_DOWNLOAD_TIMEOUT_SECONDS": "9",
+            },
+        ), mock.patch.object(STREAM_SAMPLE.time, "sleep") as sleep, mock.patch.object(
+            STREAM_SAMPLE.urllib.request,
+            "urlopen",
+            side_effect=[
+                http.client.RemoteDisconnected("transient"),
+                FakeResponse(b"corrupt"),
+                FakeResponse(payload),
+            ],
+        ) as urlopen:
+            destination = pathlib.Path(directory) / "reads.fastq.gz"
+            STREAM_SAMPLE.download("https://example.invalid/reads", destination, expected_md5, len(payload))
+            self.assertEqual(destination.read_bytes(), payload)
+            self.assertFalse(destination.with_suffix(".gz.partial").exists())
+            self.assertEqual(urlopen.call_count, 3)
+            self.assertEqual(sleep.call_args_list, [mock.call(1), mock.call(2)])
+            self.assertTrue(all(call.kwargs["timeout"] == 9 for call in urlopen.call_args_list))
+
+    def test_download_fails_closed_after_bounded_attempts(self) -> None:
+        with tempfile.TemporaryDirectory() as directory, mock.patch.dict(
+            STREAM_SAMPLE.os.environ,
+            {
+                "YACHIDA_DOWNLOAD_ATTEMPTS": "2",
+                "YACHIDA_DOWNLOAD_RETRY_SECONDS": "1",
+            },
+        ), mock.patch.object(STREAM_SAMPLE.time, "sleep"), mock.patch.object(
+            STREAM_SAMPLE.urllib.request,
+            "urlopen",
+            side_effect=[FakeResponse(b"bad"), FakeResponse(b"still bad")],
+        ):
+            destination = pathlib.Path(directory) / "reads.fastq.gz"
+            with self.assertRaisesRegex(SystemExit, "download failed after 2 attempts"):
+                STREAM_SAMPLE.download("https://example.invalid/reads", destination, "0" * 32, 10)
+            self.assertFalse(destination.exists())
+            self.assertFalse(destination.with_suffix(".gz.partial").exists())
+
     def make_verified_case(self, root: pathlib.Path, *, sentinel: bool = True) -> list[str]:
         sample = "SAMPLE1"
         scratch = root / "scratch"

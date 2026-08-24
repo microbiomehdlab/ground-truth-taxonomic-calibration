@@ -200,6 +200,12 @@ QC with checksums, and deliberately leaves raw and cleaned reads under
 `work/yachida_67x3/smoke_scratch/` for inspection. It does not run profiling or
 spike generation and cannot authorize deletion of its scratch directory.
 
+Manifest downloads fail closed on byte-count or MD5 disagreement and retry
+transient transfer or checksum failures four times by default. Site operators
+may set `YACHIDA_DOWNLOAD_ATTEMPTS`, `YACHIDA_DOWNLOAD_RETRY_SECONDS`, and
+`YACHIDA_DOWNLOAD_TIMEOUT_SECONDS` to positive integers; the defaults are 4,
+15 seconds, and 120 seconds, respectively.
+
 After preprocessing passes, reuse the retained cleaned mates for a non-deleting
 baseline profiler smoke test:
 
