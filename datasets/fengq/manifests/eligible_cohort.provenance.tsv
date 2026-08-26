@@ -1,0 +1,15 @@
+key	value
+eligibility_version	crc-public-cohort-metadata-eligibility-v1
+source_metadata	datasets/fengq/Public_study__FengQ_2015.tsv
+source_metadata_sha256	ead01a5f411eacfa48782fe5969a092ab3e3749d99879237437bd7d38c93df79
+required_study	Public_study__FengQ_2015
+allowed_organism	Homo sapiens
+allowed_body_sites	feces,faeces,stool
+allowed_conditions	Control,Adenoma,CRC
+eligible_samples	154
+excluded_samples	0
+eligible_Control	61
+eligible_Adenoma	47
+eligible_CRC	46
+technical_failures	not part of metadata eligibility; retry and track separately
+outcome_use	none

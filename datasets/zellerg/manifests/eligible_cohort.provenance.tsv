@@ -1,0 +1,15 @@
+key	value
+eligibility_version	crc-public-cohort-metadata-eligibility-v1
+source_metadata	datasets/zellerg/Public_study__ZellerG_2014.tsv
+source_metadata_sha256	741e95087c7a75626a76370faea4b97acf79d0f868458d69a75b25a17772775b
+required_study	Public_study__ZellerG_2014
+allowed_organism	Homo sapiens
+allowed_body_sites	feces,faeces,stool
+allowed_conditions	Control,Adenoma,CRC
+eligible_samples	156
+excluded_samples	0
+eligible_Control	61
+eligible_Adenoma	42
+eligible_CRC	53
+technical_failures	not part of metadata eligibility; retry and track separately
+outcome_use	none

@@ -93,7 +93,7 @@ def main() -> None:
         counts[row["Study condition"]] += 1
     provenance_rows = [
         {"key": "eligibility_version", "value": args.eligibility_version},
-        {"key": "source_metadata", "value": str(args.metadata.resolve())},
+        {"key": "source_metadata", "value": str(args.metadata)},
         {"key": "source_metadata_sha256", "value": checksum(args.metadata)},
         {"key": "required_study", "value": args.study_name},
         {"key": "allowed_organism", "value": "Homo sapiens"},

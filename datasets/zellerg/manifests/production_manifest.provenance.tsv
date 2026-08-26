@@ -1,0 +1,17 @@
+key	value
+eligible_manifest	datasets/zellerg/manifests/eligible_cohort.tsv
+eligible_manifest_sha256	df42f7d8c7bdf9fdeab366a71cde809668f0ad0a3e349b90d83a0887e66b4b42
+url_inventory	datasets/zellerg/zellerg_wgets.sh
+url_inventory_sha256	a1e64d90dc996d577329c0ad53f3d1ef18031ae11b141b7bb3d3d0875e92c613
+ena_report	datasets/zellerg/manifests/PRJEB6070.read_run.tsv
+ena_report_sha256	d2a48463e2c4547e05be8ce41c019246b8628dba5df096579e42e9312be6e546
+ena_study_accession	PRJEB6070
+ena_report_retrieved_utc	2026-08-26
+independent_selection	datasets/zellerg/manifests/independent_10_per_condition.tsv
+independent_selection_sha256	6497a89cd7f204d1e4e082dd353128ed64cfb9dbf4c745b1268a647456707731
+biological_samples	156
+paired_runs	461
+independent_samples	30
+run_order	ascending run_accession
+multi_run_rule	concatenate R1 runs and R2 runs separately as gzip members
+outcome_use	none

@@ -1,0 +1,17 @@
+key	value
+eligible_manifest	datasets/fengq/manifests/eligible_cohort.tsv
+eligible_manifest_sha256	e9933b59f34ffa18e7cd68352d819b861366f253a2f0d595ea87e48ed555747c
+url_inventory	datasets/fengq/fengq_wgets.sh
+url_inventory_sha256	a534ab48f8384a4c82f904ac39e78c93c029619f89fed406969902f7511d4411
+ena_report	datasets/fengq/manifests/PRJEB7774.read_run.tsv
+ena_report_sha256	bb47b30fb918b1637edffaed7010cec736c98fdbd0cd0193c94ea0ece069f544
+ena_study_accession	PRJEB7774
+ena_report_retrieved_utc	2026-08-26
+independent_selection	datasets/fengq/manifests/independent_10_per_condition.tsv
+independent_selection_sha256	15138087fc07574609d4435e38785fdb4998c4a3f6ebee908c9c87adce04eb3f
+biological_samples	154
+paired_runs	154
+independent_samples	30
+run_order	ascending run_accession
+multi_run_rule	concatenate R1 runs and R2 runs separately as gzip members
+outcome_use	none

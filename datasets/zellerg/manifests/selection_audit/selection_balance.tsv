@@ -1,0 +1,13 @@
+condition	selected_n	variable	level	count	mean	minimum	maximum	missing
+Control	10	sex	Female	5				0
+Control	10	sex	Male	5				0
+Control	10	age	continuous	10	61.6	52	71	0
+Control	10	bmi	continuous	10	26.4	21	34	0
+Adenoma	10	sex	Female	5				0
+Adenoma	10	sex	Male	5				0
+Adenoma	10	age	continuous	10	65.3	53	73	0
+Adenoma	10	bmi	continuous	9	26.6667	21	33	1
+CRC	10	sex	Female	3				0
+CRC	10	sex	Male	7				0
+CRC	10	age	continuous	10	68.3	56	82	0
+CRC	10	bmi	continuous	10	23.5	19	28	0

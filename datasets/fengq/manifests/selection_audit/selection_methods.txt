@@ -1,0 +1,8 @@
+eligible_rule	all rows in the frozen eligible cohort manifest
+independent_rule	10 samples selected without replacement within each condition
+conditions	Control,Adenoma,CRC
+selection_seed	ground-truth-taxonomic-calibration-fengq-independent-v1
+tie_breaking	SHA-256 stable sample hash, then sample identifier
+selection_inputs	sample identifier and diagnostic condition only
+outcome_use	no profiler, recovery, spike, or biomarker outcome entered selection
+demographic_use	age, sex, and BMI summarized after selection; not used to replace samples

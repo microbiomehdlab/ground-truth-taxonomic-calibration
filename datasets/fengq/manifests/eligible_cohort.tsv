@@ -1,0 +1,155 @@
+Name	Sample Source ID	Organism	Target Condition	Control	Country	Body Site	Age	BMI	Disease	Sex	Tumor Staging AJCC	Primary Tumor Location	Study name	Study condition	metadata_eligibility	metadata_exclusion_reason	eligibility_version
+SID31030	SID31030	Homo sapiens	Adenoma	Case	Austria	feces	70.0	34.1	Adenoma	Male		nd	Public_study__FengQ_2015	Adenoma	ELIGIBLE		crc-public-cohort-metadata-eligibility-v1
+SID31137	SID31137	Homo sapiens	Adenoma	Case	Austria	feces	67.0	27.1	Adenoma	Male		nd	Public_study__FengQ_2015	Adenoma	ELIGIBLE		crc-public-cohort-metadata-eligibility-v1
+SID31233	SID31233	Homo sapiens	Adenoma	Case	Austria	feces	62.0	26.9	Adenoma	Male		nd	Public_study__FengQ_2015	Adenoma	ELIGIBLE		crc-public-cohort-metadata-eligibility-v1
+SID31256	SID31256	Homo sapiens	Adenoma	Case	Austria	feces	69.0	24.1	Adenoma	Female		nd	Public_study__FengQ_2015	Adenoma	ELIGIBLE		crc-public-cohort-metadata-eligibility-v1
+SID31275	SID31275	Homo sapiens	Adenoma	Case	Austria	feces	62.0	30.1	Adenoma	Male		nd	Public_study__FengQ_2015	Adenoma	ELIGIBLE		crc-public-cohort-metadata-eligibility-v1
+SID31282	SID31282	Homo sapiens	Adenoma	Case	Austria	feces	63.0	34.1	Adenoma	Male		nd	Public_study__FengQ_2015	Adenoma	ELIGIBLE		crc-public-cohort-metadata-eligibility-v1
+SID31337	SID31337	Homo sapiens	Adenoma	Case	Austria	feces	62.0	35.4	Adenoma	Male		nd	Public_study__FengQ_2015	Adenoma	ELIGIBLE		crc-public-cohort-metadata-eligibility-v1
+SID31398	SID31398	Homo sapiens	Adenoma	Case	Austria	feces	68.0	34.0	Adenoma	Female		nd	Public_study__FengQ_2015	Adenoma	ELIGIBLE		crc-public-cohort-metadata-eligibility-v1
+SID31424	SID31424	Homo sapiens	Adenoma	Case	Austria	feces	68.0	24.8	Adenoma	Female		nd	Public_study__FengQ_2015	Adenoma	ELIGIBLE		crc-public-cohort-metadata-eligibility-v1
+SID31431	SID31431	Homo sapiens	Adenoma	Case	Austria	feces	71.0	27.0	Adenoma	Male		nd	Public_study__FengQ_2015	Adenoma	ELIGIBLE		crc-public-cohort-metadata-eligibility-v1
+SID31449	SID31449	Homo sapiens	Adenoma	Case	Austria	feces	63.0	30.8	Adenoma	Male		nd	Public_study__FengQ_2015	Adenoma	ELIGIBLE		crc-public-cohort-metadata-eligibility-v1
+SID31455	SID31455	Homo sapiens	Adenoma	Case	Austria	feces	72.0	27.4	Adenoma	Female		nd	Public_study__FengQ_2015	Adenoma	ELIGIBLE		crc-public-cohort-metadata-eligibility-v1
+SID31477	SID31477	Homo sapiens	Adenoma	Case	Austria	feces	78.0	31.2	Adenoma	Female		nd	Public_study__FengQ_2015	Adenoma	ELIGIBLE		crc-public-cohort-metadata-eligibility-v1
+SID31501	SID31501	Homo sapiens	Adenoma	Case	Austria	feces	69.0	24.4	Adenoma	Female		nd	Public_study__FengQ_2015	Adenoma	ELIGIBLE		crc-public-cohort-metadata-eligibility-v1
+SID31582	SID31582	Homo sapiens	Adenoma	Case	Austria	feces	77.0	25.7	Adenoma	Male		nd	Public_study__FengQ_2015	Adenoma	ELIGIBLE		crc-public-cohort-metadata-eligibility-v1
+SID31705	SID31705	Homo sapiens	Adenoma	Case	Austria	feces	84.0	24.7	Adenoma	Female		nd	Public_study__FengQ_2015	Adenoma	ELIGIBLE		crc-public-cohort-metadata-eligibility-v1
+SID530002	SID530002	Homo sapiens	Adenoma	Case	Austria	feces	60.0	30.0	Adenoma	Female		nd	Public_study__FengQ_2015	Adenoma	ELIGIBLE		crc-public-cohort-metadata-eligibility-v1
+SID530018	SID530018	Homo sapiens	Adenoma	Case	Austria	feces	56.0	29.4	Adenoma	Male		nd	Public_study__FengQ_2015	Adenoma	ELIGIBLE		crc-public-cohort-metadata-eligibility-v1
+SID530026	SID530026	Homo sapiens	Adenoma	Case	Austria	feces	83.0	21.9	Adenoma	Female		nd	Public_study__FengQ_2015	Adenoma	ELIGIBLE		crc-public-cohort-metadata-eligibility-v1
+SID530028	SID530028	Homo sapiens	Adenoma	Case	Austria	feces	67.0	33.2	Adenoma	Male		nd	Public_study__FengQ_2015	Adenoma	ELIGIBLE		crc-public-cohort-metadata-eligibility-v1
+SID530039	SID530039	Homo sapiens	Adenoma	Case	Austria	feces	67.0	28.3	Adenoma	Male		nd	Public_study__FengQ_2015	Adenoma	ELIGIBLE		crc-public-cohort-metadata-eligibility-v1
+SID530041	SID530041	Homo sapiens	Adenoma	Case	Austria	feces	69.0	21.5	Adenoma	Male		nd	Public_study__FengQ_2015	Adenoma	ELIGIBLE		crc-public-cohort-metadata-eligibility-v1
+SID530054	SID530054	Homo sapiens	Adenoma	Case	Austria	feces	64.0	20.5	Adenoma	Female		nd	Public_study__FengQ_2015	Adenoma	ELIGIBLE		crc-public-cohort-metadata-eligibility-v1
+SID530142	SID530142	Homo sapiens	Adenoma	Case	Austria	feces	61.0	22.8	Adenoma	Female		nd	Public_study__FengQ_2015	Adenoma	ELIGIBLE		crc-public-cohort-metadata-eligibility-v1
+SID530168	SID530168	Homo sapiens	Adenoma	Case	Austria	feces	62.0	32.8	Adenoma	Female		nd	Public_study__FengQ_2015	Adenoma	ELIGIBLE		crc-public-cohort-metadata-eligibility-v1
+SID530172	SID530172	Homo sapiens	Adenoma	Case	Austria	feces	63.0	27.4	Adenoma	Male		nd	Public_study__FengQ_2015	Adenoma	ELIGIBLE		crc-public-cohort-metadata-eligibility-v1
+SID530185	SID530185	Homo sapiens	Adenoma	Case	Austria	feces	52.0	32.8	Adenoma	Female		nd	Public_study__FengQ_2015	Adenoma	ELIGIBLE		crc-public-cohort-metadata-eligibility-v1
+SID530262	SID530262	Homo sapiens	Adenoma	Case	Austria	feces	64.0	29.3	Adenoma	Male		nd	Public_study__FengQ_2015	Adenoma	ELIGIBLE		crc-public-cohort-metadata-eligibility-v1
+SID530297	SID530297	Homo sapiens	Adenoma	Case	Austria	feces	78.0	24.0	Adenoma	Female		nd	Public_study__FengQ_2015	Adenoma	ELIGIBLE		crc-public-cohort-metadata-eligibility-v1
+SID530323	SID530323	Homo sapiens	Adenoma	Case	Austria	feces	71.0	24.8	Adenoma	Male		nd	Public_study__FengQ_2015	Adenoma	ELIGIBLE		crc-public-cohort-metadata-eligibility-v1
+SID530348	SID530348	Homo sapiens	Adenoma	Case	Austria	feces	58.0	21.7	Adenoma	Male		nd	Public_study__FengQ_2015	Adenoma	ELIGIBLE		crc-public-cohort-metadata-eligibility-v1
+SID530398	SID530398	Homo sapiens	Adenoma	Case	Austria	feces	80.0	26.5	Adenoma	Male		nd	Public_study__FengQ_2015	Adenoma	ELIGIBLE		crc-public-cohort-metadata-eligibility-v1
+SID530403	SID530403	Homo sapiens	Adenoma	Case	Austria	feces	75.0	30.1	Adenoma	Female		nd	Public_study__FengQ_2015	Adenoma	ELIGIBLE		crc-public-cohort-metadata-eligibility-v1
+SID530450	SID530450	Homo sapiens	Adenoma	Case	Austria	feces	48.0	25.6	Adenoma	Male		nd	Public_study__FengQ_2015	Adenoma	ELIGIBLE		crc-public-cohort-metadata-eligibility-v1
+SID530558	SID530558	Homo sapiens	Adenoma	Case	Austria	feces	56.0	22.8	Adenoma	Female		nd	Public_study__FengQ_2015	Adenoma	ELIGIBLE		crc-public-cohort-metadata-eligibility-v1
+SID530600	SID530600	Homo sapiens	Adenoma	Case	Austria	feces	70.0	25.2	Adenoma	Female		nd	Public_study__FengQ_2015	Adenoma	ELIGIBLE		crc-public-cohort-metadata-eligibility-v1
+SID530623	SID530623	Homo sapiens	Adenoma	Case	Austria	feces	62.0	24.3	Adenoma	Male		nd	Public_study__FengQ_2015	Adenoma	ELIGIBLE		crc-public-cohort-metadata-eligibility-v1
+SID530697	SID530697	Homo sapiens	Adenoma	Case	Austria	feces	63.0	30.5	Adenoma	Female		nd	Public_study__FengQ_2015	Adenoma	ELIGIBLE		crc-public-cohort-metadata-eligibility-v1
+SID530705	SID530705	Homo sapiens	Adenoma	Case	Austria	feces	77.0	37.6	Adenoma	Male		nd	Public_study__FengQ_2015	Adenoma	ELIGIBLE		crc-public-cohort-metadata-eligibility-v1
+SID530743	SID530743	Homo sapiens	Adenoma	Case	Austria	feces	66.0	22.7	Adenoma	Female		nd	Public_study__FengQ_2015	Adenoma	ELIGIBLE		crc-public-cohort-metadata-eligibility-v1
+SID530756	SID530756	Homo sapiens	Adenoma	Case	Austria	feces	70.0	29.4	Adenoma	Female		nd	Public_study__FengQ_2015	Adenoma	ELIGIBLE		crc-public-cohort-metadata-eligibility-v1
+SID530840	SID530840	Homo sapiens	Adenoma	Case	Austria	feces	74.0	24.1	Adenoma	Female		nd	Public_study__FengQ_2015	Adenoma	ELIGIBLE		crc-public-cohort-metadata-eligibility-v1
+SID530867	SID530867	Homo sapiens	Adenoma	Case	Austria	feces	58.0	27.0	Adenoma	Male		nd	Public_study__FengQ_2015	Adenoma	ELIGIBLE		crc-public-cohort-metadata-eligibility-v1
+SID531403	SID531403	Homo sapiens	Adenoma	Case	Austria	feces	59.0	29.2	Adenoma	Female		nd	Public_study__FengQ_2015	Adenoma	ELIGIBLE		crc-public-cohort-metadata-eligibility-v1
+SID531663	SID531663	Homo sapiens	Adenoma	Case	Austria	feces	63.0	25.7	Adenoma	Male		nd	Public_study__FengQ_2015	Adenoma	ELIGIBLE		crc-public-cohort-metadata-eligibility-v1
+SID532305	SID532305	Homo sapiens	Adenoma	Case	Austria	feces	56.0	43.6	Adenoma	Female		nd	Public_study__FengQ_2015	Adenoma	ELIGIBLE		crc-public-cohort-metadata-eligibility-v1
+SID532832	SID532832	Homo sapiens	Adenoma	Case	Austria	feces	68.0	27.6	Adenoma	Female		nd	Public_study__FengQ_2015	Adenoma	ELIGIBLE		crc-public-cohort-metadata-eligibility-v1
+SID31004	SID31004	Homo sapiens	colorectal carcinoma	Case	Austria	feces	64.0	29.4	colorectal carcinoma	Male	I	left_sided	Public_study__FengQ_2015	CRC	ELIGIBLE		crc-public-cohort-metadata-eligibility-v1
+SID31159	SID31159	Homo sapiens	colorectal carcinoma	Case	Austria	feces	73.0	18.0	colorectal carcinoma	Male	II	left_sided	Public_study__FengQ_2015	CRC	ELIGIBLE		crc-public-cohort-metadata-eligibility-v1
+SID31188	SID31188	Homo sapiens	colorectal carcinoma	Case	Austria	feces	65.0	28.0	colorectal carcinoma	Male	CRC_stage_unlabelled	left_sided	Public_study__FengQ_2015	CRC	ELIGIBLE		crc-public-cohort-metadata-eligibility-v1
+SID31223	SID31223	Homo sapiens	colorectal carcinoma	Case	Austria	feces	65.0	23.3	colorectal carcinoma	Female	II	left_sided	Public_study__FengQ_2015	CRC	ELIGIBLE		crc-public-cohort-metadata-eligibility-v1
+SID31237	SID31237	Homo sapiens	colorectal carcinoma	Case	Austria	feces	67.0	29.4	colorectal carcinoma	Male	II	right_sided	Public_study__FengQ_2015	CRC	ELIGIBLE		crc-public-cohort-metadata-eligibility-v1
+SID31276	SID31276	Homo sapiens	colorectal carcinoma	Case	Austria	feces	82.0	30.5	colorectal carcinoma	Male	0	right_sided	Public_study__FengQ_2015	CRC	ELIGIBLE		crc-public-cohort-metadata-eligibility-v1
+SID31285	SID31285	Homo sapiens	colorectal carcinoma	Case	Austria	feces	84.0	27.3	colorectal carcinoma	Male	II	left_sided	Public_study__FengQ_2015	CRC	ELIGIBLE		crc-public-cohort-metadata-eligibility-v1
+SID31367	SID31367	Homo sapiens	colorectal carcinoma	Case	Austria	feces	86.0	20.5	colorectal carcinoma	Female	I	right_sided	Public_study__FengQ_2015	CRC	ELIGIBLE		crc-public-cohort-metadata-eligibility-v1
+SID31446	SID31446	Homo sapiens	colorectal carcinoma	Case	Austria	feces	84.0	31.2	colorectal carcinoma	Female	0	right_sided	Public_study__FengQ_2015	CRC	ELIGIBLE		crc-public-cohort-metadata-eligibility-v1
+SID31489	SID31489	Homo sapiens	colorectal carcinoma	Case	Austria	feces	60.0	26.6	colorectal carcinoma	Male	I	left_sided	Public_study__FengQ_2015	CRC	ELIGIBLE		crc-public-cohort-metadata-eligibility-v1
+SID31493	SID31493	Homo sapiens	colorectal carcinoma	Case	Austria	feces	68.0	32.3	colorectal carcinoma	Male	0	left_sided	Public_study__FengQ_2015	CRC	ELIGIBLE		crc-public-cohort-metadata-eligibility-v1
+SID31549	SID31549	Homo sapiens	colorectal carcinoma	Case	Austria	feces	84.0	27.8	colorectal carcinoma	Female	I	left_sided	Public_study__FengQ_2015	CRC	ELIGIBLE		crc-public-cohort-metadata-eligibility-v1
+SID31685	SID31685	Homo sapiens	colorectal carcinoma	Case	Austria	feces	74.0	26.4	colorectal carcinoma	Male	I	left_sided	Public_study__FengQ_2015	CRC	ELIGIBLE		crc-public-cohort-metadata-eligibility-v1
+SID31865	SID31865	Homo sapiens	colorectal carcinoma	Case	Austria	feces	55.0	23.3	colorectal carcinoma	Female	I	left_sided	Public_study__FengQ_2015	CRC	ELIGIBLE		crc-public-cohort-metadata-eligibility-v1
+SID31866	SID31866	Homo sapiens	colorectal carcinoma	Case	Austria	feces	73.0	29.8	colorectal carcinoma	Female	II	left_sided	Public_study__FengQ_2015	CRC	ELIGIBLE		crc-public-cohort-metadata-eligibility-v1
+SID31868	SID31868	Homo sapiens	colorectal carcinoma	Case	Austria	feces	64.0	24.1	colorectal carcinoma	Female	I	left_sided	Public_study__FengQ_2015	CRC	ELIGIBLE		crc-public-cohort-metadata-eligibility-v1
+SID31870	SID31870	Homo sapiens	colorectal carcinoma	Case	Austria	feces	63.0	25.9	colorectal carcinoma	Male	I	left_sided	Public_study__FengQ_2015	CRC	ELIGIBLE		crc-public-cohort-metadata-eligibility-v1
+SID31871	SID31871	Homo sapiens	colorectal carcinoma	Case	Austria	feces	72.0	28.4	colorectal carcinoma	Male	I	left_sided	Public_study__FengQ_2015	CRC	ELIGIBLE		crc-public-cohort-metadata-eligibility-v1
+SID31872	SID31872	Homo sapiens	colorectal carcinoma	Case	Austria	feces	46.0	30.9	colorectal carcinoma	Male	0	left_sided	Public_study__FengQ_2015	CRC	ELIGIBLE		crc-public-cohort-metadata-eligibility-v1
+SID31873	SID31873	Homo sapiens	colorectal carcinoma	Case	Austria	feces	73.0	24.8	colorectal carcinoma	Male	II	left_sided	Public_study__FengQ_2015	CRC	ELIGIBLE		crc-public-cohort-metadata-eligibility-v1
+SID31874	SID31874	Homo sapiens	colorectal carcinoma	Case	Austria	feces	74.0	29.2	colorectal carcinoma	Female	IV	left_sided	Public_study__FengQ_2015	CRC	ELIGIBLE		crc-public-cohort-metadata-eligibility-v1
+SID31875	SID31875	Homo sapiens	colorectal carcinoma	Case	Austria	feces	58.0	27.8	colorectal carcinoma	Male	I	left_sided	Public_study__FengQ_2015	CRC	ELIGIBLE		crc-public-cohort-metadata-eligibility-v1
+SID31876	SID31876	Homo sapiens	colorectal carcinoma	Case	Austria	feces	56.0	20.1	colorectal carcinoma	Female	III	left_sided	Public_study__FengQ_2015	CRC	ELIGIBLE		crc-public-cohort-metadata-eligibility-v1
+SID31877	SID31877	Homo sapiens	colorectal carcinoma	Case	Austria	feces	72.0	26.7	colorectal carcinoma	Female	III	left_sided	Public_study__FengQ_2015	CRC	ELIGIBLE		crc-public-cohort-metadata-eligibility-v1
+SID31878	SID31878	Homo sapiens	colorectal carcinoma	Case	Austria	feces	52.0	27.1	colorectal carcinoma	Female	III	left_sided	Public_study__FengQ_2015	CRC	ELIGIBLE		crc-public-cohort-metadata-eligibility-v1
+SID31879	SID31879	Homo sapiens	colorectal carcinoma	Case	Austria	feces	71.0	29.7	colorectal carcinoma	Male	III	left_sided	Public_study__FengQ_2015	CRC	ELIGIBLE		crc-public-cohort-metadata-eligibility-v1
+SID31880	SID31880	Homo sapiens	colorectal carcinoma	Case	Austria	feces	74.0	24.3	colorectal carcinoma	Male	III	right_sided	Public_study__FengQ_2015	CRC	ELIGIBLE		crc-public-cohort-metadata-eligibility-v1
+SID31881	SID31881	Homo sapiens	colorectal carcinoma	Case	Austria	feces	60.0	30.1	colorectal carcinoma	Female	III	left_sided	Public_study__FengQ_2015	CRC	ELIGIBLE		crc-public-cohort-metadata-eligibility-v1
+SID31883	SID31883	Homo sapiens	colorectal carcinoma	Case	Austria	feces	43.0	22.7	colorectal carcinoma	Male	II	left_sided	Public_study__FengQ_2015	CRC	ELIGIBLE		crc-public-cohort-metadata-eligibility-v1
+SID31884	SID31884	Homo sapiens	colorectal carcinoma	Case	Austria	feces	54.0	27.3	colorectal carcinoma	Male	0	left_sided	Public_study__FengQ_2015	CRC	ELIGIBLE		crc-public-cohort-metadata-eligibility-v1
+SID530373	SID530373	Homo sapiens	colorectal carcinoma	Case	Austria	feces	47.0	25.8	colorectal carcinoma	Female	I	left_sided	Public_study__FengQ_2015	CRC	ELIGIBLE		crc-public-cohort-metadata-eligibility-v1
+SID530890	SID530890	Homo sapiens	colorectal carcinoma	Case	Austria	feces	77.0	29.4	colorectal carcinoma	Male	0	left_sided	Public_study__FengQ_2015	CRC	ELIGIBLE		crc-public-cohort-metadata-eligibility-v1
+SID531128	SID531128	Homo sapiens	colorectal carcinoma	Case	Austria	feces	52.0	25.7	colorectal carcinoma	Male	III	left_sided	Public_study__FengQ_2015	CRC	ELIGIBLE		crc-public-cohort-metadata-eligibility-v1
+SID531155	SID531155	Homo sapiens	colorectal carcinoma	Case	Austria	feces	72.0	24.2	colorectal carcinoma	Female	I	right_sided	Public_study__FengQ_2015	CRC	ELIGIBLE		crc-public-cohort-metadata-eligibility-v1
+SID531248	SID531248	Homo sapiens	colorectal carcinoma	Case	Austria	feces	79.0	26.3	colorectal carcinoma	Male	III	left_sided	Public_study__FengQ_2015	CRC	ELIGIBLE		crc-public-cohort-metadata-eligibility-v1
+SID531274	SID531274	Homo sapiens	colorectal carcinoma	Case	Austria	feces	77.0	19.2	colorectal carcinoma	Male	III	left_sided	Public_study__FengQ_2015	CRC	ELIGIBLE		crc-public-cohort-metadata-eligibility-v1
+SID531277	SID531277	Homo sapiens	colorectal carcinoma	Case	Austria	feces	64.0	29.1	colorectal carcinoma	Male	I	left_sided	Public_study__FengQ_2015	CRC	ELIGIBLE		crc-public-cohort-metadata-eligibility-v1
+SID531281	SID531281	Homo sapiens	colorectal carcinoma	Case	Austria	feces	72.0	27.1	colorectal carcinoma	Female	0	left_sided	Public_study__FengQ_2015	CRC	ELIGIBLE		crc-public-cohort-metadata-eligibility-v1
+SID531333	SID531333	Homo sapiens	colorectal carcinoma	Case	Austria	feces	69.0	29.9	colorectal carcinoma	Male	III	left_sided	Public_study__FengQ_2015	CRC	ELIGIBLE		crc-public-cohort-metadata-eligibility-v1
+SID531352	SID531352	Homo sapiens	colorectal carcinoma	Case	Austria	feces	66.0	22.6	colorectal carcinoma	Male	I	left_sided	Public_study__FengQ_2015	CRC	ELIGIBLE		crc-public-cohort-metadata-eligibility-v1
+SID531361	SID531361	Homo sapiens	colorectal carcinoma	Case	Austria	feces	72.0	23.8	colorectal carcinoma	Female	III	left_sided	Public_study__FengQ_2015	CRC	ELIGIBLE		crc-public-cohort-metadata-eligibility-v1
+SID531382	SID531382	Homo sapiens	colorectal carcinoma	Case	Austria	feces	65.0	29.7	colorectal carcinoma	Male	II	left_sided	Public_study__FengQ_2015	CRC	ELIGIBLE		crc-public-cohort-metadata-eligibility-v1
+SID531416	SID531416	Homo sapiens	colorectal carcinoma	Case	Austria	feces	63.0	33.6	colorectal carcinoma	Male	I	left_sided	Public_study__FengQ_2015	CRC	ELIGIBLE		crc-public-cohort-metadata-eligibility-v1
+SID531469	SID531469	Homo sapiens	colorectal carcinoma	Case	Austria	feces	45.0	22.2	colorectal carcinoma	Female	I	left_sided	Public_study__FengQ_2015	CRC	ELIGIBLE		crc-public-cohort-metadata-eligibility-v1
+SID531766	SID531766	Homo sapiens	colorectal carcinoma	Case	Austria	feces	72.0	24.3	colorectal carcinoma	Male	I	right_sided	Public_study__FengQ_2015	CRC	ELIGIBLE		crc-public-cohort-metadata-eligibility-v1
+SID531775	SID531775	Homo sapiens	colorectal carcinoma	Case	Austria	feces	77.0	23.5	colorectal carcinoma	Female	II	right_sided	Public_study__FengQ_2015	CRC	ELIGIBLE		crc-public-cohort-metadata-eligibility-v1
+SID31009	SID31009	Homo sapiens	Control	Study Control	Austria	feces	68.0	32.0	Control	Male		nd	Public_study__FengQ_2015	Control	ELIGIBLE		crc-public-cohort-metadata-eligibility-v1
+SID31021	SID31021	Homo sapiens	Control	Study Control	Austria	feces	60.0	22.1	Control	Female		nd	Public_study__FengQ_2015	Control	ELIGIBLE		crc-public-cohort-metadata-eligibility-v1
+SID31071	SID31071	Homo sapiens	Control	Study Control	Austria	feces	68.0	23.5	Control	Male		nd	Public_study__FengQ_2015	Control	ELIGIBLE		crc-public-cohort-metadata-eligibility-v1
+SID31112	SID31112	Homo sapiens	Control	Study Control	Austria	feces	66.0	30.3	Control	Male		nd	Public_study__FengQ_2015	Control	ELIGIBLE		crc-public-cohort-metadata-eligibility-v1
+SID31129	SID31129	Homo sapiens	Control	Study Control	Austria	feces	73.0	29.7	Control	Male		nd	Public_study__FengQ_2015	Control	ELIGIBLE		crc-public-cohort-metadata-eligibility-v1
+SID31160	SID31160	Homo sapiens	Control	Study Control	Austria	feces	67.0	30.0	Control	Female		nd	Public_study__FengQ_2015	Control	ELIGIBLE		crc-public-cohort-metadata-eligibility-v1
+SID31219	SID31219	Homo sapiens	Control	Study Control	Austria	feces	74.0	28.3	Control	Female		nd	Public_study__FengQ_2015	Control	ELIGIBLE		crc-public-cohort-metadata-eligibility-v1
+SID31236	SID31236	Homo sapiens	Control	Study Control	Austria	feces	65.0	29.1	Control	Male		nd	Public_study__FengQ_2015	Control	ELIGIBLE		crc-public-cohort-metadata-eligibility-v1
+SID31267	SID31267	Homo sapiens	Control	Study Control	Austria	feces	67.0	22.8	Control	Male		nd	Public_study__FengQ_2015	Control	ELIGIBLE		crc-public-cohort-metadata-eligibility-v1
+SID31300	SID31300	Homo sapiens	Control	Study Control	Austria	feces	68.0	21.7	Control	Female		nd	Public_study__FengQ_2015	Control	ELIGIBLE		crc-public-cohort-metadata-eligibility-v1
+SID31328	SID31328	Homo sapiens	Control	Study Control	Austria	feces	63.0	30.9	Control	Male		nd	Public_study__FengQ_2015	Control	ELIGIBLE		crc-public-cohort-metadata-eligibility-v1
+SID31333	SID31333	Homo sapiens	Control	Study Control	Austria	feces	68.0	22.2	Control	Male		nd	Public_study__FengQ_2015	Control	ELIGIBLE		crc-public-cohort-metadata-eligibility-v1
+SID31343	SID31343	Homo sapiens	Control	Study Control	Austria	feces	72.0	29.0	Control	Male		nd	Public_study__FengQ_2015	Control	ELIGIBLE		crc-public-cohort-metadata-eligibility-v1
+SID31360	SID31360	Homo sapiens	Control	Study Control	Austria	feces	71.0	29.0	Control	Male		nd	Public_study__FengQ_2015	Control	ELIGIBLE		crc-public-cohort-metadata-eligibility-v1
+SID31379	SID31379	Homo sapiens	Control	Study Control	Austria	feces	63.0	30.4	Control	Male		nd	Public_study__FengQ_2015	Control	ELIGIBLE		crc-public-cohort-metadata-eligibility-v1
+SID31416	SID31416	Homo sapiens	Control	Study Control	Austria	feces	72.0	31.8	Control	Male		nd	Public_study__FengQ_2015	Control	ELIGIBLE		crc-public-cohort-metadata-eligibility-v1
+SID31428	SID31428	Homo sapiens	Control	Study Control	Austria	feces	69.0	30.0	Control	Female		nd	Public_study__FengQ_2015	Control	ELIGIBLE		crc-public-cohort-metadata-eligibility-v1
+SID31450	SID31450	Homo sapiens	Control	Study Control	Austria	feces	67.0	23.1	Control	Male		nd	Public_study__FengQ_2015	Control	ELIGIBLE		crc-public-cohort-metadata-eligibility-v1
+SID31452	SID31452	Homo sapiens	Control	Study Control	Austria	feces	66.0	21.7	Control	Female		nd	Public_study__FengQ_2015	Control	ELIGIBLE		crc-public-cohort-metadata-eligibility-v1
+SID31512	SID31512	Homo sapiens	Control	Study Control	Austria	feces	64.0	29.3	Control	Male		nd	Public_study__FengQ_2015	Control	ELIGIBLE		crc-public-cohort-metadata-eligibility-v1
+SID31519	SID31519	Homo sapiens	Control	Study Control	Austria	feces	65.0	28.9	Control	Male		nd	Public_study__FengQ_2015	Control	ELIGIBLE		crc-public-cohort-metadata-eligibility-v1
+SID31537	SID31537	Homo sapiens	Control	Study Control	Austria	feces	70.0	31.0	Control	Female		nd	Public_study__FengQ_2015	Control	ELIGIBLE		crc-public-cohort-metadata-eligibility-v1
+SID31557	SID31557	Homo sapiens	Control	Study Control	Austria	feces	74.0	28.5	Control	Female		nd	Public_study__FengQ_2015	Control	ELIGIBLE		crc-public-cohort-metadata-eligibility-v1
+SID31637	SID31637	Homo sapiens	Control	Study Control	Austria	feces	66.0	30.0	Control	Male		nd	Public_study__FengQ_2015	Control	ELIGIBLE		crc-public-cohort-metadata-eligibility-v1
+SID31700	SID31700	Homo sapiens	Control	Study Control	Austria	feces	72.0	28.7	Control	Female		nd	Public_study__FengQ_2015	Control	ELIGIBLE		crc-public-cohort-metadata-eligibility-v1
+SID31711	SID31711	Homo sapiens	Control	Study Control	Austria	feces	66.0	30.0	Control	Male		nd	Public_study__FengQ_2015	Control	ELIGIBLE		crc-public-cohort-metadata-eligibility-v1
+SID31714	SID31714	Homo sapiens	Control	Study Control	Austria	feces	69.0	28.3	Control	Female		nd	Public_study__FengQ_2015	Control	ELIGIBLE		crc-public-cohort-metadata-eligibility-v1
+SID31723	SID31723	Homo sapiens	Control	Study Control	Austria	feces	69.0	22.4	Control	Female		nd	Public_study__FengQ_2015	Control	ELIGIBLE		crc-public-cohort-metadata-eligibility-v1
+SID31749	SID31749	Homo sapiens	Control	Study Control	Austria	feces	70.0	31.3	Control	Male		nd	Public_study__FengQ_2015	Control	ELIGIBLE		crc-public-cohort-metadata-eligibility-v1
+SID31750	SID31750	Homo sapiens	Control	Study Control	Austria	feces	66.0	34.0	Control	Male		nd	Public_study__FengQ_2015	Control	ELIGIBLE		crc-public-cohort-metadata-eligibility-v1
+SID31766	SID31766	Homo sapiens	Control	Study Control	Austria	feces	73.0	32.0	Control	Female		nd	Public_study__FengQ_2015	Control	ELIGIBLE		crc-public-cohort-metadata-eligibility-v1
+SID530050	SID530050	Homo sapiens	Control	Study Control	Austria	feces	71.0	29.0	Control	Female		nd	Public_study__FengQ_2015	Control	ELIGIBLE		crc-public-cohort-metadata-eligibility-v1
+SID530052	SID530052	Homo sapiens	Control	Study Control	Austria	feces	64.0	29.4	Control	Male		nd	Public_study__FengQ_2015	Control	ELIGIBLE		crc-public-cohort-metadata-eligibility-v1
+SID530055	SID530055	Homo sapiens	Control	Study Control	Austria	feces	64.0	22.8	Control	Male		nd	Public_study__FengQ_2015	Control	ELIGIBLE		crc-public-cohort-metadata-eligibility-v1
+SID530074	SID530074	Homo sapiens	Control	Study Control	Austria	feces	68.0	22.1	Control	Female		nd	Public_study__FengQ_2015	Control	ELIGIBLE		crc-public-cohort-metadata-eligibility-v1
+SID530075	SID530075	Homo sapiens	Control	Study Control	Austria	feces	63.0	34.1	Control	Male		nd	Public_study__FengQ_2015	Control	ELIGIBLE		crc-public-cohort-metadata-eligibility-v1
+SID530119	SID530119	Homo sapiens	Control	Study Control	Austria	feces	70.0	31.6	Control	Male		nd	Public_study__FengQ_2015	Control	ELIGIBLE		crc-public-cohort-metadata-eligibility-v1
+SID530154	SID530154	Homo sapiens	Control	Study Control	Austria	feces	74.0	28.5	Control	Female		nd	Public_study__FengQ_2015	Control	ELIGIBLE		crc-public-cohort-metadata-eligibility-v1
+SID530163	SID530163	Homo sapiens	Control	Study Control	Austria	feces	63.0	30.4	Control	Male		nd	Public_study__FengQ_2015	Control	ELIGIBLE		crc-public-cohort-metadata-eligibility-v1
+SID530167	SID530167	Homo sapiens	Control	Study Control	Austria	feces	72.0	30.0	Control	Female		nd	Public_study__FengQ_2015	Control	ELIGIBLE		crc-public-cohort-metadata-eligibility-v1
+SID530177	SID530177	Homo sapiens	Control	Study Control	Austria	feces	71.0	29.0	Control	Female		nd	Public_study__FengQ_2015	Control	ELIGIBLE		crc-public-cohort-metadata-eligibility-v1
+SID530215	SID530215	Homo sapiens	Control	Study Control	Austria	feces	65.0	31.2	Control	Male		nd	Public_study__FengQ_2015	Control	ELIGIBLE		crc-public-cohort-metadata-eligibility-v1
+SID530227	SID530227	Homo sapiens	Control	Study Control	Austria	feces	68.0	22.4	Control	Female		nd	Public_study__FengQ_2015	Control	ELIGIBLE		crc-public-cohort-metadata-eligibility-v1
+SID530251	SID530251	Homo sapiens	Control	Study Control	Austria	feces	72.0	31.8	Control	Male		nd	Public_study__FengQ_2015	Control	ELIGIBLE		crc-public-cohort-metadata-eligibility-v1
+SID530258	SID530258	Homo sapiens	Control	Study Control	Austria	feces	65.0	22.0	Control	Male		nd	Public_study__FengQ_2015	Control	ELIGIBLE		crc-public-cohort-metadata-eligibility-v1
+SID530295	SID530295	Homo sapiens	Control	Study Control	Austria	feces	70.0	22.7	Control	Female		nd	Public_study__FengQ_2015	Control	ELIGIBLE		crc-public-cohort-metadata-eligibility-v1
+SID530315	SID530315	Homo sapiens	Control	Study Control	Austria	feces	75.0	31.0	Control	Female		nd	Public_study__FengQ_2015	Control	ELIGIBLE		crc-public-cohort-metadata-eligibility-v1
+SID530331	SID530331	Homo sapiens	Control	Study Control	Austria	feces	70.0	23.7	Control	Male		nd	Public_study__FengQ_2015	Control	ELIGIBLE		crc-public-cohort-metadata-eligibility-v1
+SID530364	SID530364	Homo sapiens	Control	Study Control	Austria	feces	63.0	31.2	Control	Male		nd	Public_study__FengQ_2015	Control	ELIGIBLE		crc-public-cohort-metadata-eligibility-v1
+SID530368	SID530368	Homo sapiens	Control	Study Control	Austria	feces	70.0	22.8	Control	Female		nd	Public_study__FengQ_2015	Control	ELIGIBLE		crc-public-cohort-metadata-eligibility-v1
+SID530394	SID530394	Homo sapiens	Control	Study Control	Austria	feces	67.0	22.6	Control	Female		nd	Public_study__FengQ_2015	Control	ELIGIBLE		crc-public-cohort-metadata-eligibility-v1
+SID530444	SID530444	Homo sapiens	Control	Study Control	Austria	feces	62.0	22.1	Control	Female		nd	Public_study__FengQ_2015	Control	ELIGIBLE		crc-public-cohort-metadata-eligibility-v1
+SID530451	SID530451	Homo sapiens	Control	Study Control	Austria	feces	68.0	29.8	Control	Male		nd	Public_study__FengQ_2015	Control	ELIGIBLE		crc-public-cohort-metadata-eligibility-v1
+SID531414	SID531414	Homo sapiens	Control	Study Control	Austria	feces	46.0	23.2	Control	Male		nd	Public_study__FengQ_2015	Control	ELIGIBLE		crc-public-cohort-metadata-eligibility-v1
+SID531424	SID531424	Homo sapiens	Control	Study Control	Austria	feces	46.0	28.7	Control	Male		nd	Public_study__FengQ_2015	Control	ELIGIBLE		crc-public-cohort-metadata-eligibility-v1
+SID532749	SID532749	Homo sapiens	Control	Study Control	Austria	feces	55.0	27.8	Control	Male		nd	Public_study__FengQ_2015	Control	ELIGIBLE		crc-public-cohort-metadata-eligibility-v1
+SID532779	SID532779	Homo sapiens	Control	Study Control	Austria	feces	70.0	28.7	Control	Male		nd	Public_study__FengQ_2015	Control	ELIGIBLE		crc-public-cohort-metadata-eligibility-v1
+SID532796	SID532796	Homo sapiens	Control	Study Control	Austria	feces	73.0	26.6	Control	Female		nd	Public_study__FengQ_2015	Control	ELIGIBLE		crc-public-cohort-metadata-eligibility-v1
+SID532802	SID532802	Homo sapiens	Control	Study Control	Austria	feces	68.0	23.5	Control	Male		nd	Public_study__FengQ_2015	Control	ELIGIBLE		crc-public-cohort-metadata-eligibility-v1
+SID532826	SID532826	Homo sapiens	Control	Study Control	Austria	feces	78.0	31.2	Control	Male		nd	Public_study__FengQ_2015	Control	ELIGIBLE		crc-public-cohort-metadata-eligibility-v1
+SID532915	SID532915	Homo sapiens	Control	Study Control	Austria	feces	43.0	22.7	Control	Female		nd	Public_study__FengQ_2015	Control	ELIGIBLE		crc-public-cohort-metadata-eligibility-v1
