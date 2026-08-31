@@ -9,6 +9,16 @@ ROOT = pathlib.Path(__file__).resolve().parents[1]
 
 
 class PreproductionIntegrityTests(unittest.TestCase):
+    def test_pure_pool_audit_is_isolated_and_deterministic(self):
+        runner = (ROOT / "datasets/yachida/run_pure_pool_audit.sh").read_text()
+        sbatch = (ROOT / "run_yachida_pure_pool_audit.sbatch").read_text()
+        self.assertIn('PURE_POOL_AUDIT_PAIRS="${PURE_POOL_AUDIT_PAIRS:-1000000}"', runner)
+        self.assertIn("selection_rule\\tdeterministic_prefix", runner)
+        self.assertIn('PURE_POOL_AUDIT_ROOT', runner)
+        self.assertNotIn('PERSISTENT_RESULTS_ROOT', runner)
+        self.assertIn("#SBATCH --cpus-per-task=8", sbatch)
+        self.assertIn("#SBATCH --mem=48G", sbatch)
+
     def test_yachida_production_resources_fit_standard_nodes(self):
         script = (ROOT / "run_yachida_batch_sample.sbatch").read_text()
         self.assertIn("#SBATCH --cpus-per-task=16", script)
