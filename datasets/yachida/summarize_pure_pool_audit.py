@@ -48,9 +48,9 @@ def metaphlan(path: Path) -> list[tuple[str, float]]:
             fields = line.rstrip("\n").split("\t")
             if len(fields) < 3:
                 continue
-            species = next((part[3:] for part in fields[0].split("|") if part.startswith("s__")), None)
-            if species is not None:
-                rows.append((species, float(fields[2])))
+            terminal = fields[0].split("|")[-1]
+            if terminal.startswith("s__"):
+                rows.append((terminal[3:], float(fields[2])))
     return rows
 
 

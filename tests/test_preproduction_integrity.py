@@ -31,6 +31,8 @@ class PreproductionIntegrityTests(unittest.TestCase):
         self.assertIn('off_target_species_pct', script)
         self.assertIn('kraken2_unclassified_pct', script)
         self.assertIn('reported_species_total_pct', script)
+        self.assertIn('terminal = fields[0].split("|")[-1]', script)
+        self.assertNotIn('next((part[3:]', script)
 
     def test_yachida_production_resources_fit_standard_nodes(self):
         script = (ROOT / "run_yachida_batch_sample.sbatch").read_text()
