@@ -9,9 +9,16 @@ manuscript Figures 2–7. It supports the two profilers used in the paper:
 - MetaPhlAn 4
 - Kraken2 with Bracken
 
-The primary quantitative analyses use open-world species abundances so that
-observed abundances and designed spike fractions retain the same all-read
-denominator.
+Profiler-native species abundances are preserved as the primary practical
+outputs. The controlled quantity is the identity and fraction of implanted
+paired reads in the final sequencing library; it is not cellular abundance.
+Denominator-harmonized outputs are treated as sensitivity analyses because
+MetaPhlAn and Kraken2/Bracken do not estimate abundance identically.
+
+For a clean end-to-end route through the repository, start with
+[`REPRODUCING.md`](REPRODUCING.md). It distinguishes frozen publication paths,
+machine-specific configuration, validation gates, generated evidence, and
+legacy compatibility entry points.
 
 ## Workflow
 
