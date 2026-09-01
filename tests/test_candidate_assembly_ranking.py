@@ -14,6 +14,17 @@ def record(accession, contamination, category="", level="Contig"):
     }
 
 
+def snake_record(accession):
+    return {
+        "accession": accession,
+        "assembly_info": {"assembly_status": "ASSEMBLY_STATUS_CURRENT", "assembly_level": "Complete Genome", "refseq_category": "reference genome"},
+        "organism": {"organism_name": "Species alpha"},
+        "average_nucleotide_identity": {"submitted_species": "Species alpha", "taxonomy_check_status": "TAXONOMY_CHECK_STATUS_OK", "best_ani_match": {"organism_name": "Species alpha", "ani": 99, "assembly_coverage": 99}},
+        "checkm_info": {"completeness": 99, "contamination": 0.2, "checkm_marker_set": "Species alpha"},
+        "assembly_stats": {"contig_n50": 2000, "number_of_contigs": 2, "total_sequence_length": 10000},
+    }
+
+
 def main():
     repo = Path(__file__).resolve().parents[1]
     with tempfile.TemporaryDirectory() as name:
@@ -35,6 +46,10 @@ def main():
         empty = list(csv.DictReader((root / "none/selected_candidate_assemblies.tsv").open(), delimiter="\t"))
         assert empty == []
         assert (root / "none/candidate_assembly_audit.tsv").stat().st_size > 0
+        snapshot.write_text(json.dumps(snake_record("GCF_SNAKE")) + "\n")
+        subprocess.run(["python3", str(repo / "scripts/rank_candidate_assemblies.py"), "--candidate-manifest", str(manifest), "--outdir", str(root / "snake")], check=True)
+        snake = list(csv.DictReader((root / "snake/selected_candidate_assemblies.tsv").open(), delimiter="\t"))
+        assert snake[0]["accession"] == "GCF_SNAKE"
         print("[PASS] Candidate assembly ranking test passed.")
 
 
