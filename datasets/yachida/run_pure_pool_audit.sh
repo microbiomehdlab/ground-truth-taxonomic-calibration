@@ -54,8 +54,18 @@ export SAMPLE_WORK="$sample_work"
 export PROFILE_R1="$r1"
 export PROFILE_R2="$r2"
 export YACHIDA_BASELINE_SMOKE_ROOT="$profiles"
+export ALLOW_NO_METAPHLAN_SPECIES=true
 bash "$PROJECT/datasets/yachida/run_baseline_profiling_smoke.sh"
 
-sha256sum "$root/audit_design.tsv" "$root/fastq_integrity.tsv" > "$root/audit_inputs.sha256"
+metaphlan_profile="$profiles/$SAMPLE_ID/${SAMPLE_ID}.metaphlan.tsv"
+if grep -qE '(^|[|])s__[^|[:space:]]+' "$metaphlan_profile"; then
+  metaphlan_species_status="species_rows_present"
+else
+  metaphlan_species_status="no_species_rows"
+fi
+printf 'pool_label\tmetaphlan_species_status\n%s\t%s\n' \
+  "$POOL_LABEL" "$metaphlan_species_status" > "$root/profile_status.tsv"
+
+sha256sum "$root/audit_design.tsv" "$root/fastq_integrity.tsv" "$root/profile_status.tsv" > "$root/audit_inputs.sha256"
 touch "$root/SUCCESS"
 echo "[PASS] Pure-pool audit completed: $POOL_LABEL"

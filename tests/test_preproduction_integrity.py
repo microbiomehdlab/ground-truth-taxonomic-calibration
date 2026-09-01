@@ -15,9 +15,15 @@ class PreproductionIntegrityTests(unittest.TestCase):
         self.assertIn('PURE_POOL_AUDIT_PAIRS="${PURE_POOL_AUDIT_PAIRS:-1000000}"', runner)
         self.assertIn("selection_rule\\tdeterministic_prefix", runner)
         self.assertIn('PURE_POOL_AUDIT_ROOT', runner)
+        self.assertIn('export ALLOW_NO_METAPHLAN_SPECIES=true', runner)
         self.assertNotIn('PERSISTENT_RESULTS_ROOT', runner)
         self.assertIn("#SBATCH --cpus-per-task=8", sbatch)
         self.assertIn("#SBATCH --mem=48G", sbatch)
+
+    def test_clinical_metaphlan_species_gate_remains_strict_by_default(self):
+        runner = (ROOT / "datasets/yachida/run_baseline_profiling_smoke.sh").read_text()
+        self.assertIn('${ALLOW_NO_METAPHLAN_SPECIES:-false}', runner)
+        self.assertIn('[ERROR] MetaPhlAn profile contains no species-level rows', runner)
 
     def test_yachida_production_resources_fit_standard_nodes(self):
         script = (ROOT / "run_yachida_batch_sample.sbatch").read_text()

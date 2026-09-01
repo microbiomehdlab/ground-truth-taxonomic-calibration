@@ -148,8 +148,12 @@ echo "[STEP 2/2] MetaPhlAn 4: $SAMPLE_ID"
   -o "$metaphlan_profile"
 [[ -s "$metaphlan_profile" ]] || { echo "[ERROR] Empty MetaPhlAn profile" >&2; exit 1; }
 grep -qE '(^|[|])s__[^|[:space:]]+' "$metaphlan_profile" || {
-  echo "[ERROR] MetaPhlAn profile contains no species-level rows" >&2
-  exit 1
+  if [[ "${ALLOW_NO_METAPHLAN_SPECIES:-false}" == "true" ]]; then
+    echo "[AUDIT] MetaPhlAn profile contains no species-level rows"
+  else
+    echo "[ERROR] MetaPhlAn profile contains no species-level rows" >&2
+    exit 1
+  fi
 }
 rm -f -- "$mapout"
 
