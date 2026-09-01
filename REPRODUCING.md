@@ -30,6 +30,7 @@ replication.
 | Strict preprocessing and profiling | `datasets/submit_crc_batch.sh`, `datasets/yachida/submit_batch.sh` | pinned MetaShotgunPrep commit, host/database/image identity, receipts and output checksums |
 | Audit batches | `run_yachida_batch_audit.sbatch` and cohort completeness checks | verified sample markers, sealed batches, failure/retry ledger |
 | Pure-pool assignment | `run_yachida_pure_pool_audit.sbatch` | systematic full-pool sample, native profiles, checksummed summary |
+| Assembly-choice sensitivity | `datasets/yachida/submit_assembly_sensitivity.sh` | two additive clean-assembly arms on the frozen 30-sample independent subset; original production remains unchanged |
 | Target/reference validation | `run_phase3_target_validation.sh` | assembly-integrity and NCBI quality tables, UHGG/MetaPhlAn table, provenance, checksum seal |
 | Replacement-assembly sensitivity | `scripts/rank_candidate_assemblies.py` | frozen NCBI snapshots, eligibility ledger, selected accessions, checksums |
 | Stage downstream inputs | `stage_required_inputs.sh`, `REQUIRED_INPUTS.md` | self-contained input contract and checksums |

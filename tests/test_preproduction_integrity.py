@@ -42,6 +42,21 @@ class PreproductionIntegrityTests(unittest.TestCase):
         runner = (ROOT / "datasets/yachida/run_full_streaming_sample.sh").read_text()
         self.assertIn('PROFILE_CONCURRENCY="${PROFILE_CONCURRENCY:-1}"', runner)
 
+    def test_assembly_sensitivity_is_additive_and_matched(self):
+        runner = (ROOT / "datasets/yachida/run_assembly_sensitivity_sample.sh").read_text()
+        submitter = (ROOT / "datasets/yachida/submit_assembly_sensitivity.sh").read_text()
+        spike = (ROOT / "spikes/scripts/spikein/spike_one_taxon_array.sbatch").read_text()
+        arms = (ROOT / "datasets/yachida/assembly_sensitivity_arms.tsv").read_text()
+        self.assertIn("Pana_clean_GCA_000381525.1", arms)
+        self.assertIn("Pint_clean_GCA_001953955.1", arms)
+        self.assertIn('OUTPUT_LABEL="$arm_label" SEED_LABEL="$target_label"', runner)
+        self.assertIn('expected_profiles=$((arm_count * fraction_count))', runner)
+        self.assertNotIn('CRCpanel', runner)
+        self.assertNotIn('profile_root/baseline', runner)
+        self.assertIn('[[ "$n" -eq 30 ]]', submitter)
+        self.assertIn('OUTPUT_LABEL="${OUTPUT_LABEL:-$LABEL}"', spike)
+        self.assertIn('SEED_LABEL="${SEED_LABEL:-$LABEL}"', spike)
+
     def test_preproduction_gate_clears_stale_success_marker(self):
         script = (ROOT / "run_yachida_preproduction_audit.sh").read_text()
         marker_cleanup = 'rm -f -- "$AUDIT_DIR/SUCCESS"'

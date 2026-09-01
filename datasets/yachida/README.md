@@ -461,6 +461,41 @@ private result under `work/private_host_policy_audit/`. It does not modify or
 delete production results. The retained audit FASTQs can subsequently be
 profiled for a sensitivity analysis if the pair-count difference is material.
 
+### Additive assembly-choice sensitivity arms
+
+`submit_assembly_sensitivity.sh` adds two clean-assembly independent-spike
+arms to the frozen 30-sample nested subset. It does not replace or write into
+the original Yachida result tree, does not regenerate baselines or the
+ten-member community, and expects six frozen independent fractions. The arm
+definitions and accessions are tracked in `assembly_sensitivity_arms.tsv`.
+
+The site-specific `YACHIDA_ENV` must point these variables at a new, isolated
+run root and the sealed replacement pools:
+
+```text
+ASSEMBLY_SENSITIVITY_ROOT=/absolute/path/to/private_assembly_sensitivity_run
+ASSEMBLY_SENSITIVITY_POOLS_DIR=/absolute/path/to/replacement_pools
+YACHIDA_SCRATCH_ROOT=/absolute/path/to/private_assembly_sensitivity_run/scratch
+YACHIDA_STATE_DIR=/absolute/path/to/private_assembly_sensitivity_run/state
+PERSISTENT_QC_ROOT=/absolute/path/to/private_assembly_sensitivity_run/qc
+```
+
+After a one-sample smoke test, submit the frozen manifest:
+
+```bash
+export PROJECT="$PWD"
+export YACHIDA_ENV="$PWD/config/yachida.assembly-sensitivity.env"
+bash datasets/yachida/submit_assembly_sensitivity.sh \
+  --manifest work/yachida_67x3/metadata/independent_10_per_condition.tsv \
+  --max-concurrent 5 \
+  --delete-verified-inputs
+```
+
+The spike generator separates the output arm label from the seed label. Thus
+`Pana_clean_GCA_000381525.1` and `Pint_clean_GCA_001953955.1` remain distinct
+downstream while using the original `Pana` and `Pint` seed identities for
+matched comparisons. Each completed sample must contain exactly 12 profiles.
+
 ## Seed invariance
 
 ART and seqtk use `stable-seed-v1`, derived from stable sample, target,

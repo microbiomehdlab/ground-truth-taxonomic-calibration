@@ -24,6 +24,10 @@ BIND="${BIND:-}"
 SAMPLING_MODE="${SAMPLING_MODE:-single_pass}"
 FASTQ_ASSEMBLY_MODE="${FASTQ_ASSEMBLY_MODE:-recompress}"
 MULTI_SAMPLER="${MULTI_SAMPLER:-$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/sample_paired_pool_multi.sh}"
+OUTPUT_LABEL="${OUTPUT_LABEL:-$LABEL}"
+SEED_LABEL="${SEED_LABEL:-$LABEL}"
+[[ "$OUTPUT_LABEL" =~ ^[A-Za-z0-9._-]+$ ]] || { echo "[ERROR] Unsafe OUTPUT_LABEL: $OUTPUT_LABEL" >&2; exit 1; }
+[[ "$SEED_LABEL" =~ ^[A-Za-z0-9._-]+$ ]] || { echo "[ERROR] Unsafe SEED_LABEL: $SEED_LABEL" >&2; exit 1; }
 [[ "$SAMPLING_MODE" == legacy || "$SAMPLING_MODE" == single_pass ]] || { echo "[ERROR] SAMPLING_MODE must be legacy or single_pass" >&2; exit 1; }
 [[ "$FASTQ_ASSEMBLY_MODE" == recompress || "$FASTQ_ASSEMBLY_MODE" == gzip_members ]] || {
   echo "[ERROR] FASTQ_ASSEMBLY_MODE must be recompress or gzip_members" >&2
@@ -180,7 +184,7 @@ touch "$manifest_part"
 IFS=',' read -r -a fracs <<< "$FRACTIONS"
 
 if [[ "$SAMPLING_MODE" == "single_pass" ]]; then
-  requests="$tmp/${LABEL}.multi_requests.tsv"
+  requests="$tmp/${OUTPUT_LABEL}.multi_requests.tsv"
   printf 'tag\tseed\tn\n' > "$requests"
   for f in "${fracs[@]}"; do
     canonical_fraction="$(python3 - "$f" <<'PY'
@@ -188,7 +192,7 @@ import decimal, sys
 print(format(decimal.Decimal(sys.argv[1]).normalize(), "f"))
 PY
 )"
-    seed="$(python3 "$SEED_HELPER" --base "$SEED_BASE" --namespace spike-independent-v1 "$sample_id" "$LABEL" "$canonical_fraction")"
+    seed="$(python3 "$SEED_HELPER" --base "$SEED_BASE" --namespace spike-independent-v1 "$sample_id" "$SEED_LABEL" "$canonical_fraction")"
     N="$(python3 - <<PY
 R=int($R); f=float("$f"); print(int(round((f/(1.0-f))*R)))
 PY
@@ -199,7 +203,7 @@ PY
 f=float("$f"); s=("{:.6f}".format(f)).rstrip("0").rstrip("."); print("f"+s.replace(".","p"))
 PY
 )"
-    printf '%s\t%s\t%s\n' "${LABEL}.${f_tag}.spike" "$seed" "$N" >> "$requests"
+    printf '%s\t%s\t%s\n' "${OUTPUT_LABEL}.${f_tag}.spike" "$seed" "$N" >> "$requests"
   done
   bash "$MULTI_SAMPLER" "$IMG" "$POOL1" "$POOL2" "$requests" "$tmp" "$tmp/multi_sampler"
 fi
@@ -215,7 +219,7 @@ PY
 )"
   seed="$(python3 "$SEED_HELPER" --base "$SEED_BASE" \
     --namespace spike-independent-v1 \
-    "$sample_id" "$LABEL" "$canonical_fraction")"
+    "$sample_id" "$SEED_LABEL" "$canonical_fraction")"
 
   python3 - <<PY >/dev/null 2>&1
 f=float("$f")
@@ -246,10 +250,10 @@ print("f" + s.replace(".", "p"))
 PY
 )"
 
-  sp1="$tmp/${LABEL}.${f_tag}.spike_1.fq"
-  sp2="$tmp/${LABEL}.${f_tag}.spike_2.fq"
-  ids1="$tmp/${LABEL}.${f_tag}.ids1.txt"
-  ids2="$tmp/${LABEL}.${f_tag}.ids2.txt"
+  sp1="$tmp/${OUTPUT_LABEL}.${f_tag}.spike_1.fq"
+  sp2="$tmp/${OUTPUT_LABEL}.${f_tag}.spike_2.fq"
+  ids1="$tmp/${OUTPUT_LABEL}.${f_tag}.ids1.txt"
+  ids2="$tmp/${OUTPUT_LABEL}.${f_tag}.ids2.txt"
 
   if [[ "$SAMPLING_MODE" == "single_pass" ]]; then
     # sample_paired_pool_multi.sh already writes the canonical filenames
@@ -290,8 +294,8 @@ PY
     exit 1
   }
 
-  out1="$WORK/spiked_fastqs/${sample_id}_${LABEL}_${f_tag}_1.fq.gz"
-  out2="$WORK/spiked_fastqs/${sample_id}_${LABEL}_${f_tag}_2.fq.gz"
+  out1="$WORK/spiked_fastqs/${sample_id}_${OUTPUT_LABEL}_${f_tag}_1.fq.gz"
+  out2="$WORK/spiked_fastqs/${sample_id}_${OUTPUT_LABEL}_${f_tag}_2.fq.gz"
 
   assemble_spiked_fastq "$bg1" "$sp1" "$out1"
   assemble_spiked_fastq "$bg2" "$sp2" "$out2"
@@ -303,15 +307,15 @@ print("{:.8f}".format(N/(R+N)))
 PY
 )"
 
-  spiked_id="${sample_id}_${LABEL}_${f_tag}"
+  spiked_id="${sample_id}_${OUTPUT_LABEL}_${f_tag}"
   # Fraction-at-a-time streaming reruns replace only their own stable record.
-  awk -F'\t' -v label="$LABEL" -v fraction="$f" \
+  awk -F'\t' -v label="$OUTPUT_LABEL" -v fraction="$f" \
     'NR == 1 || !($2 == label && $3 == fraction)' \
     "$design" > "${design}.tmp" && mv "${design}.tmp" "$design"
   awk -F'\t' -v id="$spiked_id" '$1 != id' \
     "$manifest_part" > "${manifest_part}.tmp" && mv "${manifest_part}.tmp" "$manifest_part"
 
-  echo -e "${sample_id}\t${LABEL}\t${f}\t${R1n}\t${R2n}\t${R}\t${N}\t${n1}\t${f_hat}\t${seed}\t${out1}\t${out2}\t${POOL1}\t${POOL2}" >> "$design"
+  echo -e "${sample_id}\t${OUTPUT_LABEL}\t${f}\t${R1n}\t${R2n}\t${R}\t${N}\t${n1}\t${f_hat}\t${seed}\t${out1}\t${out2}\t${POOL1}\t${POOL2}" >> "$design"
 
   if [[ -n "$rest" && "$rest" != "$line" ]]; then
     echo -e "${spiked_id}\t${out1}\t${out2}\t${rest}" >> "$manifest_part"
@@ -321,6 +325,7 @@ PY
 done
 
 echo "[OK] Done sample=$sample_id label=$LABEL"
+echo "[OK] Output label: $OUTPUT_LABEL; seed label: $SEED_LABEL"
 echo "[OK] Design log: $design"
 echo "[OK] Sampling mode: $SAMPLING_MODE"
 echo "[OK] FASTQ assembly mode: $FASTQ_ASSEMBLY_MODE"
