@@ -524,11 +524,14 @@ SIF=/path/to/pinned/analysis.sif \
 UHGG_METADATA=/path/to/uhgg_v2.0.2/genomes-all_metadata.tsv \
 UHGG_MASH_SKETCH=/path/to/uhgg_v2.0.2/all_genomes.msh \
 METAPHLAN_PKL=/path/to/mpa_vJan25_CHOCOPhlAnSGB_202503.pkl \
+NCBI_REPORT_DIR=/path/to/reference/genomes/provenance \
 PHASE3_OUT="$PWD/work/private_phase3_target_validation_YYYYMMDD" \
 bash run_phase3_target_validation.sh
 ```
 
-The runner records the exact FASTA and database checksums, Mash version,
+The runner records the exact FASTA, NCBI assembly-report, and database
+checksums, NCBI assembly identity/status/level, ANI taxonomy-check metadata,
+CheckM completeness/contamination when supplied by NCBI, Mash version,
 builder checksum, assembly summaries, ambiguous-base burden, duplicate contigs,
 and exact contigs shared between target assemblies. It seals successful output
 with `PHASE3_OUTPUTS.sha256` and `SUCCESS`. These sequence-integrity checks are

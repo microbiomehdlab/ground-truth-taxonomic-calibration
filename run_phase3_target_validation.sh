@@ -7,6 +7,7 @@ cd "$ROOT"
 : "${UHGG_METADATA:?Set UHGG_METADATA to genomes-all_metadata.tsv}"
 : "${UHGG_MASH_SKETCH:?Set UHGG_MASH_SKETCH to all_genomes.msh}"
 : "${METAPHLAN_PKL:?Set METAPHLAN_PKL to the frozen MetaPhlAn database pickle}"
+: "${NCBI_REPORT_DIR:?Set NCBI_REPORT_DIR to the production assembly provenance directory}"
 : "${PHASE3_OUT:?Set PHASE3_OUT to an empty/new output directory}"
 
 SPIKE_PANEL="${SPIKE_PANEL:-$ROOT/spikes/spike_panel.tsv}"
@@ -24,6 +25,7 @@ done
 mkdir -p "$PHASE3_OUT/assembly_integrity" "$PHASE3_OUT/database_representation"
 python3 scripts/audit_target_assemblies.py \
   --spike-panel "$SPIKE_PANEL" \
+  --ncbi-report-dir "$NCBI_REPORT_DIR" \
   --outdir "$PHASE3_OUT/assembly_integrity"
 python3 scripts/build_reference_representation_table.py \
   --spike-panel "$SPIKE_PANEL" \

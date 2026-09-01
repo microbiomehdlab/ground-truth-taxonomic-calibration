@@ -73,6 +73,7 @@ def n50(lengths: list[int]) -> int:
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--spike-panel", required=True, type=Path)
+    parser.add_argument("--ncbi-report-dir", required=True, type=Path)
     parser.add_argument("--outdir", required=True, type=Path)
     args = parser.parse_args()
 
@@ -86,6 +87,8 @@ def main() -> None:
         fail("spike panel contains duplicate labels")
 
     rows = []
+    ncbi_rows = []
+    ncbi_files: list[Path] = []
     all_contig_hashes: dict[str, list[tuple[str, str]]] = {}
     for target in panel:
         path = resolve(args.spike_panel, target["fasta"])
@@ -120,6 +123,63 @@ def main() -> None:
             "duplicate_contigs_within_assembly": duplicates,
         })
 
+        reports = sorted(args.ncbi_report_dir.glob(
+            f"{target['label']}.{target['assembly']}.assembly_data_report.jsonl"
+        ))
+        if len(reports) != 1:
+            fail(
+                f"expected exactly one NCBI assembly report for {target['label']} "
+                f"{target['assembly']}; found {len(reports)} in {args.ncbi_report_dir}"
+            )
+        report_path = reports[0]
+        with report_path.open(encoding="utf-8") as handle:
+            report_lines = [line for line in handle if line.strip()]
+        if len(report_lines) != 1:
+            fail(f"expected one JSON record in {report_path}; found {len(report_lines)}")
+        report = json.loads(report_lines[0])
+        if report.get("accession") != target["assembly"]:
+            fail(
+                f"NCBI accession mismatch for {target['label']}: panel="
+                f"{target['assembly']} report={report.get('accession')}"
+            )
+        assembly_info = report.get("assemblyInfo") or {}
+        organism = report.get("organism") or {}
+        ani = report.get("averageNucleotideIdentity") or {}
+        best_ani = ani.get("bestAniMatch") or {}
+        checkm = report.get("checkmInfo") or {}
+        ncbi_files.append(report_path)
+        catalog_path = args.ncbi_report_dir / (
+            f"{target['label']}.{target['assembly']}.dataset_catalog.json"
+        )
+        if not catalog_path.is_file() or catalog_path.stat().st_size == 0:
+            fail(f"missing NCBI dataset catalog: {catalog_path}")
+        ncbi_files.append(catalog_path)
+        ncbi_rows.append({
+            "label": target["label"],
+            "canonical_target": target["taxon_name"],
+            "panel_accession": target["assembly"],
+            "report_accession": report.get("accession", ""),
+            "current_accession": report.get("currentAccession", ""),
+            "assembly_status": assembly_info.get("assemblyStatus", ""),
+            "assembly_level": assembly_info.get("assemblyLevel", ""),
+            "refseq_category": assembly_info.get("refseqCategory", ""),
+            "assembly_release_date": assembly_info.get("releaseDate", ""),
+            "organism_name": organism.get("organismName", ""),
+            "organism_taxid": organism.get("taxId", ""),
+            "submitted_species": ani.get("submittedSpecies", ""),
+            "taxonomy_check_status": ani.get("taxonomyCheckStatus", ""),
+            "best_ani_match_species": best_ani.get("organismName", ""),
+            "best_ani_match_assembly": best_ani.get("assembly", ""),
+            "best_ani_pct": best_ani.get("ani", ""),
+            "best_ani_assembly_coverage_pct": best_ani.get("assemblyCoverage", ""),
+            "checkm_version": checkm.get("checkmVersion", ""),
+            "checkm_marker_set": checkm.get("checkmMarkerSet", ""),
+            "checkm_completeness_pct": checkm.get("completeness", ""),
+            "checkm_contamination_pct": checkm.get("contamination", ""),
+            "report_sha256": sha256(report_path),
+            "catalog_sha256": sha256(catalog_path),
+        })
+
     cross = []
     for digest, occurrences in sorted(all_contig_hashes.items()):
         target_labels = sorted({label for label, _ in occurrences})
@@ -141,6 +201,12 @@ def main() -> None:
     with shared.open("w", newline="", encoding="utf-8") as handle:
         writer = csv.DictWriter(handle, fieldnames=fields, delimiter="\t", lineterminator="\n")
         writer.writeheader(); writer.writerows(cross)
+    ncbi = args.outdir / "target_assembly_ncbi_quality.tsv"
+    with ncbi.open("w", newline="", encoding="utf-8") as handle:
+        writer = csv.DictWriter(
+            handle, fieldnames=list(ncbi_rows[0]), delimiter="\t", lineterminator="\n"
+        )
+        writer.writeheader(); writer.writerows(ncbi_rows)
     provenance = args.outdir / "target_assembly_integrity_PROVENANCE.txt"
     provenance.write_text(
         "\n".join([
@@ -149,13 +215,15 @@ def main() -> None:
             "limitation=not a taxonomic contamination classifier",
             f"spike_panel={args.spike_panel.resolve()}",
             f"spike_panel_sha256={sha256(args.spike_panel)}",
+            f"ncbi_report_dir={args.ncbi_report_dir.resolve()}",
             f"script_sha256={sha256(Path(__file__).resolve())}",
             f"targets={len(rows)}", f"exact_cross_target_contigs={len(cross)}",
+            f"ncbi_provenance_files={len(ncbi_files)}",
         ]) + "\n", encoding="utf-8",
     )
     checksums = args.outdir / "target_assembly_audit_outputs.sha256"
     checksums.write_text("".join(
-        f"{sha256(path)}  {path.name}\n" for path in (summary, shared, provenance)
+        f"{sha256(path)}  {path.name}\n" for path in (summary, shared, ncbi, provenance)
     ), encoding="utf-8")
     print(f"[PASS] Audited {len(rows)} target assemblies")
     print(f"[INFO] Exact contigs shared across targets: {len(cross)}")
