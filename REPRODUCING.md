@@ -31,6 +31,7 @@ replication.
 | Audit batches | `run_yachida_batch_audit.sbatch` and cohort completeness checks | verified sample markers, sealed batches, failure/retry ledger |
 | Pure-pool assignment | `run_yachida_pure_pool_audit.sbatch` | systematic full-pool sample, native profiles, checksummed summary |
 | Target/reference validation | `run_phase3_target_validation.sh` | assembly-integrity and NCBI quality tables, UHGG/MetaPhlAn table, provenance, checksum seal |
+| Replacement-assembly sensitivity | `scripts/rank_candidate_assemblies.py` | frozen NCBI snapshots, eligibility ledger, selected accessions, checksums |
 | Stage downstream inputs | `stage_required_inputs.sh`, `REQUIRED_INPUTS.md` | self-contained input contract and checksums |
 | Statistical analysis | `run_original_unpaired_q010_cluster.sbatch` | frozen analysis specification, run manifest, model diagnostics and outputs |
 | Rebuild figures | `rerun_current_figures_only.sh`, `rerun_supplementary_figures_only.sh` | source tables, vector figures, checksums |
