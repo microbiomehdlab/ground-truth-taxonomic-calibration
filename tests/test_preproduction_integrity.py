@@ -25,6 +25,13 @@ class PreproductionIntegrityTests(unittest.TestCase):
         self.assertIn('${ALLOW_NO_METAPHLAN_SPECIES:-false}', runner)
         self.assertIn('[ERROR] MetaPhlAn profile contains no species-level rows', runner)
 
+    def test_pure_pool_summary_reports_native_denominators(self):
+        script = (ROOT / "datasets/yachida/summarize_pure_pool_audit.py").read_text()
+        self.assertIn('expected_target_pct', script)
+        self.assertIn('off_target_species_pct', script)
+        self.assertIn('kraken2_unclassified_pct', script)
+        self.assertIn('reported_species_total_pct', script)
+
     def test_yachida_production_resources_fit_standard_nodes(self):
         script = (ROOT / "run_yachida_batch_sample.sbatch").read_text()
         self.assertIn("#SBATCH --cpus-per-task=16", script)
