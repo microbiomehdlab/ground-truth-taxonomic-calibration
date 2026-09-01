@@ -186,7 +186,12 @@ def closest_representatives(
         if query_path is None:
             continue
         dist = float(distance)
-        if query_path not in best or dist < float(best[query_path]["distance"]):
+        candidate_key = (dist, ref_id)
+        current_key = (
+            float(best[query_path]["distance"]),
+            str(best[query_path]["reference"]),
+        ) if query_path in best else None
+        if current_key is None or candidate_key < current_key:
             best[query_path] = {
                 "reference": ref_id,
                 "reference_raw": reference,
@@ -323,6 +328,17 @@ def write_outputs(rows: list[dict[str, object]], outdir: Path, provenance: list[
     )
 
 
+def command_version(command: str) -> str:
+    try:
+        result = subprocess.run(
+            [command, "--version"], text=True, capture_output=True, check=False,
+        )
+    except OSError as error:
+        return f"unavailable ({error})"
+    text = (result.stdout or result.stderr).strip().replace("\n", "; ")
+    return text or f"unavailable (exit {result.returncode})"
+
+
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--spike-panel", required=True, type=Path)
@@ -390,7 +406,16 @@ def main() -> None:
         f"uhgg_metadata_sha256={sha256(args.uhgg_metadata)}",
         f"uhgg_mash_sketch_sha256={sha256(args.uhgg_mash_sketch)}",
         f"metaphlan_pkl_sha256={sha256(args.metaphlan_pkl)}",
+        f"builder_sha256={sha256(Path(__file__).resolve())}",
+        f"python_version={sys.version.split()[0]}",
+        f"mash_command={args.mash_bin}",
+        f"mash_version={command_version(args.mash_bin)}",
     ]
+    for target, fasta in zip(panel, query_paths):
+        provenance.extend([
+            f"target_{target['label']}_fasta={fasta}",
+            f"target_{target['label']}_fasta_sha256={sha256(fasta)}",
+        ])
     write_outputs(rows, args.outdir, provenance)
     print(f"[PASS] Wrote target-database representation table under: {args.outdir}")
 

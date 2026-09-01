@@ -508,6 +508,26 @@ record, and the publication-formatted
 uninformative exact-representative-ID field, while the machine-readable files
 retain that field together with the Mash P-values and shared-hash counts.
 
+For the frozen Phase 3 target validation, rebuild the representation table and
+the sequence-integrity audit together in a new output directory:
+
+```bash
+PROJECT="$PWD" \
+SIF=/path/to/pinned/analysis.sif \
+UHGG_METADATA=/path/to/uhgg_v2.0.2/genomes-all_metadata.tsv \
+UHGG_MASH_SKETCH=/path/to/uhgg_v2.0.2/all_genomes.msh \
+METAPHLAN_PKL=/path/to/mpa_vJan25_CHOCOPhlAnSGB_202503.pkl \
+PHASE3_OUT="$PWD/work/private_phase3_target_validation_YYYYMMDD" \
+bash run_phase3_target_validation.sh
+```
+
+The runner records the exact FASTA and database checksums, Mash version,
+builder checksum, assembly summaries, ambiguous-base burden, duplicate contigs,
+and exact contigs shared between target assemblies. It seals successful output
+with `PHASE3_OUTPUTS.sha256` and `SUCCESS`. These sequence-integrity checks are
+not a taxonomic contamination classifier; database representation and empirical
+pure-pool assignment remain separate complementary evidence.
+
 The workflow reads `metadata_w_study.tsv`, resolves only those samples under
 `METAPREP_ROOT/<cohort>/sequencing/<biological-sample>/qc_before|qc_after/`.
 Samples may be identified either by the biological-sample directory or by the
