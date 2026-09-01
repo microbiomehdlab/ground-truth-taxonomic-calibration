@@ -78,6 +78,7 @@ def main() -> None:
     category_order = {"reference genome": 0, "representative genome": 1, "": 2}
     all_rows = []
     selected = []
+    no_candidate_labels = []
     snapshot_hashes = []
     for spec in specs:
         snapshot = Path(spec["jsonl"])
@@ -149,9 +150,10 @@ def main() -> None:
         eligible = sorted((row for row in cohort if row["eligible"] == "yes"), key=lambda row: row["_sort"])
         for rank, row in enumerate(eligible, 1):
             row["selection_rank"] = rank
-        if not eligible:
-            fail(f"no eligible candidate assembly for {spec['label']} under frozen rules")
-        selected.append(dict(eligible[0]))
+        if eligible:
+            selected.append(dict(eligible[0]))
+        else:
+            no_candidate_labels.append(spec["label"])
         all_rows.extend(cohort)
 
     for row in all_rows + selected:
@@ -170,6 +172,7 @@ def main() -> None:
         f"minimum_ani={args.minimum_ani}",
         f"minimum_ani_coverage={args.minimum_ani_coverage}",
         "ranking=reference category; type material; assembly level; contamination; completeness; ANI coverage; contig N50; accession",
+        f"targets_without_eligible_candidate={';'.join(no_candidate_labels)}",
         f"manifest_sha256={sha256(args.candidate_manifest)}",
         f"script_sha256={sha256(Path(__file__).resolve())}",
         *[f"snapshot_sha256={digest}  {path}" for path, digest in snapshot_hashes],
@@ -181,6 +184,8 @@ def main() -> None:
     print(f"[PASS] Ranked {len(all_rows)} assemblies across {len(specs)} targets")
     for row in selected:
         print(f"[SELECTED] {row['label']} {row['accession']}")
+    for label in no_candidate_labels:
+        print(f"[REVIEW] {label}: no assembly passed every frozen eligibility rule")
 
 
 if __name__ == "__main__":

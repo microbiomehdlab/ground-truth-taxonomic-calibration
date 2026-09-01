@@ -28,6 +28,13 @@ def main():
         assert chosen[0]["accession"] == "GCF_GOOD"
         audit = list(csv.DictReader((out / "candidate_assembly_audit.tsv").open(), delimiter="\t"))
         assert next(row for row in audit if row["accession"] == "GCF_BAD")["eligible"] == "no"
+        # A target with no eligible candidate is a review result, not a broken
+        # workflow; the complete exclusion ledger must still be retained.
+        snapshot.write_text(json.dumps(record("GCF_ONLY_BAD", 12)) + "\n")
+        subprocess.run(["python3", str(repo / "scripts/rank_candidate_assemblies.py"), "--candidate-manifest", str(manifest), "--outdir", str(root / "none")], check=True)
+        empty = list(csv.DictReader((root / "none/selected_candidate_assemblies.tsv").open(), delimiter="\t"))
+        assert empty == []
+        assert (root / "none/candidate_assembly_audit.tsv").stat().st_size > 0
         print("[PASS] Candidate assembly ranking test passed.")
 
 
