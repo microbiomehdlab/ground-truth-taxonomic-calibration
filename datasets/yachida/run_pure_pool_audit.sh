@@ -28,10 +28,11 @@ profiles="$root/profiles"
 mkdir -p "$sample_work" "$profiles"
 r1="$sample_work/${POOL_LABEL}.pure_pool_1.fastq.gz"
 r2="$sample_work/${POOL_LABEL}.pure_pool_2.fastq.gz"
-lines=$((PURE_POOL_AUDIT_PAIRS * 4))
-
-head -n "$lines" "$YACHIDA_POOLS_DIR/${POOL_LABEL}.pool_1.fq" | gzip -n -c > "$r1.tmp"
-head -n "$lines" "$YACHIDA_POOLS_DIR/${POOL_LABEL}.pool_2.fq" | gzip -n -c > "$r2.tmp"
+python3 "$PROJECT/scripts/systematic_sample_paired_fastq.py" \
+  --r1 "$YACHIDA_POOLS_DIR/${POOL_LABEL}.pool_1.fq" \
+  --r2 "$YACHIDA_POOLS_DIR/${POOL_LABEL}.pool_2.fq" \
+  --output-r1 "$r1.tmp" --output-r2 "$r2.tmp" \
+  --total-pairs "$available" --sample-pairs "$PURE_POOL_AUDIT_PAIRS"
 mv -f "$r1.tmp" "$r1"
 mv -f "$r2.tmp" "$r2"
 python3 "$PROJECT/scripts/validate_paired_fastq.py" \
@@ -41,7 +42,7 @@ python3 "$PROJECT/scripts/validate_paired_fastq.py" \
 cat > "$root/audit_design.tsv" <<EOF
 field\tvalue
 pool_label\t$POOL_LABEL
-selection_rule\tdeterministic_prefix
+selection_rule\tdeterministic_systematic_midpoints_across_full_pool
 selected_pairs\t$PURE_POOL_AUDIT_PAIRS
 available_pairs\t$available
 pool_index_sha256\t$(sha256sum "$index" | awk '{print $1}')
