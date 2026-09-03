@@ -42,6 +42,7 @@ __pycache__/
 .Rhistory
 .RData
 .DS_Store
+CODEX_HANDOFF.md
 
 # Containers and large archives
 *.sif

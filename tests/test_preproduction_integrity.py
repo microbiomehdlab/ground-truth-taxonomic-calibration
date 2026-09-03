@@ -37,7 +37,7 @@ class PreproductionIntegrityTests(unittest.TestCase):
 
     def test_yachida_production_resources_fit_standard_nodes(self):
         script = (ROOT / "run_yachida_batch_sample.sbatch").read_text()
-        self.assertIn("#SBATCH --cpus-per-task=16", script)
+        self.assertIn("#SBATCH --cpus-per-task=8", script)
         self.assertIn("#SBATCH --mem=48G", script)
         runner = (ROOT / "datasets/yachida/run_full_streaming_sample.sh").read_text()
         self.assertIn('PROFILE_CONCURRENCY="${PROFILE_CONCURRENCY:-1}"', runner)

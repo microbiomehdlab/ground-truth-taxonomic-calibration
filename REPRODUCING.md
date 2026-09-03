@@ -28,7 +28,7 @@ replication.
 | Build and freeze pools | `spikes/README.md` | settings, seeds, pair counts, checksums, preproduction audit |
 | Freeze cohorts | `datasets/CRC_MANIFESTS.md`, `datasets/yachida/README.md` | eligibility, run accessions, URLs, sizes, MD5s, selection provenance |
 | Strict preprocessing and profiling | `datasets/submit_crc_batch.sh`, `datasets/yachida/submit_batch.sh` | pinned MetaShotgunPrep commit, host/database/image identity, receipts and output checksums |
-| Audit batches | `run_yachida_batch_audit.sbatch` and cohort completeness checks | verified sample markers, sealed batches, failure/retry ledger |
+| Audit batches | `run_yachida_batch_audit.sbatch` and `run_yachida_production_audit.sbatch` | rehashed receipts, sealed batches, dataset seal, failure/retry ledger |
 | Pure-pool assignment | `run_yachida_pure_pool_audit.sbatch` | systematic full-pool sample, native profiles, checksummed summary |
 | Assembly-choice sensitivity | `datasets/yachida/submit_assembly_sensitivity.sh` | two additive clean-assembly arms on the frozen 30-sample independent subset; original production remains unchanged |
 | Target/reference validation | `run_phase3_target_validation.sh` | assembly-integrity and NCBI quality tables, UHGG/MetaPhlAn table, provenance, checksum seal |
@@ -85,7 +85,23 @@ A Slurm `COMPLETED` state is necessary but insufficient. A final sample must
 have verified input downloads, synchronized mates, construction receipts,
 both native profiler outputs, retained-output checksums, and the applicable
 verified marker. Final datasets require a completeness report and sealed batch
-markers. Use `test -f` for markers created with `touch`.
+markers. Use `test -f` for markers created with `touch`. Once all 201 Yachida
+samples are present, submit `run_yachida_production_audit.sbatch`; it rehashes
+every receipt entry and writes batch seals plus a dataset-level production seal.
+
+Before starting FengQ or ZellerG, run the read-only cohort gate:
+
+```bash
+bash datasets/preflight_crc_production.sh \
+  --env config/feng.strict-production.env \
+  --manifest datasets/fengq/manifests/production_manifest.tsv
+```
+
+Repeat with the Zeller environment and manifest. Production must not start
+unless both invocations pass. This gate checks the strict MetaShotgunPrep
+revision, clean checkout, frozen thread/profiling settings, database and host
+index assets, sealed spike pools, manifest schema, and the nested 10/10/10
+independent subset.
 
 ## 6. Preserve a publication evidence package
 

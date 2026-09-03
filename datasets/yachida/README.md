@@ -117,12 +117,15 @@ revision, Bowtie2 host-index prefix, and persistent QC directory. Repository
 documentation and committed scripts use placeholders only; host-specific paths
 remain exclusively in this ignored file.
 
-The pinned MetaShotgunPrep revision is
-`5923619824799457e89bd78b211ed481b7cb6f3f`. It includes configurable output
-placement, deterministic discovery of paired host-depleted reads, and
-standardized persistent QC exports. The
-adapter requires this exact revision and refuses uncommitted changes to tracked
-MetaShotgunPrep files; untracked interpreter caches do not affect validation.
+The frozen strict-production MetaShotgunPrep revision is
+`a717a105d56934e205c21ef59a316b8613b6d1c1`. It retains a pair only when both
+primary mate records are unmapped to the host and excludes secondary and
+supplementary alignments. It also includes configurable output placement and
+standardized persistent QC exports. The adapter requires the configured exact
+revision and refuses uncommitted changes to tracked MetaShotgunPrep files;
+untracked interpreter caches do not affect validation. Historical runs made
+with an earlier host-retention policy must not be mixed silently with strict
+production and must be identified in the run evidence or rerun.
 
 `run_metashotgunprep.sh` adapts the streaming R1/R2 inputs to MetaShotgunPrep's
 required directory layout without duplicating the downloads. It verifies the
@@ -349,11 +352,13 @@ PROFILE_CONCURRENCY=1
 
 `gzip_members` produces a standards-compliant multi-member gzip file without a
 redundant decompression/recompression pass. The production configuration runs
-one profiler at a time and requests 16 CPUs and 48 GB per sample task. Completed
+one profiler at a time and requests 8 CPUs and 48 GB per sample task. Completed
 two-way profiling jobs consistently peaked near 69.5 GiB; after serializing
 profiles, seven final-production tasks consistently peaked at 34.76--34.78 GiB.
 The 48 GB request therefore retains approximately 38% headroom and permits two
-sample tasks to share a 126 GB, 40-CPU node. This changes scheduling only, not
+sample tasks to share a 126 GB, 40-CPU node. CPU accounting from the initial
+16-CPU jobs motivated the frozen 8-CPU request; the profiler thread settings
+are also eight. This changes scheduling only, not
 analytical output.
 The runner records scratch bytes
 after preprocessing, construction, and verified cleanup in each sample's

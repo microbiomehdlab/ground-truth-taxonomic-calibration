@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #SBATCH --job-name=yachida_full_sample
-#SBATCH --cpus-per-task=16
+#SBATCH --cpus-per-task=8
 #SBATCH --mem=48G
 #SBATCH --time=3-00:00:00
 
