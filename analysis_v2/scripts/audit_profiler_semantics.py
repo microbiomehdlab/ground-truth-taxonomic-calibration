@@ -77,16 +77,50 @@ def audit_metaphlan(path: Path) -> dict[str, object]:
                if row[0].split("|")[-1].startswith("s__")]
     unclassified = sum(value for row, value in zip(rows, abundances)
                        if row[0].upper() == "UNCLASSIFIED")
-    total = sum(abundances)
+    # MetaPhlAn can emit the same community mass at several taxonomic ranks.
+    # Therefore the sum of every row is not a meaningful compositional total.
+    # Identify terminal leaves and separately validate every reported rank.
+    clades = {row[0] for row in rows if row[0].upper() != "UNCLASSIFIED"}
+    nonleaves = set()
+    for clade in clades:
+        parts = clade.split("|")
+        nonleaves.update("|".join(parts[:index]) for index in range(1, len(parts)))
+    leaf_values = [
+        value for row, value in zip(rows, abundances)
+        if row[0].upper() == "UNCLASSIFIED" or row[0] not in nonleaves
+    ]
+    non_species_leaf_values = [
+        value for row, value in zip(rows, abundances)
+        if row[0].upper() != "UNCLASSIFIED"
+        and row[0] not in nonleaves
+        and not row[0].split("|")[-1].startswith("s__")
+        and not row[0].split("|")[-1].startswith("t__")
+    ]
+    rank_totals = {}
+    for row, value in zip(rows, abundances):
+        clade = row[0]
+        if clade.upper() == "UNCLASSIFIED":
+            continue
+        rank = clade.split("|")[-1].split("__", 1)[0]
+        rank_totals[rank] = rank_totals.get(rank, 0.0) + value
+    total = sum(leaf_values)
     species_total = sum(species)
-    non_species = total - species_total - unclassified
-    status = "PASS" if total <= 100.0001 else "FAIL_PERCENT_GT_100"
+    non_species = sum(non_species_leaf_values)
+    bad_ranks = [rank for rank, value in rank_totals.items() if value > 100.0001]
+    if total > 100.0001:
+        status = "FAIL_LEAF_PERCENT_GT_100"
+    elif unclassified > 100.0001:
+        status = "FAIL_UNCLASSIFIED_GT_100"
+    elif bad_ranks:
+        status = "FAIL_RANK_PERCENT_GT_100:" + ",".join(sorted(bad_ranks))
+    else:
+        status = "PASS"
     return {
         "profiler": "metaphlan4", "profile": str(path.resolve()),
         "sample_id": sample_id(path, ".metaphlan.tsv"), "rows": len(rows),
         "species_rows": len(species), "reported_total": total,
         "species_total": species_total, "unclassified_total": unclassified,
-        "non_species_total": max(0.0, non_species),
+        "non_species_total": non_species,
         "native_unit": "relative_abundance_pct", "status": status,
     }
 
@@ -117,9 +151,6 @@ def main() -> None:
 
     records = ([audit_bracken(path) for path in args.bracken] +
                [audit_metaphlan(path) for path in args.metaphlan])
-    if any(record["status"] != "PASS" for record in records):
-        raise SystemExit("[ERROR] an audited native profile failed validation")
-
     args.outdir.mkdir(parents=True, exist_ok=True)
     output = args.outdir / "profile_semantics_audit.tsv"
     with output.open("w", newline="", encoding="utf-8") as handle:
@@ -127,6 +158,15 @@ def main() -> None:
                                 lineterminator="\n")
         writer.writeheader()
         writer.writerows(records)
+
+    failures = [record for record in records if record["status"] != "PASS"]
+    if failures:
+        for record in failures[:20]:
+            print("[ERROR] {status}: {profile}".format(**record))
+        if len(failures) > 20:
+            print("[ERROR] ... and {} additional failures".format(len(failures) - 20))
+        print("[INFO] Complete failure report: {}".format(output))
+        raise SystemExit("[ERROR] {} native profiles failed validation".format(len(failures)))
 
     checksums = args.outdir / "profile_semantics_inputs.sha256"
     with checksums.open("w", encoding="utf-8") as handle:

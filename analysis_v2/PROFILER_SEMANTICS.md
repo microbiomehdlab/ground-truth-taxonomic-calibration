@@ -16,8 +16,10 @@ MetaPhlAn 4 profiles paired FASTQs with the frozen database and
 `--ignore_eukaryotes --ignore_archaea`. The command does not request
 `--unclassified_estimation`. Its native `relative_abundance` percentage is a
 marker-based compositional estimate; it is not an input-read assignment
-fraction. Species rows, any explicit `UNCLASSIFIED` row, and non-species rows
-are audited separately.
+fraction. Its output can repeat community mass at multiple taxonomic ranks, so
+the sum of every hierarchical row is not interpreted as a composition. Species
+rank, explicit `UNCLASSIFIED`, terminal-leaf mass, and non-species terminal
+leaves are audited separately, and each reported rank is validated independently.
 
 ## Decisions for v2
 

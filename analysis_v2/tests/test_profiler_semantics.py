@@ -24,8 +24,10 @@ def main() -> None:
         metaphlan.write_text(
             "#mpa_vJan25_CHOCOPhlAnSGB_202503\n"
             "#clade_name\tNCBI_tax_id\trelative_abundance\tadditional_species\n"
+            "k__Bacteria\t1\t90.0\t\n"
+            "k__Bacteria|p__P\t1\t90.0\t\n"
             "k__Bacteria|p__P|g__G|s__Target_species\t1\t72.5\t\n"
-            "k__Bacteria|p__P|g__G\t2\t17.5\t\n"
+            "k__Bacteria|p__P|g__Other\t2\t17.5\t\n"
             "UNCLASSIFIED\t-1\t10.0\t\n",
             encoding="utf-8",
         )
