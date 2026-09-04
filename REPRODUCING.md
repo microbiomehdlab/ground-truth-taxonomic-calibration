@@ -34,13 +34,14 @@ replication.
 | Target/reference validation | `run_phase3_target_validation.sh` | assembly-integrity and NCBI quality tables, UHGG/MetaPhlAn table, provenance, checksum seal |
 | Replacement-assembly sensitivity | `scripts/rank_candidate_assemblies.py` | frozen NCBI snapshots, eligibility ledger, selected accessions, checksums |
 | Stage downstream inputs | `stage_required_inputs.sh`, `REQUIRED_INPUTS.md` | self-contained input contract and checksums |
-| Statistical analysis | `run_original_unpaired_q010_cluster.sbatch` | frozen analysis specification, run manifest, model diagnostics and outputs |
+| Historical statistical analysis | `run_original_unpaired_q010_cluster.sbatch` | preserved original-unpaired comparator and its isolated run root |
+| Paired statistical analysis | `analysis_v2/STATISTICAL_ANALYSIS_PLAN.md` | frozen v2 specification, sample-clustered models, diagnostics, run manifest and output seal |
 | Rebuild figures | `rerun_current_figures_only.sh`, `rerun_supplementary_figures_only.sh` | source tables, vector figures, checksums |
 
-The statistical entry-point names retain `original_unpaired` for compatibility
-with the historical analysis. They must not be interpreted as approval of that
-model for the final manuscript: the final paired/repeated-measures analysis
-specification must be frozen before the definitive comparison is run.
+The `original_unpaired` entry points are preserved as the historical analysis
+and must not be overwritten. Revised work belongs under `analysis_v2/` and in a
+new run root. Its repeated-measures specification must be frozen before the
+definitive comparison is run.
 
 ## 1. Clone and validate the source
 
