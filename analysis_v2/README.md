@@ -63,3 +63,7 @@ Step 3 is specified in `ENDPOINTS.md` and implemented by
 `scripts/derive_paired_endpoints.py`. It distinguishes total-community dilution
 from the target-specific implanted fraction and produces checksummed derived
 evidence without fitting models.
+
+Step 4 is prespecified in `DETECTION_MODEL.md` and implemented by
+`scripts/fit_detection_dose_response.R`. Its synthetic execution test must run
+inside the frozen analysis image, where the pinned `mgcv` dependency is present.

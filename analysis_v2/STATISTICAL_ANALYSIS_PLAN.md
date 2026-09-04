@@ -58,10 +58,14 @@ It applies no fitted model, pseudocount, truncation, or detected-only filtering.
 
 ### Co-primary detection endpoint
 
-**TO FREEZE.** Define detection from the unmodified native species output and
-model detection probability across implanted fractions. Freeze whether the
-primary contrast is profiler difference in the whole curve, a prespecified weak
-dose, or the fraction giving a prespecified detection probability.
+**PRESPECIFIED, PENDING EMPIRICAL SEMANTICS GATE.** Detection is provisionally
+native abundance greater than zero. Cohort-specific binomial GAMs use
+categorical dose, profiler-by-dose effects, condition, and random intercepts for
+biological sample and target. The primary contrast is the whole
+profiler-by-dose interaction; dose-specific profiler contrasts are secondary
+and BH-adjusted across positive doses. `DETECTION_MODEL.md` records the complete
+model, diagnostic requirements, and failure policy. The zero definition is
+frozen only after representative final native outputs pass the semantics audit.
 
 ### Secondary endpoints
 
@@ -78,12 +82,12 @@ dose, or the fraction giving a prespecified detection probability.
 **DECIDED.** Samples, not profile rows, are the independent biological units.
 Inference must account for repeated fractions and targets within samples.
 
-**TO FREEZE.** Select the exact model family and formula after simulation and
+**PARTLY FROZEN.** The detection model is specified in `DETECTION_MODEL.md`.
+The exact continuous-response model remains to be selected after simulation and
 diagnostic work on synthetic fixtures, not by choosing whichever gives the most
 favourable profiler comparison. Candidate continuous models include a linear
 mixed model on a justified transformed scale and a flexible spline model with
-sample-clustered uncertainty. Candidate detection models include binomial mixed
-models or marginal models with sample-clustered standard errors.
+sample-clustered uncertainty.
 
 Prespecify:
 
