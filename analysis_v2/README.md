@@ -71,3 +71,17 @@ inside the frozen analysis image, where the pinned `mgcv` dependency is present.
 Step 5 is prespecified in `CONTINUOUS_MODEL.md` and implemented by
 `scripts/fit_continuous_dose_response.R`. It estimates profiler-specific linear
 response slopes and a categorical-dose nonlinearity diagnostic.
+
+The Yachida Pana/Pint integration path is implemented by
+`scripts/build_assembly_sensitivity_input.py`. It extracts exact frozen aliases
+from native profiles, joins clean and optional original assembly arms to the
+same strict baseline profiles, and validates the resulting canonical table.
+`ASSEMBLY_SENSITIVITY_MODEL.md` and `scripts/fit_assembly_sensitivity.R`
+implement the paired original-versus-clean response-slope sensitivity model.
+The fail-closed end-to-end entry point and Lobo instructions are
+`run_assembly_sensitivity.sh` and `ASSEMBLY_SENSITIVITY_RUNBOOK.md`.
+
+Step 6's model-independent evaluation contract is documented in
+`BIOMARKER_PROPAGATION.md` and implemented by
+`scripts/evaluate_biomarker_propagation.py`. The differential-abundance fitting
+contract remains deliberately unfrozen.

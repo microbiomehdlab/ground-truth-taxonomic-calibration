@@ -116,6 +116,11 @@ from every cohort to document:
 - MetaPhlAn's unclassified output and whether reported rows sum to 100%;
 - every downstream renormalization and filtering operation.
 
+On 2026-09-04, the audit passed all 720 native profiles in the sealed Yachida
+clean-assembly sensitivity experiment. This resolves the previously observed
+MetaPhlAn hierarchy/rounding parsing issues in the audit itself. It does not
+replace the required exact-input audit in each definitive cohort run.
+
 **DECIDED.** MetaPhlAn percentages will not be multiplied by FASTQ totals and
 interpreted as assigned reads. Missing Bracken species mass and the complement
 of MetaPhlAn species rows will not automatically be called unclassified.
@@ -145,6 +150,14 @@ Feature filters, artefact lists, and calibration rules learned from outcomes mus
 be restricted to discovery data and frozen before validation. Grouped resampling
 must keep all profiles from one biological sample in the same fold.
 
+**IMPLEMENTED IN PART.** `BIOMARKER_PROPAGATION.md` freezes the standardized
+feature-level result interface, and
+`scripts/evaluate_biomarker_propagation.py` deterministically computes target
+recall, off-target burden, precision, F1, target-effect change, and biomarker-set
+Jaccard stability at both q-value thresholds. It does not fit DA models or
+recompute q-values. The DA formula, feature filters, covariates, and grouped
+resampling design remain **TO FREEZE**.
+
 ## 7. Cross-cohort inference
 
 **TO FREEZE.** Treat Yachida, Feng, and Zeller as separate cohorts. Estimate each
@@ -157,6 +170,13 @@ meta-analytic synthesis. A pooled analysis that ignores cohort is not primary.
 Yachida samples and fractions using matched seed identities. Analyse detection,
 dose-response, off-target assignments, and biomarker propagation. Describe this
 as assembly-choice/quality sensitivity, not a causal contamination experiment.
+
+**IMPLEMENTED FOR QUANTITATIVE RESPONSE.**
+`scripts/build_assembly_sensitivity_input.py` builds validated paired original
+and clean canonical rows, and `scripts/fit_assembly_sensitivity.R` estimates
+profiler-by-arm response slopes and clean-minus-original contrasts. The
+fail-closed runner is `run_assembly_sensitivity.sh`. Detection, off-target, and
+biomarker-propagation assembly comparisons remain pending.
 
 ## 9. Multiplicity and uncertainty
 
