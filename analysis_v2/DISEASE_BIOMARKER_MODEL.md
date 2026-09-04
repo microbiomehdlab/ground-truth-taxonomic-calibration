@@ -14,7 +14,10 @@ For every native species abundance, the primary model is
 contrast is CRC versus Control; Adenoma versus Control is secondary. HC3 robust
 standard errors protect against heteroskedasticity. A complete-case model adding
 scaled BMI is a prespecified sensitivity analysis because BMI missingness is not
-uniform across cohorts.
+uniform across cohorts. A covariate that is invariant in an analysis population
+is non-estimable and cannot confound its within-population contrast; it is
+omitted automatically and recorded in every result row. Other rank deficiency
+remains a hard model failure rather than triggering silent term selection.
 
 The species universe is fixed across doses within a family. Species require at
 least 10% nonzero prevalence over all profiles in that family; the implanted

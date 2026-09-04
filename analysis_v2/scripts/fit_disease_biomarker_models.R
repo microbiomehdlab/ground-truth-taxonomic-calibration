@@ -44,19 +44,30 @@ families <- split(manifest, interaction(manifest[family_columns], drop = TRUE, l
 if (!length(families)) stop("No disease-analysis families.")
 
 fit_hc3 <- function(y, metadata, include_bmi = FALSE) {
+  used <- character(); omitted <- character()
+  if (length(unique(metadata$age_numeric)) > 1L) {
+    metadata$age_scaled <- as.numeric(scale(metadata$age_numeric)); used <- c(used, "age")
+  } else omitted <- c(omitted, "age_invariant")
+  if (length(unique(metadata$sex)) > 1L) used <- c(used, "sex")
+  else omitted <- c(omitted, "sex_invariant")
+  if (include_bmi) {
+    if (length(unique(metadata$bmi_numeric)) > 1L) {
+      metadata$bmi_scaled <- as.numeric(scale(metadata$bmi_numeric)); used <- c(used, "bmi")
+    } else omitted <- c(omitted, "bmi_invariant")
+  }
+  formula_terms <- c("condition", if ("age" %in% used) "age_scaled",
+                     if ("sex" %in% used) "sex", if ("bmi" %in% used) "bmi_scaled")
+  metadata$condition <- factor(metadata$condition, levels = c("Control", "Adenoma", "CRC"))
+  if ("sex" %in% used) metadata$sex <- factor(metadata$sex)
+  formula <- reformulate(formula_terms)
+  X <- model.matrix(formula, metadata)
   if (sd(y) < .Machine$double.eps) {
     null <- c(effect = 0, standard_error = 0, lower_95 = 0, upper_95 = 0,
-              p_value = 1, df = nrow(metadata) - if (include_bmi) 5L else 4L)
-    return(list(CRC_vs_Control = null, Adenoma_vs_Control = null))
+              p_value = 1, df = nrow(metadata) - ncol(X))
+    return(list(CRC_vs_Control = null, Adenoma_vs_Control = null,
+                covariates_used = paste(used, collapse = ","),
+                covariates_omitted = paste(omitted, collapse = ",")))
   }
-  metadata$condition <- factor(metadata$condition, levels = c("Control", "Adenoma", "CRC"))
-  metadata$sex <- factor(metadata$sex, levels = c("Female", "Male"))
-  metadata$age_scaled <- as.numeric(scale(metadata$age_numeric))
-  formula <- if (include_bmi) {
-    metadata$bmi_scaled <- as.numeric(scale(metadata$bmi_numeric))
-    ~ condition + age_scaled + sex + bmi_scaled
-  } else ~ condition + age_scaled + sex
-  X <- model.matrix(formula, metadata)
   fit <- lm.fit(X, y)
   if (fit$rank != ncol(X) || fit$df.residual < 2L) return(NULL)
   inverse <- solve(crossprod(X))
@@ -76,7 +87,9 @@ fit_hc3 <- function(y, metadata, include_bmi = FALSE) {
                      .Machine$double.xmin), df = fit$df.residual)
   }
   list(CRC_vs_Control = extract("conditionCRC"),
-       Adenoma_vs_Control = extract("conditionAdenoma"))
+       Adenoma_vs_Control = extract("conditionAdenoma"),
+       covariates_used = paste(used, collapse = ","),
+       covariates_omitted = paste(omitted, collapse = ","))
 }
 
 make_matrix <- function(records, species) {
@@ -126,10 +139,19 @@ for (family in families) {
         next
       }
       y <- log2(matrix[, feature] + pseudocount)
-      primary_fits[[feature]] <- fit_hc3(y, metadata, FALSE)
+      primary_fit <- fit_hc3(y, metadata, FALSE)
+      if (is.null(primary_fit))
+        stop("Rank-deficient primary disease model after invariant-covariate handling: ",
+             paste(unlist(common), collapse = "/"), "/", levels[level_index])
+      primary_fits[[feature]] <- primary_fit
       if (sum(bmi_complete) >= 12L && all(c("Control", "Adenoma", "CRC") %in%
-                                           unique(metadata$condition[bmi_complete])))
-        sensitivity_fits[[feature]] <- fit_hc3(y[bmi_complete], metadata[bmi_complete, ], TRUE)
+                                           unique(metadata$condition[bmi_complete]))) {
+        sensitivity_fit <- fit_hc3(y[bmi_complete], metadata[bmi_complete, ], TRUE)
+        if (is.null(sensitivity_fit))
+          stop("Rank-deficient BMI sensitivity model after invariant-covariate handling: ",
+               paste(unlist(common), collapse = "/"), "/", levels[level_index])
+        sensitivity_fits[[feature]] <- sensitivity_fit
+      }
     }
     render <- function(fits, model_spec, target_list) {
       for (contrast in c("CRC_vs_Control", "Adenoma_vs_Control")) {
@@ -145,6 +167,8 @@ for (family in families) {
             upper_95 = stats[["upper_95"]], p_value = stats[["p_value"]],
             q_value = qvalues[feature], model_spec = model_spec,
             n_samples = if (model_spec == "primary_age_sex") nrow(metadata) else sum(bmi_complete),
+            covariates_used = fits[[feature]]$covariates_used,
+            covariates_omitted = fits[[feature]]$covariates_omitted,
             include = 1, exclusion_reason = "", baseline_reference_kind = "observed_calls"))
         }
       }
@@ -171,7 +195,8 @@ write.table(excluded, file.path(outdir, "disease_da_exclusions.tsv"), sep = "\t"
 settings <- data.frame(setting = c("primary_formula", "sensitivity_formula", "transformation",
                                    "pseudocount_fraction", "minimum_prevalence", "standard_errors",
                                    "multiplicity_family", "primary_contrast", "secondary_contrast"),
-                       value = c("condition + scaled_age + sex", "condition + scaled_age + sex + scaled_bmi",
+                       value = c("condition + varying(scaled_age, sex)",
+                                 "condition + varying(scaled_age, sex, scaled_bmi)",
                                  "log2(abundance_fraction + fixed pseudocount)", pseudocount,
                                  min_prevalence, "HC3", "BH within cohort/profiler/target/arm/dose/contrast/model",
                                  "CRC_vs_Control", "Adenoma_vs_Control"))

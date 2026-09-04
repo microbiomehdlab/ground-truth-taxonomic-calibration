@@ -89,3 +89,6 @@ diagnostics, provenance, and checksums.
   are observed calls, so baseline-to-dose Jaccard stability is meaningful.
 - Development data may exercise this model but cannot support manuscript
   estimates. Definitive claims require sealed complete cohort inputs.
+- Covariates with no variation in an analysis population are non-estimable and
+  cannot confound within that population. They are omitted automatically and
+  recorded per result; other rank deficiency is not silently repaired.

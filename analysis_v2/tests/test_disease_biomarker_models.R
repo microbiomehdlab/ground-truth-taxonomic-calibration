@@ -20,7 +20,7 @@ manifest$spike_fraction_target <- c(baseline = 0, dose_01 = .001, dose_02 = .01)
 manifest$source_profile <- file.path(root, paste0(manifest$profile_id, ".tsv"))
 manifest$target_taxon <- "Peptostreptococcus anaerobius"
 manifest$target_feature <- "Peptostreptococcus anaerobius"
-manifest$age <- 45 + index; manifest$sex <- rep(c("Female", "Male"), length.out = nrow(manifest))
+manifest$age <- 45 + index; manifest$sex <- "Male"
 manifest$bmi <- 20 + (index %% 10); manifest$bmi[index %in% c(2, 12)] <- NA
 manifest$include <- 1; manifest$exclusion_reason <- ""
 write.table(manifest, manifest_path, sep = "\t", quote = FALSE, row.names = FALSE, na = "")
@@ -47,4 +47,5 @@ stopifnot(all(primary$model_spec == "primary_age_sex"), all(primary$n_samples ==
 stopifnot(all(sensitivity$n_samples == 28), all(primary$q_value >= 0 & primary$q_value <= 1))
 stopifnot(any(primary$feature == "Constant" & primary$p_value == 1))
 stopifnot(!any(primary$feature == "Rare"))
+stopifnot(all(grepl("sex_invariant", primary$covariates_omitted)))
 cat("[PASS] disease biomarker-model fixture\n")
