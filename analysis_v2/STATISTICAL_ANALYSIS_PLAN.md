@@ -35,6 +35,11 @@ failures are retried and are not biological exclusions.
 **TO VERIFY.** Produce a final participant/sample flow table for each cohort and
 a zero-unexplained-missingness ledger before model fitting.
 
+**IMPLEMENTED.** `INPUT_CONTRACT.md` freezes the canonical row structure and
+`scripts/validate_canonical_input.py` enforces pairing, uniqueness, provenance,
+unit conversion, and explicit exclusions. Building the final cohort tables
+remains pending upstream seals.
+
 ## 3. Endpoint hierarchy
 
 ### Primary quantitative endpoint

@@ -53,7 +53,8 @@ Planned implementation order:
 Every implementation step requires fixture-based tests before use on final
 cohort results.
 
-The command-level part of step 2 is implemented in
+Step 1 is specified in `INPUT_CONTRACT.md` and enforced by
+`scripts/validate_canonical_input.py`. The command-level part of step 2 is implemented in
 `scripts/audit_profiler_semantics.py` and documented in
 `PROFILER_SEMANTICS.md`. Run it on native cohort outputs before freezing zero
 and transformation rules.
