@@ -44,3 +44,18 @@ diagnostics, provenance, and checksums.
   output remains diagnostic history and must not be reported.
 - Literal zero p-values from numerical underflow are prohibited; extreme
   evidence is additionally represented as `-log10(p)`.
+
+## 2026-09-04 — biological-sample-level primary assembly inference
+
+- Development fits showed that even the random-slope GAM could give implausibly
+  narrow model-based uncertainty for clean-minus-original slopes with only ten
+  completed biological samples. Those development p-values are not evidence.
+- The primary assembly estimator is now a two-stage paired analysis: estimate a
+  six-positive-dose slope within every sample, target, profiler, and arm; then
+  compare clean and original slopes within each biological sample.
+- Primary uncertainty is a deterministic biological-sample bootstrap and the
+  primary null test is a two-sided sample-level sign-flip test. The four
+  target-by-profiler tests form one BH family.
+- The GAM is retained as a secondary trajectory diagnostic. This decision was
+  made before fitting the sealed 30-sample dataset and must not be changed based
+  on which method produces more favorable significance.

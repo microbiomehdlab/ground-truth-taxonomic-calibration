@@ -76,8 +76,10 @@ The Yachida Pana/Pint integration path is implemented by
 `scripts/build_assembly_sensitivity_input.py`. It extracts exact frozen aliases
 from native profiles, joins clean and optional original assembly arms to the
 same strict baseline profiles, and validates the resulting canonical table.
-`ASSEMBLY_SENSITIVITY_MODEL.md` and `scripts/fit_assembly_sensitivity.R`
-implement the paired original-versus-clean response-slope sensitivity model.
+`ASSEMBLY_SENSITIVITY_MODEL.md` and
+`scripts/fit_assembly_sensitivity_sample_level.R` implement the primary paired
+biological-sample-level response-slope analysis. The random-slope model in
+`scripts/fit_assembly_sensitivity.R` is a secondary trajectory diagnostic.
 The fail-closed end-to-end entry point and Lobo instructions are
 `run_assembly_sensitivity.sh` and `ASSEMBLY_SENSITIVITY_RUNBOOK.md`.
 

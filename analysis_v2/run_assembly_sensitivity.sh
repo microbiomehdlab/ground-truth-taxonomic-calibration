@@ -57,19 +57,29 @@ python3 analysis_v2/scripts/derive_paired_endpoints.py \
   --input "$OUTDIR/canonical/canonical_input.tsv" --outdir "$OUTDIR/endpoints"
 
 apptainer exec --cleanenv --pwd "$ROOT" "$ANALYSIS_SIF" \
+  Rscript analysis_v2/tests/test_assembly_sensitivity_sample_level.R
+apptainer exec --cleanenv --pwd "$ROOT" "$ANALYSIS_SIF" \
+  Rscript analysis_v2/scripts/fit_assembly_sensitivity_sample_level.R \
+  --input "$OUTDIR/endpoints/paired_endpoints.tsv" \
+  --outdir "$OUTDIR/models/assembly_sensitivity_primary" \
+  --cohort yachida --population independent
+
+apptainer exec --cleanenv --pwd "$ROOT" "$ANALYSIS_SIF" \
   Rscript analysis_v2/tests/test_assembly_sensitivity_model.R
 apptainer exec --cleanenv --pwd "$ROOT" "$ANALYSIS_SIF" \
   Rscript analysis_v2/scripts/fit_assembly_sensitivity.R \
   --input "$OUTDIR/endpoints/paired_endpoints.tsv" \
-  --outdir "$OUTDIR/models/assembly_sensitivity" \
+  --outdir "$OUTDIR/models/assembly_sensitivity_gam_secondary" \
   --cohort yachida --population independent
 
 sha256sum "$MANIFEST" "$ARMS" "$SPIKE_PANEL" "$ALIASES" "$ANALYSIS_SIF" \
   "$OUTDIR/canonical/canonical_input.tsv" \
   "$OUTDIR/profiler_semantics/profile_semantics_audit.tsv" \
   "$OUTDIR/endpoints/paired_endpoints.tsv" \
-  "$OUTDIR/models/assembly_sensitivity/assembly_profiler_response_slopes.tsv" \
-  "$OUTDIR/models/assembly_sensitivity/assembly_slope_contrasts.tsv" \
+  "$OUTDIR/models/assembly_sensitivity_primary/primary_assembly_effects.tsv" \
+  "$OUTDIR/models/assembly_sensitivity_primary/sample_paired_slope_differences.tsv" \
+  "$OUTDIR/models/assembly_sensitivity_gam_secondary/assembly_profiler_response_slopes.tsv" \
+  "$OUTDIR/models/assembly_sensitivity_gam_secondary/assembly_slope_contrasts.tsv" \
   > "$OUTDIR/provenance/run_inputs_and_primary_outputs.sha256"
 sed -i 's/^status\tIN_PROGRESS$/status\tPASS/' "$OUTDIR/provenance/run_manifest.tsv"
 printf 'analysis\tyachida_assembly_choice_sensitivity\nstatus\tPASS\n' > "$OUTDIR/SUCCESS"

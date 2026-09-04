@@ -173,16 +173,21 @@ as assembly-choice/quality sensitivity, not a causal contamination experiment.
 
 **IMPLEMENTED FOR QUANTITATIVE RESPONSE.**
 `scripts/build_assembly_sensitivity_input.py` builds validated paired original
-and clean canonical rows, and `scripts/fit_assembly_sensitivity.R` estimates
-target-specific profiler-by-arm response slopes and clean-minus-original
-contrasts. Sample-target-profiler random dose slopes and clean-arm slope
-deviations represent between-sample trajectory heterogeneity. The
-fail-closed runner is `run_assembly_sensitivity.sh`. Detection, off-target, and
+and clean canonical rows. The primary
+`scripts/fit_assembly_sensitivity_sample_level.R` first estimates each
+sample-target-profiler-arm six-dose slope and performs inference on paired
+clean-minus-original sample differences. Bootstrap resampling and sign flips
+therefore operate at biological-sample level. The random-slope GAM in
+`scripts/fit_assembly_sensitivity.R` is a secondary trajectory diagnostic. The
+fail-closed runner executes both. Detection, off-target, and
 biomarker-propagation assembly comparisons remain pending.
 
 ## 9. Multiplicity and uncertainty
 
-**TO FREEZE.** Define families across targets, profilers, fractions, conditions,
+**PARTLY FROZEN.** For assembly sensitivity, the four target-by-profiler paired
+slope differences are one primary BH family; target-pooled and profiler
+difference-in-differences are secondary. For the main detection, continuous,
+and biomarker analyses, define families across targets, profilers, fractions, conditions,
 cohorts, and endpoints. Distinguish confirmatory from exploratory tests. Report
 effect sizes and uncertainty even when multiplicity-adjusted significance is not
 reached. Bootstrap or resampling procedures must operate at sample level.

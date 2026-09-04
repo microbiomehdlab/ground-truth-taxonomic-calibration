@@ -32,13 +32,16 @@ Before interpreting estimates, verify:
 test -s "$OUTDIR/SUCCESS"
 test -s "$OUTDIR/canonical/validation/SUCCESS"
 test -s "$OUTDIR/endpoints/SUCCESS"
-test -s "$OUTDIR/models/assembly_sensitivity/SUCCESS"
+test -s "$OUTDIR/models/assembly_sensitivity_primary/SUCCESS"
+test -s "$OUTDIR/models/assembly_sensitivity_gam_secondary/SUCCESS"
 grep -P '^status\tPASS$' "$OUTDIR/provenance/run_manifest.tsv"
 ```
 
 The primary table is
-`models/assembly_sensitivity/assembly_slope_contrasts.tsv`. The four primary
-target-specific `clean_minus_original` rows quantify assembly-choice
-sensitivity separately for each target and profiler. Pooled rows are secondary.
-They do not isolate contamination from strain or database representation
-effects.
+`models/assembly_sensitivity_primary/primary_assembly_effects.tsv`. Each row is
+based on paired clean-minus-original slopes calculated first within biological
+samples. Inspect `sample_paired_slope_differences.tsv` alongside the summary;
+do not report only p-values. Pooled and profiler-difference tables are
+secondary. The GAM outputs under `assembly_sensitivity_gam_secondary/` are
+trajectory diagnostics. None of these effects isolates contamination from
+strain or database representation effects.
