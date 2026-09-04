@@ -67,3 +67,7 @@ evidence without fitting models.
 Step 4 is prespecified in `DETECTION_MODEL.md` and implemented by
 `scripts/fit_detection_dose_response.R`. Its synthetic execution test must run
 inside the frozen analysis image, where the pinned `mgcv` dependency is present.
+
+Step 5 is prespecified in `CONTINUOUS_MODEL.md` and implemented by
+`scripts/fit_continuous_dose_response.R`. It estimates profiler-specific linear
+response slopes and a categorical-dose nonlinearity diagnostic.

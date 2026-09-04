@@ -56,6 +56,11 @@ with biological sample treated as a repeated-measures cluster. Report the slope,
 the reference, `r`, `R`, and reference errors from validated canonical input.
 It applies no fitted model, pseudocount, truncation, or detected-only filtering.
 
+**PRESPECIFIED.** `CONTINUOUS_MODEL.md` defines the cohort-specific Gaussian
+GAM for `r`, using profiler-by-linear-dose, condition, and sample/target random
+intercepts. Primary estimands are profiler-specific slopes relative to one and
+their difference. Categorical dose is a frozen nonlinearity diagnostic.
+
 ### Co-primary detection endpoint
 
 **PRESPECIFIED, PENDING EMPIRICAL SEMANTICS GATE.** Detection is provisionally
@@ -82,12 +87,10 @@ frozen only after representative final native outputs pass the semantics audit.
 **DECIDED.** Samples, not profile rows, are the independent biological units.
 Inference must account for repeated fractions and targets within samples.
 
-**PARTLY FROZEN.** The detection model is specified in `DETECTION_MODEL.md`.
-The exact continuous-response model remains to be selected after simulation and
-diagnostic work on synthetic fixtures, not by choosing whichever gives the most
-favourable profiler comparison. Candidate continuous models include a linear
-mixed model on a justified transformed scale and a flexible spline model with
-sample-clustered uncertainty.
+**FROZEN FOR SYNTHETIC VALIDATION.** Detection and continuous models are
+specified in `DETECTION_MODEL.md` and `CONTINUOUS_MODEL.md`. Final fitting still
+requires upstream, semantic, canonical-input, and container execution gates;
+model choice must not change in response to favourable comparative results.
 
 Prespecify:
 
