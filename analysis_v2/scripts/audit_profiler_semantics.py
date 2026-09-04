@@ -14,6 +14,7 @@ OUTPUT_FIELDS = [
     "reported_total", "species_total", "unclassified_total",
     "non_species_total", "native_unit", "status",
 ]
+PERCENT_TOLERANCE = 0.001  # Printed MetaPhlAn rounding, in percentage points.
 
 
 def number(value: str, field: str, path: Path) -> float:
@@ -106,10 +107,11 @@ def audit_metaphlan(path: Path) -> dict[str, object]:
     total = sum(leaf_values)
     species_total = sum(species)
     non_species = sum(non_species_leaf_values)
-    bad_ranks = [rank for rank, value in rank_totals.items() if value > 100.0001]
-    if total > 100.0001:
+    upper_bound = 100.0 + PERCENT_TOLERANCE
+    bad_ranks = [rank for rank, value in rank_totals.items() if value > upper_bound]
+    if total > upper_bound:
         status = "FAIL_LEAF_PERCENT_GT_100"
-    elif unclassified > 100.0001:
+    elif unclassified > upper_bound:
         status = "FAIL_UNCLASSIFIED_GT_100"
     elif bad_ranks:
         status = "FAIL_RANK_PERCENT_GT_100:" + ",".join(sorted(bad_ranks))

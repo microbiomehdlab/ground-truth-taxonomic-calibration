@@ -27,7 +27,8 @@ def main() -> None:
             "k__Bacteria\t1\t90.0\t\n"
             "k__Bacteria|p__P\t1\t90.0\t\n"
             "k__Bacteria|p__P|g__G|s__Target_species\t1\t72.5\t\n"
-            "k__Bacteria|p__P|g__Other\t2\t17.5\t\n"
+            # Reproduce harmless printed-value rounding slightly above 100%.
+            "k__Bacteria|p__P|g__Other\t2\t17.500113\t\n"
             "UNCLASSIFIED\t-1\t10.0\t\n",
             encoding="utf-8",
         )
@@ -41,9 +42,9 @@ def main() -> None:
         assert len(rows) == 2
         assert rows[0]["species_total"] == "0.9"
         assert rows[0]["unclassified_total"] == ""
-        assert rows[1]["reported_total"] == "100.0"
+        assert abs(float(rows[1]["reported_total"]) - 100.000113) < 1e-9
         assert rows[1]["species_total"] == "72.5"
-        assert rows[1]["non_species_total"] == "17.5"
+        assert rows[1]["non_species_total"] == "17.500113"
         assert rows[1]["unclassified_total"] == "10.0"
         assert (outdir / "SUCCESS").is_file()
 

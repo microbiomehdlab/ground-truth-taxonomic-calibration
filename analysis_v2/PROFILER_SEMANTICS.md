@@ -20,6 +20,9 @@ fraction. Its output can repeat community mass at multiple taxonomic ranks, so
 the sum of every hierarchical row is not interpreted as a composition. Species
 rank, explicit `UNCLASSIFIED`, terminal-leaf mass, and non-species terminal
 leaves are audited separately, and each reported rank is validated independently.
+Totals may exceed 100 by at most 0.001 percentage points to accommodate printed
+value rounding. The observed excess remains in the audit table and is not
+silently clipped.
 
 ## Decisions for v2
 
