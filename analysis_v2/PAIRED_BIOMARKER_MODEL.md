@@ -44,3 +44,7 @@ A complementary baseline disease-contrast model is still required before
 making claims about native CRC biomarkers. That model must be cohort-specific,
 covariate-adjusted where justified, and frozen independently of the controlled
 perturbation results.
+
+The runner requires an explicit `ANALYSIS_STATUS=DEVELOPMENT_ONLY` or
+`ANALYSIS_STATUS=DEFINITIVE` and a successful canonical-validation marker.
+Development outputs receive an unambiguous do-not-use marker.

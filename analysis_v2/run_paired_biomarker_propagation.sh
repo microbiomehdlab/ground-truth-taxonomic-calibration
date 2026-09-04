@@ -6,20 +6,28 @@ cd "$ROOT"
 : "${CANONICAL_INPUT:?Set CANONICAL_INPUT to a validated canonical_input.tsv}"
 : "${ANALYSIS_SIF:?Set ANALYSIS_SIF to the frozen downstream image}"
 : "${OUTDIR:?Set OUTDIR to a new, empty biomarker-analysis directory}"
+: "${ANALYSIS_STATUS:?Set ANALYSIS_STATUS to DEVELOPMENT_ONLY or DEFINITIVE}"
 ALIASES="${ALIASES:-examples/spike_taxon_aliases.csv}"
 SPIKE_PANEL="${SPIKE_PANEL:-spikes/spike_panel.tsv}"
+CANONICAL_VALIDATION_SUCCESS="${CANONICAL_VALIDATION_SUCCESS:-$(dirname "$CANONICAL_INPUT")/validation/SUCCESS}"
+
+if [[ "$ANALYSIS_STATUS" != "DEVELOPMENT_ONLY" ]] && [[ "$ANALYSIS_STATUS" != "DEFINITIVE" ]]; then
+  echo "[ERROR] ANALYSIS_STATUS must be DEVELOPMENT_ONLY or DEFINITIVE" >&2
+  exit 1
+fi
 
 if [[ -e "$OUTDIR" ]] && [[ -n "$(find "$OUTDIR" -mindepth 1 -maxdepth 1 -print -quit)" ]]; then
   echo "[ERROR] OUTDIR must be new or empty: $OUTDIR" >&2
   exit 1
 fi
-for path in "$CANONICAL_INPUT" "$ANALYSIS_SIF" "$ALIASES" "$SPIKE_PANEL"; do
+for path in "$CANONICAL_INPUT" "$CANONICAL_VALIDATION_SUCCESS" "$ANALYSIS_SIF" "$ALIASES" "$SPIKE_PANEL"; do
   [[ -s "$path" ]] || { echo "[ERROR] Missing input: $path" >&2; exit 1; }
 done
 mkdir -p "$OUTDIR"/{input,models,evaluation,provenance}
 {
   printf 'field\tvalue\n'
   printf 'status\tIN_PROGRESS\n'
+  printf 'analysis_status\t%s\n' "$ANALYSIS_STATUS"
   printf 'created_at\t%s\n' "$(date -Iseconds)"
   printf 'repository_commit\t%s\n' "$(git rev-parse HEAD)"
   printf 'canonical_input\t%s\n' "$(realpath "$CANONICAL_INPUT")"
@@ -27,6 +35,9 @@ mkdir -p "$OUTDIR"/{input,models,evaluation,provenance}
   printf 'primary_q_threshold\t0.05\n'
   printf 'sensitivity_q_threshold\t0.10\n'
 } > "$OUTDIR/provenance/run_manifest.tsv"
+if [[ "$ANALYSIS_STATUS" == "DEVELOPMENT_ONLY" ]]; then
+  printf 'status\tDEVELOPMENT_ONLY\nuse_for_manuscript\tNO\n' > "$OUTDIR/DEVELOPMENT_ONLY.txt"
+fi
 
 python3 analysis_v2/tests/test_biomarker_abundance_input.py
 python3 analysis_v2/scripts/build_biomarker_abundance_input.py \
@@ -53,5 +64,6 @@ sha256sum "$CANONICAL_INPUT" "$ANALYSIS_SIF" "$ALIASES" "$SPIKE_PANEL" \
   "$OUTDIR/evaluation/biomarker_propagation_metrics.tsv" \
   > "$OUTDIR/provenance/run_inputs_and_primary_outputs.sha256"
 sed -i 's/^status\tIN_PROGRESS$/status\tPASS/' "$OUTDIR/provenance/run_manifest.tsv"
-printf 'analysis\tpaired_biomarker_propagation\nstatus\tPASS\n' > "$OUTDIR/SUCCESS"
+printf 'analysis\tpaired_biomarker_propagation\nanalysis_status\t%s\nstatus\tPASS\n' \
+  "$ANALYSIS_STATUS" > "$OUTDIR/SUCCESS"
 echo "[PASS] Sealed paired biomarker-propagation analysis: $OUTDIR"
