@@ -12,7 +12,8 @@ from pathlib import Path
 CONTEXT = ["cohort", "study", "analysis_population", "sample_id", "condition",
            "target_label", "assembly_arm", "profiler", "profile_id",
            "baseline_profile_id", "spike_fraction_target", "dose_level", "source_profile"]
-MANIFEST = CONTEXT + ["target_taxon", "target_feature", "include", "exclusion_reason"]
+MANIFEST = CONTEXT + ["target_taxon", "target_feature", "age", "sex", "bmi",
+                      "include", "exclusion_reason"]
 ABUNDANCE = ["profiler", "source_profile", "feature", "abundance_fraction"]
 
 
@@ -74,6 +75,8 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--canonical", type=Path, required=True)
     parser.add_argument("--aliases", type=Path, required=True)
+    parser.add_argument("--sample-metadata", type=Path,
+                        help="Optional TSV containing sample_id, age, sex, and bmi.")
     parser.add_argument("--outdir", type=Path, required=True)
     args = parser.parse_args()
     try:
@@ -87,6 +90,18 @@ def main():
         if not {"canonical", "alias", "tool"} <= alias_fields:
             raise ValueError("alias table lacks canonical, alias, or tool")
         alias_map = {(row["canonical"], row["tool"]): row["alias"] for row in aliases}
+        metadata = {}
+        if args.sample_metadata:
+            metadata_rows, metadata_fields = rows(args.sample_metadata)
+            if not {"sample_id", "age", "sex", "bmi"} <= metadata_fields:
+                raise ValueError("sample metadata lacks sample_id, age, sex, or bmi")
+            metadata = {row["sample_id"]: row for row in metadata_rows}
+            if len(metadata) != len(metadata_rows):
+                raise ValueError("duplicate sample_id in sample metadata")
+            missing_metadata = sorted({row["sample_id"] for row in canonical} - set(metadata))
+            if missing_metadata:
+                raise ValueError("sample metadata missing canonical samples: {}".format(
+                    ", ".join(missing_metadata)))
         manifest = []
         identities = set()
         profiles = {}
@@ -116,6 +131,9 @@ def main():
                     row["target_taxon"], row["profiler"]))
             record = {field: row[field] for field in CONTEXT if field != "dose_level"}
             record["dose_level"] = dose_levels[id(row)]
+            sample_meta = metadata.get(row["sample_id"], {})
+            record.update(age=sample_meta.get("age", ""), sex=sample_meta.get("sex", ""),
+                          bmi=sample_meta.get("bmi", ""))
             record.update(target_taxon=row["target_taxon"], target_feature=target,
                           include=row["include"], exclusion_reason=row["exclusion_reason"])
             manifest.append(record)

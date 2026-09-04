@@ -160,8 +160,17 @@ fail-closed entry point is `run_paired_biomarker_propagation.sh`.
 `scripts/evaluate_biomarker_propagation.py` deterministically computes target
 recall, off-target burden, precision, F1, target-effect change, and biomarker-set
 Jaccard stability at both q-value thresholds. It does not fit DA models or
-recompute q-values. A complementary native CRC-versus-control model and its
-covariate policy remain **TO FREEZE** before disease-biomarker claims.
+recompute q-values.
+
+**PRESPECIFIED AND IMPLEMENTED FOR DISEASE CONTRASTS.**
+`DISEASE_BIOMARKER_MODEL.md` defines cohort-specific native-abundance models
+with CRC versus Control primary and Adenoma versus Control secondary. The
+primary adjustment set is age and sex; BMI is a complete-case sensitivity.
+Models use a fixed `1e-8` fraction pseudocount, a cross-dose 10% prevalence
+filter with target exception, HC3 robust uncertainty, and BH correction across
+species within each exact analysis context. The fail-closed entry point is
+`run_disease_biomarker_propagation.sh`. Definitive fitting still requires the
+sealed final cohort inputs.
 
 ## 7. Cross-cohort inference
 

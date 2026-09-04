@@ -73,3 +73,19 @@ diagnostics, provenance, and checksums.
   prespecified sensitivity analysis.
 - This controlled perturbation contrast is not called CRC-versus-control.
   Baseline disease contrasts require a separate, still-unfrozen model.
+
+## 2026-09-04 — native disease-biomarker model
+
+- Actual disease contrasts are fitted separately by cohort, target, assembly
+  arm, profiler, and dose; cohorts are not pooled for primary inference.
+- CRC versus Control is primary and Adenoma versus Control is secondary. The
+  primary adjustment set is age and sex; adding BMI on complete cases is a
+  prespecified sensitivity analysis.
+- Native abundance fractions are transformed as `log2(x + 1e-8)`. HC3 robust
+  standard errors are used. The cross-dose species universe requires 10%
+  prevalence, with the intended target always retained.
+- BH correction is across species within the exact cohort, population, target,
+  assembly, profiler, dose, contrast, and model context. Baseline disease calls
+  are observed calls, so baseline-to-dose Jaccard stability is meaningful.
+- Development data may exercise this model but cannot support manuscript
+  estimates. Definitive claims require sealed complete cohort inputs.

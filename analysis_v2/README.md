@@ -88,8 +88,10 @@ Step 6's model-independent evaluation contract is documented in
 `scripts/evaluate_biomarker_propagation.py`. `PAIRED_BIOMARKER_MODEL.md`,
 `scripts/build_biomarker_abundance_input.py`, and
 `scripts/fit_paired_biomarker_models.R` implement the paired perturbation model.
-The fail-closed entry point is `run_paired_biomarker_propagation.sh`. A separate
-native disease-contrast model remains deliberately unfrozen.
+The fail-closed entry point is `run_paired_biomarker_propagation.sh`.
+`DISEASE_BIOMARKER_MODEL.md`, `scripts/fit_disease_biomarker_models.R`, and
+`run_disease_biomarker_propagation.sh` implement the complementary native
+disease-contrast analysis.
 
 `METHODS_DECISION_LOG.md` is the dated, tracked record of decisions and
 development-only findings needed when drafting the manuscript. Update it when
