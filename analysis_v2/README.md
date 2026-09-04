@@ -58,3 +58,8 @@ Step 1 is specified in `INPUT_CONTRACT.md` and enforced by
 `scripts/audit_profiler_semantics.py` and documented in
 `PROFILER_SEMANTICS.md`. Run it on native cohort outputs before freezing zero
 and transformation rules.
+
+Step 3 is specified in `ENDPOINTS.md` and implemented by
+`scripts/derive_paired_endpoints.py`. It distinguishes total-community dilution
+from the target-specific implanted fraction and produces checksummed derived
+evidence without fitting models.

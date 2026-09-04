@@ -13,13 +13,17 @@ perturbations to the final sequencing library. They do not establish cellular
 abundance, biomass, extraction efficiency, or an identical biological abundance
 estimand across profilers.
 
-For biological sample `i`, target `t`, profiler `p`, and implanted fraction `f`:
+For biological sample `i`, target `t`, profiler `p`, total implanted fraction
+`F`, and target-specific implanted fraction `f`:
 
 - `o_itp`: native profiler abundance in the unmodified baseline;
 - `a_itpf`: native profiler abundance after implantation;
-- `e_RP = (1-f)o + f`: read-proportional reference abundance;
-- `r = a - (1-f)o`: recovered spike signal;
+- `e_RP = (1-F)o + f`: read-proportional reference abundance;
+- `r = a - (1-F)o`: recovered spike signal;
 - `R = r/f`: read-perturbation response ratio, defined only for `f > 0`.
+
+For individual spikes, `F = f`; for community spikes, `F` is the complete
+community fraction and `f` is the member-specific fraction.
 
 **DECIDED.** Profiler-native output is the primary practical representation.
 Denominator-harmonized quantities are sensitivity analyses and will not be
@@ -47,6 +51,10 @@ remains pending upstream seals.
 **DECIDED.** Estimate the dose-response of `r` against implanted fraction `f`,
 with biological sample treated as a repeated-measures cluster. Report the slope,
 95% confidence interval, and deviation from the read-proportional slope of one.
+
+**IMPLEMENTED.** `scripts/derive_paired_endpoints.py` deterministically derives
+the reference, `r`, `R`, and reference errors from validated canonical input.
+It applies no fitted model, pseudocount, truncation, or detected-only filtering.
 
 ### Co-primary detection endpoint
 
