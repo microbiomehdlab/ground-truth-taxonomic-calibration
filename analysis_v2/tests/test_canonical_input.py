@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 """Fixture tests for the canonical v2 analytical input contract."""
 
+from __future__ import annotations
+
 import csv
 import subprocess
 import tempfile

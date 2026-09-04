@@ -24,7 +24,8 @@ def number(value: str, field: str, path: Path) -> float:
 
 
 def sample_id(path: Path, suffix: str) -> str:
-    return path.name.removesuffix(suffix)
+    name = path.name
+    return name[:-len(suffix)] if suffix and name.endswith(suffix) else name
 
 
 def audit_bracken(path: Path) -> dict[str, object]:
