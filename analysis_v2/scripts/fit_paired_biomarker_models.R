@@ -88,12 +88,14 @@ for (family in families) {
       exclusion_rows[[exclusion_index]] <- c(common, list(
         spike_fraction_target = 0, contrast = contrast, feature = feature,
         effect = 0, standard_error = NA, p_value = 1, q_value = 1,
+        baseline_reference_kind = "structural_null",
         include = 0, exclusion_reason = "prevalence_below_threshold"))
       exclusion_index <- exclusion_index + 1L
     } else {
       baseline_rows[[feature]] <- c(common, list(
         spike_fraction_target = 0, contrast = contrast, feature = feature,
         effect = 0, standard_error = 0, p_value = 1, q_value = 1,
+        baseline_reference_kind = "structural_null",
         include = 1, exclusion_reason = ""))
     }
   }
@@ -112,6 +114,7 @@ for (family in families) {
         exclusion_rows[[exclusion_index]] <- c(common, list(
           spike_fraction_target = achieved_dose, contrast = contrast, feature = feature,
           effect = 0, standard_error = NA, p_value = 1, q_value = 1,
+          baseline_reference_kind = "structural_null",
           include = 0, exclusion_reason = "prevalence_below_threshold"))
         exclusion_index <- exclusion_index + 1L
         next
@@ -133,7 +136,8 @@ for (family in families) {
       feature_rows[[result_index]] <- c(common, list(
         spike_fraction_target = achieved_dose, contrast = contrast, feature = feature,
         effect = stats[["effect"]], standard_error = stats[["se"]],
-        p_value = stats[["p"]], q_value = qvalues[feature], include = 1,
+        p_value = stats[["p"]], q_value = qvalues[feature],
+        baseline_reference_kind = "structural_null", include = 1,
         exclusion_reason = ""))
       result_index <- result_index + 1L
     }

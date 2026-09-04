@@ -19,7 +19,8 @@ REQUIRED = KEY + ["spike_fraction_target", "feature", "effect", "p_value",
 OUTPUT = KEY + ["spike_fraction_target", "q_threshold", "target_alias",
                 "target_called", "enriched_calls", "off_target_enriched_calls",
                 "precision", "recall", "f1", "target_effect", "target_q_value",
-                "target_effect_change_from_baseline", "biomarker_set_jaccard_vs_baseline"]
+                "target_effect_change_from_baseline", "baseline_reference_kind",
+                "biomarker_set_jaccard_vs_baseline"]
 
 
 def read(path: Path, delimiter: str = "\t",
@@ -121,6 +122,13 @@ def main() -> None:
             baseline_targets = [row for row in baseline if row["feature"] == target]
             if len(target_rows) != 1 or len(baseline_targets) != 1:
                 raise ValueError("target feature must occur exactly once at baseline and dose")
+            reference_kinds = {row.get("baseline_reference_kind", "observed_calls")
+                               for row in values + baseline}
+            if len(reference_kinds) != 1:
+                raise ValueError("inconsistent baseline_reference_kind within context")
+            reference_kind = next(iter(reference_kinds))
+            if reference_kind not in {"observed_calls", "structural_null"}:
+                raise ValueError("unsupported baseline_reference_kind: {}".format(reference_kind))
             for threshold in thresholds:
                 calls = {row["feature"] for row in values if row["_effect"] > 0 and row["_q"] <= threshold}
                 baseline_calls = {row["feature"] for row in baseline if row["_effect"] > 0 and row["_q"] <= threshold}
@@ -130,6 +138,7 @@ def main() -> None:
                 f1 = 2 * precision * recall / (precision + recall) if precision + recall else 0.0
                 union = calls | baseline_calls
                 jaccard = len(calls & baseline_calls) / len(union) if union else 1.0
+                jaccard_value = render(jaccard) if reference_kind == "observed_calls" else "NA"
                 output = {field: value for field, value in zip(KEY, context)}
                 output.update({
                     "spike_fraction_target": render(dose), "q_threshold": render(threshold),
@@ -140,7 +149,8 @@ def main() -> None:
                     "target_effect": render(target_rows[0]["_effect"]),
                     "target_q_value": render(target_rows[0]["_q"]),
                     "target_effect_change_from_baseline": render(target_rows[0]["_effect"] - baseline_targets[0]["_effect"]),
-                    "biomarker_set_jaccard_vs_baseline": render(jaccard),
+                    "baseline_reference_kind": reference_kind,
+                    "biomarker_set_jaccard_vs_baseline": jaccard_value,
                 })
                 outputs.append(output)
         if not outputs:

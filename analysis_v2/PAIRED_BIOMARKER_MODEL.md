@@ -33,7 +33,10 @@ excluded feature is retained with a controlled exclusion reason.
 Primary biomarker-call threshold is `q <= 0.05` with positive effect. `q <=
 0.10` is a prespecified sensitivity threshold. The downstream evaluator reports
 target recall, off-target burden, precision, F1, target-effect change, and call
-set stability. It does not refit models or alter q-values.
+set stability when an observed baseline call set exists. In this paired
+perturbation model, dose zero is a structural null contrast, so Jaccard versus a
+baseline call set is explicitly `NA` rather than an artificial zero or one. The
+evaluator does not refit models or alter q-values.
 
 The exact achieved fractions vary slightly among samples. Profiles are grouped
 by their within-sample prespecified dose rank, while the output records the

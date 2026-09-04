@@ -38,6 +38,11 @@ alias table. The evaluator reports:
 - change in target effect from the corresponding zero-dose result;
 - Jaccard stability of the enriched biomarker set against zero dose.
 
+Jaccard is reported only when zero dose contains an observed analysis call set.
+For the paired perturbation model, zero dose is a structural null contrast and
+the Jaccard field is `NA`; inventing an empty baseline set would make the metric
+mechanically zero or one and scientifically uninformative.
+
 The primary threshold is `q <= 0.05`; `q <= 0.10` is a labelled sensitivity
 analysis retained for continuity with the historical paper. Thresholds are
 evaluated together and are never selected after inspecting results. These
