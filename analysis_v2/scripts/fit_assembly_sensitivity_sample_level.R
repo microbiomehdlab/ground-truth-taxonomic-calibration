@@ -45,13 +45,16 @@ if (!identical(sort(unique(dat$profiler)), sort(c("kraken2_bracken", "metaphlan4
 key_columns <- c("sample_id", "condition", "target_label", "profiler", "assembly_arm")
 keys <- interaction(dat[key_columns], drop = TRUE, lex.order = TRUE)
 groups <- split(dat, keys)
-expected_doses <- sort(unique(dat$dose))
-if (length(expected_doses) < 3L) stop("At least three positive doses are required.")
+cell_sizes <- vapply(groups, nrow, integer(1))
+if (length(unique(cell_sizes)) != 1L || cell_sizes[1L] < 3L) {
+  stop("Every sample-target-profiler-arm cell must have the same number of doses (at least three).")
+}
+expected_doses_per_cell <- cell_sizes[1L]
 
 fit_one <- function(frame) {
-  if (nrow(frame) != length(expected_doses) ||
-      !identical(sort(frame$dose), expected_doses) || anyDuplicated(frame$dose)) {
-    stop("Every sample-target-profiler-arm cell must contain each dose exactly once.")
+  if (nrow(frame) != expected_doses_per_cell || anyDuplicated(frame$dose) ||
+      length(unique(frame$dose)) != expected_doses_per_cell) {
+    stop("Every sample-target-profiler-arm cell must contain the expected number of unique doses.")
   }
   model <- lm(response ~ dose, data = frame)
   first <- frame[1L, key_columns, drop = FALSE]
@@ -162,7 +165,7 @@ diagnostics <- data.frame(
              "bootstrap_replicates", "signflip_requested_replicates", "random_seed"),
   value = c("PASS", nrow(dat), length(unique(dat$sample_id)), length(unique(dat$target_label)),
             length(unique(dat$profiler)), length(unique(dat$assembly_arm)),
-            length(expected_doses), nrow(sample_slopes), nrow(paired_differences),
+            expected_doses_per_cell, nrow(sample_slopes), nrow(paired_differences),
             bootstrap_replicates, signflip_replicates, seed))
 write.table(diagnostics, file.path(outdir, "sample_level_diagnostics.tsv"),
             sep = "\t", quote = FALSE, row.names = FALSE)

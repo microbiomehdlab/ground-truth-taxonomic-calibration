@@ -12,6 +12,9 @@ grid <- expand.grid(sample_id = paste0("S", 1:8), target_label = c("Pana", "Pint
                     stringsAsFactors = FALSE)
 grid$cohort <- "yachida"; grid$analysis_population <- "independent"
 grid$condition <- ifelse(as.integer(sub("S", "", grid$sample_id)) <= 4, "Control", "CRC")
+# Achieved fractions vary slightly by biological sample in real spike designs.
+grid$spike_fraction_target <- grid$spike_fraction_target *
+  (1 + as.integer(sub("S", "", grid$sample_id)) * 1e-5)
 base <- ifelse(grid$profiler == "kraken2_bracken", .9, .7)
 gain <- ifelse(grid$assembly_arm == "clean",
                ifelse(grid$target_label == "Pana", .12, .06), 0)
