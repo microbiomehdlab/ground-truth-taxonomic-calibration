@@ -121,7 +121,11 @@ def main() -> None:
             target_rows = [row for row in values if row["feature"] == target]
             baseline_targets = [row for row in baseline if row["feature"] == target]
             if len(target_rows) != 1 or len(baseline_targets) != 1:
-                raise ValueError("target feature must occur exactly once at baseline and dose")
+                raise ValueError(
+                    "target feature must occur exactly once at baseline and dose: "
+                    "context={} dose={} target={!r} baseline_count={} dose_count={}".format(
+                        context, render(dose), target,
+                        len(baseline_targets), len(target_rows)))
             reference_kinds = {row.get("baseline_reference_kind", "observed_calls")
                                for row in values + baseline}
             if len(reference_kinds) != 1:

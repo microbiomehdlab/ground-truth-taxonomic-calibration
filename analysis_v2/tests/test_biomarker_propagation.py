@@ -52,6 +52,7 @@ def main() -> None:
         assert abs(float(q05["precision"]) - 0.5) < 1e-12
         assert abs(float(q05["target_effect_change_from_baseline"]) - 0.6) < 1e-12
         assert abs(float(q05["biomarker_set_jaccard_vs_baseline"]) - 0.5) < 1e-12
+        assert q05["baseline_reference_kind"] == "observed_calls"
         assert (outdir / "SUCCESS").is_file()
     print("[PASS] biomarker-propagation fixture")
 
