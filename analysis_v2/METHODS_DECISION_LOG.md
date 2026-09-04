@@ -59,3 +59,17 @@ diagnostics, provenance, and checksums.
 - The GAM is retained as a secondary trajectory diagnostic. This decision was
   made before fitting the sealed 30-sample dataset and must not be changed based
   on which method produces more favorable significance.
+
+## 2026-09-04 — paired perturbation biomarker model
+
+- Biomarker propagation is estimated from within-sample spiked-minus-baseline
+  log2 abundance changes, separately within phenotype backgrounds. Biological
+  samples are the replicates; duplicated profiles are never independent.
+- A fixed `1e-8` fraction pseudocount replaces outcome-dependent minimum-value
+  pseudocounts. The off-target feature universe is fixed across all doses and
+  requires 10% nonzero prevalence; the intended target is always retained.
+- BH correction is performed across species within each target, arm, profiler,
+  background, and dose. Positive calls at q <= 0.05 are primary; q <= 0.10 is a
+  prespecified sensitivity analysis.
+- This controlled perturbation contrast is not called CRC-versus-control.
+  Baseline disease contrasts require a separate, still-unfrozen model.

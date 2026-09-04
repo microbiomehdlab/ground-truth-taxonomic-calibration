@@ -139,9 +139,11 @@ stability rules.
 sequencing evidence propagate into biomarker conclusions—not merely to rank
 profilers by abundance recovery.
 
-**TO FREEZE.** Define primary disease contrasts, model formula, covariates,
-feature filtering, effect-size scale, and multiplicity families before the final
-run. Report target recall, off-target burden, precision, F1, effect sizes,
+**FROZEN FOR CONTROLLED PERTURBATION.** `PAIRED_BIOMARKER_MODEL.md` defines the
+within-sample spiked-versus-baseline contrast, fixed log2 pseudocount,
+cross-dose feature universe, prevalence filter, target exception,
+biological-sample test, and per-context BH family. This is not a disease-group
+contrast. Report target recall, off-target burden, precision, F1, effect sizes,
 confidence intervals, and biomarker-set stability. Include `q <= 0.05` and
 `q <= 0.10` only in a prespecified hierarchy; do not select the threshold after
 comparing results.
@@ -150,13 +152,16 @@ Feature filters, artefact lists, and calibration rules learned from outcomes mus
 be restricted to discovery data and frozen before validation. Grouped resampling
 must keep all profiles from one biological sample in the same fold.
 
-**IMPLEMENTED IN PART.** `BIOMARKER_PROPAGATION.md` freezes the standardized
-feature-level result interface, and
+**IMPLEMENTED FOR CONTROLLED PERTURBATION.**
+`scripts/build_biomarker_abundance_input.py` expands exact native profiles,
+`scripts/fit_paired_biomarker_models.R` fits the paired feature models, and
+`BIOMARKER_PROPAGATION.md` freezes the standardized result interface. The
+fail-closed entry point is `run_paired_biomarker_propagation.sh`.
 `scripts/evaluate_biomarker_propagation.py` deterministically computes target
 recall, off-target burden, precision, F1, target-effect change, and biomarker-set
 Jaccard stability at both q-value thresholds. It does not fit DA models or
-recompute q-values. The DA formula, feature filters, covariates, and grouped
-resampling design remain **TO FREEZE**.
+recompute q-values. A complementary native CRC-versus-control model and its
+covariate policy remain **TO FREEZE** before disease-biomarker claims.
 
 ## 7. Cross-cohort inference
 
