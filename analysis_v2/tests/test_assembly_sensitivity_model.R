@@ -28,8 +28,16 @@ if (status != 0L) stop(paste(result, collapse = "\n"))
 stopifnot(file.exists(file.path(outdir, "SUCCESS")))
 slopes <- read.delim(file.path(outdir, "assembly_profiler_response_slopes.tsv"))
 contrasts <- read.delim(file.path(outdir, "assembly_slope_contrasts.tsv"))
-stopifnot(nrow(slopes) == 4L, nrow(contrasts) == 3L)
-stopifnot(all(c("kraken2_bracken_clean_minus_original",
-                "metaphlan4_clean_minus_original",
-                "profiler_difference_in_differences") %in% contrasts$contrast))
+stopifnot(nrow(slopes) == 8L, nrow(contrasts) == 9L)
+stopifnot(all(c("contrast_family", "q_value_bh") %in% names(contrasts)))
+stopifnot(sum(contrasts$contrast_family == "primary_target_specific_assembly") == 4L)
+stopifnot(all(c("kraken2_bracken__Pana__clean_minus_original",
+                "kraken2_bracken__Pint__clean_minus_original",
+                "metaphlan4__Pana__clean_minus_original",
+                "metaphlan4__Pint__clean_minus_original",
+                "profiler_difference_in_differences__Pana",
+                "profiler_difference_in_differences__Pint",
+                "kraken2_bracken__pooled_clean_minus_original",
+                "metaphlan4__pooled_clean_minus_original",
+                "pooled_profiler_difference_in_differences") %in% contrasts$contrast))
 cat("[PASS] assembly-sensitivity model synthetic fixture\n")

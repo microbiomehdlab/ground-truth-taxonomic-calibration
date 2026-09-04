@@ -44,8 +44,8 @@ dat$profiler <- factor(dat$profiler, levels = c("kraken2_bracken", "metaphlan4")
 dat$assembly_arm <- factor(dat$assembly_arm, levels = c("original", "clean"))
 dat$condition <- factor(dat$condition); dat$sample_id <- factor(dat$sample_id)
 dat$target_label <- factor(dat$target_label)
-formula <- recovered ~ profiler * assembly_arm * dose_pp + condition +
-  s(sample_id, bs = "re") + s(target_label, bs = "re")
+formula <- recovered ~ profiler * assembly_arm * dose_pp * target_label + condition +
+  s(sample_id, bs = "re")
 model <- mgcv::gam(formula, data = dat, family = gaussian(), method = "ML")
 hessian <- model$outer.info$hess
 diagnostics <- data.frame(
@@ -61,13 +61,14 @@ write.table(diagnostics, file.path(outdir, "assembly_model_diagnostics.tsv"),
 if (!all(as.logical(diagnostics$value[1:4]))) stop("Assembly model failed convergence diagnostics.")
 
 beta <- coef(model); covariance <- vcov(model)
-reference <- data.frame(
-  condition = dat$condition[1], sample_id = dat$sample_id[1],
-  target_label = dat$target_label[1], stringsAsFactors = FALSE)
-smooth_terms <- c("s(sample_id)", "s(target_label)")
-slope_contrast <- function(profiler_i, arm_i) {
-  low <- transform(reference, profiler = profiler_i, assembly_arm = arm_i, dose_pp = 0)
-  high <- transform(reference, profiler = profiler_i, assembly_arm = arm_i, dose_pp = 1)
+reference <- data.frame(condition = dat$condition[1], sample_id = dat$sample_id[1],
+                        stringsAsFactors = FALSE)
+smooth_terms <- "s(sample_id)"
+slope_contrast <- function(profiler_i, arm_i, target_i) {
+  low <- transform(reference, profiler = profiler_i, assembly_arm = arm_i,
+                   target_label = target_i, dose_pp = 0)
+  high <- transform(reference, profiler = profiler_i, assembly_arm = arm_i,
+                    target_label = target_i, dose_pp = 1)
   low$profiler <- factor(low$profiler, levels = levels(dat$profiler))
   high$profiler <- factor(high$profiler, levels = levels(dat$profiler))
   low$assembly_arm <- factor(low$assembly_arm, levels = levels(dat$assembly_arm))
@@ -83,7 +84,9 @@ slope_contrast <- function(profiler_i, arm_i) {
 }
 vectors <- list()
 for (profiler_i in levels(dat$profiler)) for (arm_i in levels(dat$assembly_arm))
-  vectors[[paste(profiler_i, arm_i, sep = "__")]] <- slope_contrast(profiler_i, arm_i)
+  for (target_i in levels(dat$target_label))
+    vectors[[paste(profiler_i, arm_i, target_i, sep = "__")]] <-
+      slope_contrast(profiler_i, arm_i, target_i)
 estimate <- function(vector) {
   est <- sum(vector * beta); se <- sqrt(drop(vector %*% covariance %*% vector))
   c(estimate = est, standard_error = se, lower_95 = est - 1.96 * se,
@@ -92,7 +95,8 @@ estimate <- function(vector) {
 slopes <- do.call(rbind, lapply(names(vectors), function(name) {
   parts <- strsplit(name, "__", fixed = TRUE)[[1]]
   stats <- estimate(vectors[[name]])
-  data.frame(profiler = parts[1], assembly_arm = parts[2], response_slope = unname(stats[1]),
+  data.frame(profiler = parts[1], assembly_arm = parts[2], target_label = parts[3],
+             response_slope = unname(stats[1]),
              standard_error = unname(stats[2]), lower_95 = unname(stats[3]),
              upper_95 = unname(stats[4]), deviation_from_one = unname(stats[1]) - 1,
              p_value_vs_one = 2 * pnorm(abs((unname(stats[1]) - 1) / unname(stats[2])), lower.tail = FALSE))
@@ -101,19 +105,43 @@ slopes$q_value_bh_vs_one <- p.adjust(slopes$p_value_vs_one, method = "BH")
 write.table(slopes, file.path(outdir, "assembly_profiler_response_slopes.tsv"),
             sep = "\t", quote = FALSE, row.names = FALSE)
 
-contrasts <- list(
-  kraken2_bracken_clean_minus_original = vectors[["kraken2_bracken__clean"]] - vectors[["kraken2_bracken__original"]],
-  metaphlan4_clean_minus_original = vectors[["metaphlan4__clean"]] - vectors[["metaphlan4__original"]]
-)
-contrasts[["profiler_difference_in_differences"]] <- contrasts[["metaphlan4_clean_minus_original"]] -
-  contrasts[["kraken2_bracken_clean_minus_original"]]
+contrasts <- list()
+for (target_i in levels(dat$target_label)) {
+  for (profiler_i in levels(dat$profiler)) {
+    name <- paste(profiler_i, target_i, "clean_minus_original", sep = "__")
+    contrasts[[name]] <- vectors[[paste(profiler_i, "clean", target_i, sep = "__")]] -
+      vectors[[paste(profiler_i, "original", target_i, sep = "__")]]
+  }
+  contrasts[[paste("profiler_difference_in_differences", target_i, sep = "__")]] <-
+    contrasts[[paste("metaphlan4", target_i, "clean_minus_original", sep = "__")]] -
+    contrasts[[paste("kraken2_bracken", target_i, "clean_minus_original", sep = "__")]]
+}
+for (profiler_i in levels(dat$profiler)) {
+  contrasts[[paste(profiler_i, "pooled_clean_minus_original", sep = "__")]] <-
+    Reduce(`+`, lapply(levels(dat$target_label), function(target_i)
+      contrasts[[paste(profiler_i, target_i, "clean_minus_original", sep = "__")]])) /
+    nlevels(dat$target_label)
+}
+contrasts[["pooled_profiler_difference_in_differences"]] <-
+  contrasts[["metaphlan4__pooled_clean_minus_original"]] -
+  contrasts[["kraken2_bracken__pooled_clean_minus_original"]]
 contrast_table <- do.call(rbind, lapply(names(contrasts), function(name) {
   stats <- estimate(contrasts[[name]])
   data.frame(contrast = name, estimate = unname(stats[1]), standard_error = unname(stats[2]),
              lower_95 = unname(stats[3]), upper_95 = unname(stats[4]),
              p_value = unname(stats[5]))
 }))
-contrast_table$q_value_bh <- p.adjust(contrast_table$p_value, method = "BH")
+contrast_table$contrast_family <- ifelse(
+  grepl("^(kraken2_bracken|metaphlan4)__(Pana|Pint)__clean_minus_original$",
+        contrast_table$contrast), "primary_target_specific_assembly",
+  ifelse(grepl("^profiler_difference_in_differences__(Pana|Pint)$",
+               contrast_table$contrast), "secondary_target_specific_profiler_did",
+  ifelse(grepl("^(kraken2_bracken|metaphlan4)__pooled_clean_minus_original$",
+               contrast_table$contrast), "secondary_pooled_assembly",
+         "secondary_pooled_profiler_did")))
+contrast_table$q_value_bh <- ave(
+  contrast_table$p_value, contrast_table$contrast_family,
+  FUN = function(values) p.adjust(values, method = "BH"))
 write.table(contrast_table, file.path(outdir, "assembly_slope_contrasts.tsv"),
             sep = "\t", quote = FALSE, row.names = FALSE)
 

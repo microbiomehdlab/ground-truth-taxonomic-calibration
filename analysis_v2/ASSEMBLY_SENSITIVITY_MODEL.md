@@ -13,14 +13,23 @@ The input is the paired-endpoint table for the same 30 Yachida samples, two
 targets, six positive doses, two profilers, and both assembly arms. The primary
 Gaussian GAM is:
 
-`recovered_spike_signal ~ profiler * assembly_arm * dose_pp + condition +`
-`s(sample_id, bs="re") + s(target_label, bs="re")`
+`recovered_spike_signal ~ profiler * assembly_arm * dose_pp * target_label +`
+`condition + s(sample_id, bs="re")`
 
 where `dose_pp = 100 * spike_fraction_target`. The reported response slopes are
 scaled so that one represents read-proportional response. Primary sensitivity
-contrasts are clean minus original response slope within each profiler; the
-profiler difference-in-differences is secondary. No rows are filtered based on
-their observed response, and negative recovered signals remain in the model.
+contrasts are clean minus original response slope separately for Pana and Pint
+within each profiler. Target-specific profiler difference-in-differences and
+equal-weight averages across the two targets are secondary. Treating target as
+a fixed interaction avoids assuming that two biologically distinct assembly
+replacements have the same effect. No rows are filtered based on their observed
+response, and negative recovered signals remain in the model.
+
+BH adjustment is applied separately within frozen contrast families. The four
+target-by-profiler clean-minus-original tests form the primary family. The two
+target-specific profiler difference-in-differences form one secondary family;
+pooled assembly contrasts and the pooled profiler difference-in-differences are
+separate secondary families.
 
 The script records convergence and Hessian checks, cell counts, all four
 profiler-by-arm slopes, contrasts with 95% intervals, fitted residuals, session

@@ -37,7 +37,8 @@ grep -P '^status\tPASS$' "$OUTDIR/provenance/run_manifest.tsv"
 ```
 
 The primary table is
-`models/assembly_sensitivity/assembly_slope_contrasts.tsv`. The two
-`clean_minus_original` rows quantify assembly-choice sensitivity separately for
-each profiler. They do not isolate contamination from strain or database
-representation effects.
+`models/assembly_sensitivity/assembly_slope_contrasts.tsv`. The four primary
+target-specific `clean_minus_original` rows quantify assembly-choice
+sensitivity separately for each target and profiler. Pooled rows are secondary.
+They do not isolate contamination from strain or database representation
+effects.
