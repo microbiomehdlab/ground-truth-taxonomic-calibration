@@ -86,12 +86,21 @@ Report cohort-specific estimates before any pooled or hierarchical summary.
 
 ## 5. Denominators, zeros, and transformations
 
-**TO VERIFY.** Audit frozen commands and representative raw outputs to document:
+**PARTLY VERIFIED.** The frozen-command audit is recorded in
+`PROFILER_SEMANTICS.md`. A fixture-tested audit program preserves native fields
+and measures their totals. It must still be run on representative final outputs
+from every cohort to document:
 
 - the denominator of Bracken species fractions and treatment of unclassified or
   undistributed reads;
 - MetaPhlAn's unclassified output and whether reported rows sum to 100%;
 - every downstream renormalization and filtering operation.
+
+**DECIDED.** MetaPhlAn percentages will not be multiplied by FASTQ totals and
+interpreted as assigned reads. Missing Bracken species mass and the complement
+of MetaPhlAn species rows will not automatically be called unclassified.
+Species-closed renormalization, if retained, is sensitivity-only. Native units
+and baseline-adjusted within-profiler response are primary.
 
 **TO FREEZE.** Define detection thresholds, pseudocount policy, transformation,
 handling of baseline zero, and unconditional versus detected-only summaries.
