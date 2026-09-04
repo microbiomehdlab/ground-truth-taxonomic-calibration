@@ -14,7 +14,8 @@ targets, six positive doses, two profilers, and both assembly arms. The primary
 Gaussian GAM is:
 
 `recovered_spike_signal ~ profiler * assembly_arm * dose_pp * target_label +`
-`condition + s(sample_id, bs="re")`
+`condition + sample random intercept + sample-target-profiler random intercept +`
+`shared random dose slope + clean-arm random dose-slope deviation`
 
 where `dose_pp = 100 * spike_fraction_target`. The reported response slopes are
 scaled so that one represents read-proportional response. Primary sensitivity
@@ -24,6 +25,13 @@ equal-weight averages across the two targets are secondary. Treating target as
 a fixed interaction avoids assuming that two biologically distinct assembly
 replacements have the same effect. No rows are filtered based on their observed
 response, and negative recovered signals remain in the model.
+
+The two random-slope terms prevent repeated dose rows from being treated as
+independent evidence for a common trajectory. One represents heterogeneity in
+the original/shared dose response; the second represents heterogeneity in the
+paired clean-minus-original slope change within each sample, target, and
+profiler. Exact zero p-values caused by floating-point underflow are prohibited;
+the implementation also records `-log10(p)` for extreme values.
 
 BH adjustment is applied separately within frozen contrast families. The four
 target-by-profiler clean-minus-original tests form the primary family. The two

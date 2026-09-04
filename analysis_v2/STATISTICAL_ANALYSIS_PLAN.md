@@ -174,7 +174,9 @@ as assembly-choice/quality sensitivity, not a causal contamination experiment.
 **IMPLEMENTED FOR QUANTITATIVE RESPONSE.**
 `scripts/build_assembly_sensitivity_input.py` builds validated paired original
 and clean canonical rows, and `scripts/fit_assembly_sensitivity.R` estimates
-profiler-by-arm response slopes and clean-minus-original contrasts. The
+target-specific profiler-by-arm response slopes and clean-minus-original
+contrasts. Sample-target-profiler random dose slopes and clean-arm slope
+deviations represent between-sample trajectory heterogeneity. The
 fail-closed runner is `run_assembly_sensitivity.sh`. Detection, off-target, and
 biomarker-propagation assembly comparisons remain pending.
 

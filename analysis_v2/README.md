@@ -85,3 +85,7 @@ Step 6's model-independent evaluation contract is documented in
 `BIOMARKER_PROPAGATION.md` and implemented by
 `scripts/evaluate_biomarker_propagation.py`. The differential-abundance fitting
 contract remains deliberately unfrozen.
+
+`METHODS_DECISION_LOG.md` is the dated, tracked record of decisions and
+development-only findings needed when drafting the manuscript. Update it when
+an estimand, model, multiplicity family, or interpretation rule changes.

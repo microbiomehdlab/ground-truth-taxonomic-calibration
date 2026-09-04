@@ -29,6 +29,8 @@ stopifnot(file.exists(file.path(outdir, "SUCCESS")))
 slopes <- read.delim(file.path(outdir, "assembly_profiler_response_slopes.tsv"))
 contrasts <- read.delim(file.path(outdir, "assembly_slope_contrasts.tsv"))
 stopifnot(nrow(slopes) == 8L, nrow(contrasts) == 9L)
+stopifnot(all(is.finite(slopes$p_value_vs_one)), all(slopes$p_value_vs_one > 0))
+stopifnot(all(is.finite(contrasts$p_value)), all(contrasts$p_value > 0))
 stopifnot(all(c("contrast_family", "q_value_bh") %in% names(contrasts)))
 stopifnot(sum(contrasts$contrast_family == "primary_target_specific_assembly") == 4L)
 stopifnot(all(c("kraken2_bracken__Pana__clean_minus_original",

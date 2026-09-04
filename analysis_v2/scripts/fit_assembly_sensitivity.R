@@ -44,17 +44,25 @@ dat$profiler <- factor(dat$profiler, levels = c("kraken2_bracken", "metaphlan4")
 dat$assembly_arm <- factor(dat$assembly_arm, levels = c("original", "clean"))
 dat$condition <- factor(dat$condition); dat$sample_id <- factor(dat$sample_id)
 dat$target_label <- factor(dat$target_label)
+dat$sample_target_profiler <- interaction(
+  dat$sample_id, dat$target_label, dat$profiler, drop = TRUE)
+dat$clean_dose_pp <- dat$dose_pp * as.numeric(dat$assembly_arm == "clean")
 formula <- recovered ~ profiler * assembly_arm * dose_pp * target_label + condition +
-  s(sample_id, bs = "re")
+  s(sample_id, bs = "re") +
+  s(sample_target_profiler, bs = "re") +
+  s(sample_target_profiler, by = dose_pp, bs = "re") +
+  s(sample_target_profiler, by = clean_dose_pp, bs = "re")
 model <- mgcv::gam(formula, data = dat, family = gaussian(), method = "ML")
 hessian <- model$outer.info$hess
 diagnostics <- data.frame(
   metric = c("converged", "full_convergence", "finite_coefficients",
-             "hessian_positive_definite", "rows", "samples", "targets", "doses"),
+             "hessian_positive_definite", "rows", "samples", "targets",
+             "sample_target_profiler_clusters", "achieved_doses"),
   value = c(isTRUE(model$converged), isTRUE(model$outer.info$conv == "full convergence"),
             all(is.finite(coef(model))), is.matrix(hessian) && all(is.finite(hessian)) &&
               all(eigen(hessian, symmetric = TRUE, only.values = TRUE)$values > 1e-8),
             nrow(dat), nlevels(dat$sample_id), nlevels(dat$target_label),
+            nlevels(dat$sample_target_profiler),
             length(unique(dat$dose_value))))
 write.table(diagnostics, file.path(outdir, "assembly_model_diagnostics.tsv"),
             sep = "\t", quote = FALSE, row.names = FALSE)
@@ -63,12 +71,15 @@ if (!all(as.logical(diagnostics$value[1:4]))) stop("Assembly model failed conver
 beta <- coef(model); covariance <- vcov(model)
 reference <- data.frame(condition = dat$condition[1], sample_id = dat$sample_id[1],
                         stringsAsFactors = FALSE)
-smooth_terms <- "s(sample_id)"
+smooth_terms <- c("s(sample_id)", "s(sample_target_profiler)",
+                  "s(sample_target_profiler):dose_pp",
+                  "s(sample_target_profiler):clean_dose_pp")
 slope_contrast <- function(profiler_i, arm_i, target_i) {
   low <- transform(reference, profiler = profiler_i, assembly_arm = arm_i,
-                   target_label = target_i, dose_pp = 0)
+                   target_label = target_i, dose_pp = 0, clean_dose_pp = 0)
   high <- transform(reference, profiler = profiler_i, assembly_arm = arm_i,
-                    target_label = target_i, dose_pp = 1)
+                    target_label = target_i, dose_pp = 1,
+                    clean_dose_pp = as.numeric(arm_i == "clean"))
   low$profiler <- factor(low$profiler, levels = levels(dat$profiler))
   high$profiler <- factor(high$profiler, levels = levels(dat$profiler))
   low$assembly_arm <- factor(low$assembly_arm, levels = levels(dat$assembly_arm))
@@ -79,6 +90,14 @@ slope_contrast <- function(profiler_i, arm_i, target_i) {
   high$sample_id <- factor(high$sample_id, levels = levels(dat$sample_id))
   low$target_label <- factor(low$target_label, levels = levels(dat$target_label))
   high$target_label <- factor(high$target_label, levels = levels(dat$target_label))
+  low$sample_target_profiler <- interaction(
+    low$sample_id, low$target_label, low$profiler, drop = TRUE)
+  high$sample_target_profiler <- interaction(
+    high$sample_id, high$target_label, high$profiler, drop = TRUE)
+  low$sample_target_profiler <- factor(
+    low$sample_target_profiler, levels = levels(dat$sample_target_profiler))
+  high$sample_target_profiler <- factor(
+    high$sample_target_profiler, levels = levels(dat$sample_target_profiler))
   drop(predict(model, high, type = "lpmatrix", exclude = smooth_terms) -
          predict(model, low, type = "lpmatrix", exclude = smooth_terms)) / 0.01
 }
@@ -90,7 +109,9 @@ for (profiler_i in levels(dat$profiler)) for (arm_i in levels(dat$assembly_arm))
 estimate <- function(vector) {
   est <- sum(vector * beta); se <- sqrt(drop(vector %*% covariance %*% vector))
   c(estimate = est, standard_error = se, lower_95 = est - 1.96 * se,
-    upper_95 = est + 1.96 * se, p_value = 2 * pnorm(abs(est / se), lower.tail = FALSE))
+    upper_95 = est + 1.96 * se,
+    p_value = pmax(2 * pnorm(abs(est / se), lower.tail = FALSE),
+                   .Machine$double.xmin))
 }
 slopes <- do.call(rbind, lapply(names(vectors), function(name) {
   parts <- strsplit(name, "__", fixed = TRUE)[[1]]
@@ -99,9 +120,12 @@ slopes <- do.call(rbind, lapply(names(vectors), function(name) {
              response_slope = unname(stats[1]),
              standard_error = unname(stats[2]), lower_95 = unname(stats[3]),
              upper_95 = unname(stats[4]), deviation_from_one = unname(stats[1]) - 1,
-             p_value_vs_one = 2 * pnorm(abs((unname(stats[1]) - 1) / unname(stats[2])), lower.tail = FALSE))
+             p_value_vs_one = pmax(
+               2 * pnorm(abs((unname(stats[1]) - 1) / unname(stats[2])),
+                         lower.tail = FALSE), .Machine$double.xmin))
 }))
 slopes$q_value_bh_vs_one <- p.adjust(slopes$p_value_vs_one, method = "BH")
+slopes$minus_log10_p_value_vs_one <- -log10(slopes$p_value_vs_one)
 write.table(slopes, file.path(outdir, "assembly_profiler_response_slopes.tsv"),
             sep = "\t", quote = FALSE, row.names = FALSE)
 
@@ -142,6 +166,7 @@ contrast_table$contrast_family <- ifelse(
 contrast_table$q_value_bh <- ave(
   contrast_table$p_value, contrast_table$contrast_family,
   FUN = function(values) p.adjust(values, method = "BH"))
+contrast_table$minus_log10_p_value <- -log10(contrast_table$p_value)
 write.table(contrast_table, file.path(outdir, "assembly_slope_contrasts.tsv"),
             sep = "\t", quote = FALSE, row.names = FALSE)
 
