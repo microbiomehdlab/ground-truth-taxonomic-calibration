@@ -174,9 +174,14 @@ sealed final cohort inputs.
 
 ## 7. Cross-cohort inference
 
-**TO FREEZE.** Treat Yachida, Feng, and Zeller as separate cohorts. Estimate each
-cohort first, quantify heterogeneity, and then use a prespecified hierarchical or
-meta-analytic synthesis. A pooled analysis that ignores cohort is not primary.
+**PRESPECIFIED AND IMPLEMENTED.** Treat Yachida, Feng, and Zeller as separate
+cohorts. Cohort-specific estimates are primary. Shared estimands are summarized
+with REML random effects and modified Hartung–Knapp uncertainty; report tau²,
+Q, I², prediction intervals, direction agreement, and leave-one-cohort-out
+results. Only features estimable in every prespecified cohort are synthesized,
+with incomplete coverage retained in a ledger. BH correction is across features
+within each exact synthesis context. `CROSS_COHORT_SYNTHESIS.md` defines the
+contract. Definitive execution remains pending all three cohort seals.
 
 ## 8. Assembly-choice sensitivity
 

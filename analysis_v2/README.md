@@ -93,6 +93,11 @@ The fail-closed entry point is `run_paired_biomarker_propagation.sh`.
 `run_disease_biomarker_propagation.sh` implement the complementary native
 disease-contrast analysis.
 
+Step 7 is prespecified in `CROSS_COHORT_SYNTHESIS.md` and implemented by
+`scripts/meta_analyze_disease_biomarkers.R`. Its fail-closed entry point is
+`run_cross_cohort_synthesis.sh`; definitive execution waits for three sealed
+cohort-specific disease-result tables.
+
 `METHODS_DECISION_LOG.md` is the dated, tracked record of decisions and
 development-only findings needed when drafting the manuscript. Update it when
 an estimand, model, multiplicity family, or interpretation rule changes.

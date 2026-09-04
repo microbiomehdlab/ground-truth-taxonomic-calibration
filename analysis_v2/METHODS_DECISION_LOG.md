@@ -92,3 +92,15 @@ diagnostics, provenance, and checksums.
 - Covariates with no variation in an analysis population are non-estimable and
   cannot confound within that population. They are omitted automatically and
   recorded per result; other rank deficiency is not silently repaired.
+
+## 2026-09-05 — cross-cohort synthesis
+
+- Cohort-specific estimates remain primary; no sample-level pooled analysis
+  that ignores cohort is permitted.
+- Shared disease-biomarker effects use REML random effects with conservative
+  modified Hartung–Knapp uncertainty. Heterogeneity, prediction intervals,
+  direction agreement, and leave-one-cohort-out estimates are mandatory.
+- Only features with positive finite uncertainty in all three prespecified
+  cohorts are pooled. Missing coverage remains explicit.
+- With three cohorts, heterogeneity is imprecise; synthesis supports cautious
+  generalization rather than proof of universal consistency.
