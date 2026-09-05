@@ -98,6 +98,11 @@ Step 7 is prespecified in `CROSS_COHORT_SYNTHESIS.md` and implemented by
 `run_cross_cohort_synthesis.sh`; definitive execution waits for three sealed
 cohort-specific disease-result tables.
 
+Step 9 begins with the modular reporting contract in `REPORTING.md`.
+`run_disease_biomarker_report.sh` generates checksummed disease-biomarker
+tables, figure-source data, figures, diagnostics, and draft captions while
+enforcing development/definitive status inheritance.
+
 `METHODS_DECISION_LOG.md` is the dated, tracked record of decisions and
 development-only findings needed when drafting the manuscript. Update it when
 an estimand, model, multiplicity family, or interpretation rule changes.

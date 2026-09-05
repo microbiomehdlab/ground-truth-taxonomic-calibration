@@ -229,3 +229,11 @@ The definitive workflow must write:
   applicable.
 
 The v2 run must fail rather than silently drop samples, taxa, models, or files.
+
+**IMPLEMENTED IN PART.** `REPORTING.md` and
+`run_disease_biomarker_report.sh` implement the first modular publication
+report. Every graphic has a preserved TSV source, status inheritance is
+fail-closed, and the package includes diagnostics, captions, provenance, and a
+checksum seal. Detection, continuous-response, assembly-sensitivity, and final
+cross-cohort reporting modules remain to be integrated after their definitive
+inputs are available.
