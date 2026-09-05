@@ -170,7 +170,11 @@ Models use a fixed `1e-8` fraction pseudocount, a cross-dose 10% prevalence
 filter with target exception, HC3 robust uncertainty, and BH correction across
 species within each exact analysis context. The fail-closed entry point is
 `run_disease_biomarker_propagation.sh`. Definitive fitting still requires the
-sealed final cohort inputs.
+sealed final cohort inputs. Disease propagation uses the dedicated
+`scripts/evaluate_disease_biomarker_propagation.py`: retained, lost, and gained
+baseline disease biomarkers, Jaccard stability, direction flips, and effect
+changes are the endpoints. Target significance is a spurious-association
+diagnostic, not recall, because implantation is performed across phenotypes.
 
 ## 7. Cross-cohort inference
 

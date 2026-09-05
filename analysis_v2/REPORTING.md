@@ -6,7 +6,7 @@ and checksums. Figures are views of preserved TSV sources; they are not the sole
 record of any result.
 
 `run_disease_biomarker_report.sh` currently implements the disease-biomarker
-module. It produces target recall, biomarker-set stability, and target disease-
+module. It produces baseline-marker retention, biomarker-set stability, and target disease-
 effect-change displays at the primary q <= 0.05 threshold, while preserving
 both prespecified thresholds in source tables. It also exports a model-covariate
 audit, which makes invariant-covariate omission visible.

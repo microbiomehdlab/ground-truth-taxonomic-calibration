@@ -104,3 +104,12 @@ diagnostics, provenance, and checksums.
   cohorts are pooled. Missing coverage remains explicit.
 - With three cohorts, heterogeneity is imprecise; synthesis supports cautious
   generalization rather than proof of universal consistency.
+
+## 2026-09-05 — disease-biomarker propagation semantics
+
+- An organism implanted across phenotype groups is not expected to become a
+  disease biomarker. Its disease significance is a spurious-association
+  diagnostic, not target recall.
+- Disease propagation uses two-sided significant call sets and reports retained,
+  lost, and gained biomarkers, baseline retention, Jaccard stability, direction
+  flips, and changes in baseline-biomarker effects.

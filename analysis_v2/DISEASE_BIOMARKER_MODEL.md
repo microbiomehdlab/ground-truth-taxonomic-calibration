@@ -23,9 +23,11 @@ The species universe is fixed across doses within a family. Species require at
 least 10% nonzero prevalence over all profiles in that family; the implanted
 target is retained regardless of prevalence. BH correction is performed across
 tested species within each cohort/study/population/target/arm/profiler/dose/
-contrast/model family. The baseline call set is an observed disease contrast,
-so baseline-to-spike Jaccard stability is defined here (unlike the structural
-null of the paired perturbation model).
+contrast/model family. The baseline call set is an observed disease contrast.
+Disease propagation is therefore summarized by retained, lost, and gained
+biomarkers, baseline retention, Jaccard stability, direction flips, and effect
+changes. Because targets are implanted across phenotype groups, target
+significance is a spurious-association diagnostic and is never called recall.
 
 Profiler-native outputs remain distinct practical estimands. The model does not
 claim that Bracken and MetaPhlAn measure identical cellular abundance. It tests

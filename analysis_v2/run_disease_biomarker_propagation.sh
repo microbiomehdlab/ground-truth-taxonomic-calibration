@@ -50,8 +50,8 @@ apptainer exec --cleanenv --pwd "$ROOT" "$ANALYSIS_SIF" \
   --abundance-long "$OUTDIR/input/biomarker_abundance_long.tsv" \
   --outdir "$OUTDIR/models"
 
-python3 analysis_v2/tests/test_biomarker_propagation.py
-python3 analysis_v2/scripts/evaluate_biomarker_propagation.py \
+python3 analysis_v2/tests/test_disease_biomarker_propagation.py
+python3 analysis_v2/scripts/evaluate_disease_biomarker_propagation.py \
   --calls "$OUTDIR/models/primary_disease_da_results.tsv" --aliases "$ALIASES" \
   --spike-panel "$SPIKE_PANEL" --outdir "$OUTDIR/evaluation" \
   --q-thresholds 0.05,0.10
@@ -60,7 +60,7 @@ sha256sum "$CANONICAL_INPUT" "$SAMPLE_METADATA" "$ANALYSIS_SIF" "$ALIASES" "$SPI
   "$OUTDIR/input/biomarker_profile_manifest.tsv" \
   "$OUTDIR/input/biomarker_abundance_long.tsv" \
   "$OUTDIR/models/primary_disease_da_results.tsv" \
-  "$OUTDIR/evaluation/biomarker_propagation_metrics.tsv" \
+  "$OUTDIR/evaluation/disease_biomarker_propagation_metrics.tsv" \
   > "$OUTDIR/provenance/run_inputs_and_primary_outputs.sha256"
 sed -i 's/^status\tIN_PROGRESS$/status\tPASS/' "$OUTDIR/provenance/run_manifest.tsv"
 printf 'analysis\tnative_disease_biomarker_propagation\nanalysis_status\t%s\nstatus\tPASS\n' \
