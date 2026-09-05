@@ -84,7 +84,7 @@ def main():
                   lost_biomarkers=str(len(lost)),gained_biomarkers=str(len(gained)),
                   baseline_retention_rate=render(len(retained)/len(base_calls) if base_calls else None),
                   dose_overlap_fraction=render(len(retained)/len(dose_calls) if dose_calls else None),
-                  biomarker_set_jaccard_vs_baseline=render(len(retained)/len(union) if union else 1.0),direction_flips_among_retained=str(flips),
+                  biomarker_set_jaccard_vs_baseline=render(len(retained)/len(union) if union else None),direction_flips_among_retained=str(flips),
                   median_abs_effect_change_baseline_biomarkers=render(statistics.median(changes) if changes else None),
                   max_abs_effect_change_baseline_biomarkers=render(max(changes) if changes else None),
                   target_significant=str(int(target_row["_q"] <= threshold)),target_effect=render(target_row["_effect"]),

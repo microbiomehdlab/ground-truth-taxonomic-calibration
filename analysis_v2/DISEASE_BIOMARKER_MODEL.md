@@ -28,6 +28,8 @@ Disease propagation is therefore summarized by retained, lost, and gained
 biomarkers, baseline retention, Jaccard stability, direction flips, and effect
 changes. Because targets are implanted across phenotype groups, target
 significance is a spurious-association diagnostic and is never called recall.
+Jaccard stability and baseline retention are undefined when no baseline or
+union call set exists; empty sets are not presented as perfect stability.
 
 Profiler-native outputs remain distinct practical estimands. The model does not
 claim that Bracken and MetaPhlAn measure identical cellular abundance. It tests

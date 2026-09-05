@@ -51,7 +51,12 @@ summary_groups <- split(metrics, interaction(metrics[summary_key], drop = TRUE, 
 safe_mean <- function(x) if (all(is.na(x))) NA_real_ else mean(x, na.rm = TRUE)
 summaries <- do.call(rbind, lapply(summary_groups, function(x) data.frame(
   x[1, summary_key, drop = FALSE], contexts = nrow(x),
+  total_baseline_biomarkers = sum(x$baseline_biomarkers),
+  total_dose_biomarkers = sum(x$dose_biomarkers),
+  total_retained = sum(x$retained_biomarkers),
   mean_baseline_retention = safe_mean(x$baseline_retention_rate),
+  overall_baseline_retention = if (sum(x$baseline_biomarkers) > 0)
+    sum(x$retained_biomarkers) / sum(x$baseline_biomarkers) else NA_real_,
   total_lost = sum(x$lost_biomarkers), total_gained = sum(x$gained_biomarkers),
   median_jaccard = if (all(is.na(x$biomarker_set_jaccard_vs_baseline))) NA_real_ else
     median(x$biomarker_set_jaccard_vs_baseline, na.rm = TRUE),
@@ -105,7 +110,7 @@ captions <- c(
   "# Draft figure captions", "",
   "These captions inherit the analysis status recorded in `provenance/report_manifest.tsv`.", "",
   "## Baseline disease-biomarker retention", "Proportion of significant baseline disease biomarkers that remained significant after controlled read implantation at BH q <= 0.05. Contexts without baseline biomarkers are undefined and omitted from the summary.", "",
-  "## Biomarker-set stability", "Median Jaccard similarity between each perturbed disease-biomarker set and its matched observed baseline call set at BH q <= 0.05.", "",
+  "## Biomarker-set stability", "Median Jaccard similarity between each perturbed disease-biomarker set and its matched observed baseline call set at BH q <= 0.05. Empty-versus-empty call sets are undefined rather than treated as perfect stability.", "",
   "## Target effect change", "Change from baseline in the target species disease-contrast coefficient after controlled read implantation. Because targets are implanted across phenotype groups, target significance is a spurious-association diagnostic rather than recall. Lines connect dose levels within profiler and target; they are descriptive, not independent replicates.")
 writeLines(captions, file.path(outdir, "captions.md"))
 manifest <- data.frame(field = c("status", "source_analysis", "source_analysis_status", "created_at"),

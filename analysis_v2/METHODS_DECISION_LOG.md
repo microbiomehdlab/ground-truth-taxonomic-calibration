@@ -113,3 +113,5 @@ diagnostics, provenance, and checksums.
 - Disease propagation uses two-sided significant call sets and reports retained,
   lost, and gained biomarkers, baseline retention, Jaccard stability, direction
   flips, and changes in baseline-biomarker effects.
+- Empty-versus-empty biomarker sets have undefined Jaccard similarity. They are
+  not assigned a value of one, which would imply evidence of perfect stability.
