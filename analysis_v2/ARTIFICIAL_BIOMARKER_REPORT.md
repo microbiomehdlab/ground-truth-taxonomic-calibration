@@ -1,0 +1,32 @@
+# Artificial-biomarker recovery report
+
+**Status:** implemented and fixture-tested before definitive execution.
+
+This report addresses the direct controlled question: can differential-abundance
+analysis identify the species whose reads were implanted? Each spiked library is
+compared with the unmodified library from the same biological sample. Analyses
+remain separate by cohort, phenotype background, target, assembly arm, profiler,
+and dose. The target is therefore a prespecified artificial biomarker, while any
+other significantly enriched species is counted as an off-target call.
+
+The report consumes a sealed output from `run_paired_biomarker_propagation.sh`.
+At the primary BH threshold of `q <= 0.05` it produces target recall, precision,
+off-target burden, and paired target-effect figures. A labelled `q <= 0.10`
+sensitivity analysis is retained in the source tables. It also reports the
+minimum tested fraction at which each target is recovered. This is an empirical
+minimum among the tested doses, not a continuous limit of detection.
+
+Run with:
+
+```bash
+export PAIRED_RUN=/path/to/sealed/paired_run
+export ANALYSIS_SIF=/path/to/frozen_analysis.sif
+export REPORT_STATUS=DEVELOPMENT_ONLY  # or DEFINITIVE
+export OUTDIR=/new/report/path
+bash analysis_v2/run_artificial_biomarker_report.sh
+```
+
+A definitive report cannot inherit a development analysis. Every figure has a
+TSV source; tables, diagnostics, captions, provenance, and checksums are sealed.
+Interpret the target effect as recovery of controlled sequencing evidence, not
+as cellular abundance, biomass, or extraction efficiency.

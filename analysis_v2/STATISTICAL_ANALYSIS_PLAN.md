@@ -162,6 +162,14 @@ recall, off-target burden, precision, F1, target-effect change, and biomarker-se
 Jaccard stability at both q-value thresholds. It does not fit DA models or
 recompute q-values.
 
+**IMPLEMENTED FOR ARTIFICIAL-BIOMARKER REPORTING.**
+`ARTIFICIAL_BIOMARKER_REPORT.md`,
+`scripts/make_artificial_biomarker_report.R`, and
+`run_artificial_biomarker_report.sh` convert the paired perturbation results
+into sealed target-recall, empirical minimum-detected-dose, precision,
+off-target-burden, and target-effect outputs. This direct recovery analysis is
+kept distinct from disease-biomarker propagation.
+
 **PRESPECIFIED AND IMPLEMENTED FOR DISEASE CONTRASTS.**
 `DISEASE_BIOMARKER_MODEL.md` defines cohort-specific native-abundance models
 with CRC versus Control primary and Adenoma versus Control secondary. The

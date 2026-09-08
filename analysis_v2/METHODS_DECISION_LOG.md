@@ -125,3 +125,15 @@ diagnostics, provenance, and checksums.
 - Baseline coefficients and BH-adjusted q-values are computed once and reused
   across every target, arm, and dose. Positive-dose models use the identical
   feature universe, preventing post-perturbation feature selection.
+
+## 2026-09-08 — direct artificial-biomarker recovery report
+
+- Spiked versus matched unmodified libraries form a separate, direct recovery
+  analysis in which the implanted target is a prespecified artificial biomarker.
+- Primary outputs are target recall, precision, off-target enriched calls, the
+  paired target effect, and the minimum tested dose producing target recovery at
+  BH q <= 0.05. The q <= 0.10 result is a labelled sensitivity analysis.
+- Minimum detected dose is restricted to the tested dose grid and is not called
+  a continuous detection limit. Results remain separate by phenotype background.
+- This analysis complements rather than replaces disease-versus-control
+  propagation, and its effects describe sequencing evidence rather than cells.

@@ -102,6 +102,10 @@ Step 9 begins with the modular reporting contract in `REPORTING.md`.
 `run_disease_biomarker_report.sh` generates checksummed disease-biomarker
 tables, figure-source data, figures, diagnostics, and draft captions while
 enforcing development/definitive status inheritance.
+`ARTIFICIAL_BIOMARKER_REPORT.md` and
+`run_artificial_biomarker_report.sh` provide the complementary direct
+spiked-versus-matched-baseline report: target recall, empirical minimum detected
+dose, precision, off-target burden, and paired target effects.
 
 `METHODS_DECISION_LOG.md` is the dated, tracked record of decisions and
 development-only findings needed when drafting the manuscript. Update it when
