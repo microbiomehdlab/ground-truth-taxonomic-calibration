@@ -8,24 +8,37 @@ value <- function(flag, default = NULL) {
   args[[hit + 1L]]
 }
 run_root <- value("--paired-run")
+secondary_root <- value("--secondary-paired-run")
 outdir <- value("--outdir")
 report_status <- value("--report-status")
 if (is.null(run_root) || is.null(outdir) || !report_status %in% c("DEVELOPMENT_ONLY", "DEFINITIVE"))
   stop("Required: --paired-run DIR --outdir DIR --report-status DEVELOPMENT_ONLY|DEFINITIVE")
-required <- c(file.path(run_root, "SUCCESS"), file.path(run_root, "models", "SUCCESS"),
+run_roots <- c(run_root, if (!is.null(secondary_root)) secondary_root)
+required_for <- function(root) c(file.path(root, "SUCCESS"), file.path(root, "models", "SUCCESS"),
               file.path(run_root, "evaluation", "SUCCESS"),
               file.path(run_root, "models", "paired_da_results.tsv"),
               file.path(run_root, "evaluation", "biomarker_propagation_metrics.tsv"))
+required <- unlist(lapply(run_roots, function(root) {
+  x <- required_for(root); sub(run_root, root, x, fixed=TRUE)
+}), use.names=FALSE)
 if (any(!file.exists(required)) || any(file.info(required)$size <= 0)) stop("Paired run is incomplete.")
-source_development <- file.exists(file.path(run_root, "DEVELOPMENT_ONLY.txt"))
+source_development <- any(file.exists(file.path(run_roots, "DEVELOPMENT_ONLY.txt")))
 if (report_status == "DEFINITIVE" && source_development)
   stop("A development analysis cannot generate a definitive report.")
 dir.create(outdir, recursive = TRUE, showWarnings = FALSE)
 for (subdir in c("tables", "figure_source", "figures", "diagnostics", "provenance"))
   dir.create(file.path(outdir, subdir), showWarnings = FALSE)
 
-metrics <- read.delim(required[5], check.names = FALSE, stringsAsFactors = FALSE, na.strings = "NA")
-calls <- read.delim(required[4], check.names = FALSE, stringsAsFactors = FALSE, na.strings = "NA")
+scope_for <- function(x) ifelse(x$contrast == "spiked_vs_matched_baseline__pooled",
+  "pooled_primary", "phenotype_stratified_secondary")
+metrics <- do.call(rbind, lapply(run_roots, function(root) {
+  x <- read.delim(file.path(root,"evaluation","biomarker_propagation_metrics.tsv"), check.names=FALSE, stringsAsFactors=FALSE, na.strings="NA")
+  x$analysis_scope <- scope_for(x); x
+}))
+calls <- do.call(rbind, lapply(run_roots, function(root) {
+  x <- read.delim(file.path(root,"models","paired_da_results.tsv"), check.names=FALSE, stringsAsFactors=FALSE, na.strings="NA")
+  x$analysis_scope <- if ("contrast" %in% names(x)) scope_for(x) else rep("unknown", nrow(x)); x
+}))
 needed <- c("cohort", "study", "analysis_population", "target_label", "assembly_arm", "profiler",
   "contrast", "spike_fraction_target", "q_threshold", "target_called", "enriched_calls",
   "off_target_enriched_calls", "precision", "recall", "f1", "target_effect", "target_q_value")
@@ -50,7 +63,7 @@ metrics$dose_fraction_nominal <- nearest_nominal
 metrics$dose_percent_nominal <- 100 * nearest_nominal
 metrics$dose_rank <- match(nearest_nominal, nominal_doses)
 
-context_key <- c("cohort", "study", "analysis_population", "target_label", "assembly_arm",
+context_key <- c("analysis_scope", "cohort", "study", "analysis_population", "target_label", "assembly_arm",
                  "profiler", "contrast", "q_threshold")
 metrics <- metrics[do.call(order, metrics[c(context_key, "dose_rank")]), ]
 write.table(metrics, file.path(outdir, "figure_source", "artificial_biomarker_metrics.tsv"),
@@ -58,13 +71,18 @@ write.table(metrics, file.path(outdir, "figure_source", "artificial_biomarker_me
 
 contexts <- split(metrics, interaction(metrics[context_key], drop = TRUE, lex.order = TRUE))
 minimum_dose <- do.call(rbind, lapply(contexts, function(x) {
+  if (length(unique(x$dose_rank)) != nrow(x)) stop("A report context contains duplicate doses.")
   detected <- x[x$target_called == 1, , drop = FALSE]
   first_detected <- if (nrow(detected)) detected[which.min(detected$dose_rank), , drop = FALSE] else NULL
+  sustained <- x[vapply(x$dose_rank, function(rank) all(x$target_called[x$dose_rank >= rank] == 1), logical(1)),,drop=FALSE]
+  first_sustained <- if (nrow(sustained)) sustained[which.min(sustained$dose_rank),,drop=FALSE] else NULL
   data.frame(x[1, context_key, drop = FALSE], doses_tested = nrow(x),
     target_detected_any_dose = as.integer(nrow(detected) > 0),
     minimum_detected_nominal_fraction = if (nrow(detected)) first_detected$dose_fraction_nominal else NA_real_,
     minimum_detected_nominal_percent = if (nrow(detected)) first_detected$dose_percent_nominal else NA_real_,
     achieved_fraction_at_first_detection = if (nrow(detected)) first_detected$spike_fraction_target else NA_real_,
+    minimum_sustained_detected_nominal_fraction = if (nrow(sustained)) first_sustained$dose_fraction_nominal else NA_real_,
+    minimum_sustained_detected_nominal_percent = if (nrow(sustained)) first_sustained$dose_percent_nominal else NA_real_,
     target_detected_all_doses = as.integer(all(x$target_called == 1)),
     maximum_off_target_calls = max(x$off_target_enriched_calls),
     precision_at_first_detection = if (nrow(detected)) first_detected$precision else NA_real_,
@@ -75,7 +93,7 @@ minimum_dose <- minimum_dose[do.call(order, minimum_dose[context_key]), ]
 write.table(minimum_dose, file.path(outdir, "tables", "minimum_detectable_dose.tsv"),
             sep = "\t", quote = FALSE, row.names = FALSE, na = "NA")
 
-summary_key <- c("cohort", "analysis_population", "profiler", "assembly_arm",
+summary_key <- c("analysis_scope", "cohort", "analysis_population", "profiler", "assembly_arm",
                  "q_threshold", "dose_rank", "dose_fraction_nominal", "dose_percent_nominal")
 groups <- split(metrics, interaction(metrics[summary_key], drop = TRUE, lex.order = TRUE))
 summary <- do.call(rbind, lapply(groups, function(x) data.frame(
@@ -92,6 +110,7 @@ write.table(summary, file.path(outdir, "tables", "artificial_biomarker_summary.t
 labels <- c(kraken2_bracken = "Kraken2 + Bracken", metaphlan4 = "MetaPhlAn 4")
 metrics$profiler_display <- unname(labels[metrics$profiler])
 primary <- metrics[abs(metrics$q_threshold - .05) < 1e-12, ]
+if (any(primary$analysis_scope == "pooled_primary")) primary <- primary[primary$analysis_scope == "pooled_primary",]
 if (!nrow(primary)) stop("Primary q <= 0.05 metrics are absent.")
 theme_report <- theme_bw(base_size = 10) + theme(legend.position = "bottom", panel.grid.minor = element_blank())
 p1 <- ggplot(primary, aes(dose_percent_nominal, target_called, color = profiler_display, group = profiler_display)) +
@@ -126,6 +145,32 @@ diagnostics <- data.frame(metric = c("metric_rows", "model_rows", "contexts", "c
   length(unique(metrics$q_threshold)), report_status))
 write.table(diagnostics, file.path(outdir, "diagnostics", "report_diagnostics.tsv"),
             sep = "\t", quote = FALSE, row.names = FALSE)
+
+# Preserve the identities of significant non-target taxa, not only their count.
+call_required <- c("cohort","study","analysis_population","target_label","assembly_arm","profiler",
+                   "contrast","spike_fraction_target","feature","effect","q_value")
+if (!length(setdiff(call_required,names(calls)))) {
+  calls$spike_fraction_target <- as.numeric(calls$spike_fraction_target)
+  calls$q_value <- as.numeric(calls$q_value); calls$effect <- as.numeric(calls$effect)
+  calls$dose_fraction_nominal <- map <- vapply(calls$spike_fraction_target, function(d) nominal_doses[which.min(abs(nominal_doses-d))], numeric(1))
+  alias_key <- unique(metrics[c("analysis_scope","cohort","study","analysis_population","target_label","assembly_arm","profiler","contrast","target_alias")])
+  calls <- merge(calls,alias_key,by=c("analysis_scope","cohort","study","analysis_population","target_label","assembly_arm","profiler","contrast"),all.x=TRUE)
+  ledger <- do.call(rbind,lapply(sort(unique(metrics$q_threshold)),function(q) {
+    x <- calls[!is.na(calls$q_value)&calls$q_value<=q&calls$effect>0&calls$feature!=calls$target_alias,,drop=FALSE]
+    x$q_threshold <- q; x
+  }))
+  keep <- c("analysis_scope","cohort","study","analysis_population","target_label","assembly_arm","profiler","contrast","dose_fraction_nominal","q_threshold","feature","effect","q_value")
+  ledger <- ledger[keep]
+  write.table(ledger,file.path(outdir,"tables","off_target_call_ledger.tsv"),sep="\t",quote=FALSE,row.names=FALSE,na="NA")
+  if (nrow(ledger)) {
+    rk <- c("analysis_scope","cohort","analysis_population","target_label","assembly_arm","profiler","q_threshold","feature")
+    recurrence <- do.call(rbind,lapply(split(ledger,interaction(ledger[rk],drop=TRUE,lex.order=TRUE)),function(x)
+      data.frame(x[1,rk,drop=FALSE],contexts_called=nrow(x),contrasts_called=length(unique(x$contrast)),
+                 minimum_nominal_fraction=min(x$dose_fraction_nominal),maximum_nominal_fraction=max(x$dose_fraction_nominal))))
+    recurrence <- recurrence[order(-recurrence$contexts_called,recurrence$feature),]
+  } else recurrence <- data.frame()
+  write.table(recurrence,file.path(outdir,"tables","recurrent_off_target_taxa.tsv"),sep="\t",quote=FALSE,row.names=FALSE,na="NA")
+}
 writeLines(c("# Draft figure captions", "",
   "These captions inherit the status recorded in `provenance/report_manifest.tsv`.", "",
   "## Artificial-target recall", "Proportion of matched phenotype-background contexts in which the implanted target was significantly enriched in spiked versus unmodified profiles at BH q <= 0.05.", "",
@@ -133,8 +178,9 @@ writeLines(c("# Draft figure captions", "",
   "## Off-target discovery burden", "Number of non-target species called significantly enriched after controlled read implantation. Lines show phenotype-background contexts and are descriptive.", "",
   "## Artificial-target effect", "Mean within-sample log2 change in profiler-native target abundance after controlled read implantation relative to the matched unmodified library. This is sequencing-perturbation recovery, not cellular-abundance recovery."),
   file.path(outdir, "captions.md"))
-manifest <- data.frame(field = c("status", "analysis", "source_analysis", "source_analysis_status", "created_at"),
+manifest <- data.frame(field = c("status", "analysis", "source_analysis", "secondary_source_analysis", "source_analysis_status", "created_at"),
   value = c(report_status, "paired_artificial_biomarker_recovery", normalizePath(run_root),
+            if(is.null(secondary_root)) "NONE" else normalizePath(secondary_root),
             if (source_development) "DEVELOPMENT_ONLY" else "DEFINITIVE",
             format(Sys.time(), "%Y-%m-%dT%H:%M:%S%z")))
 write.table(manifest, file.path(outdir, "provenance", "report_manifest.tsv"), sep = "\t", quote = FALSE, row.names = FALSE)

@@ -41,3 +41,12 @@ bash analysis_v2/run_calibration_biomarker_linkage.sh
 Status inheritance is fail-closed. A development source cannot generate a
 definitive linkage package. Outputs include joined and summarized tables,
 figure-source TSVs, figures, diagnostics, captions, provenance, and checksums.
+# Pooled primary analysis
+
+The linkage runner accepts the pooled paired-biomarker result in `PAIRED_RUN`
+and an optional phenotype-stratified result in `SECONDARY_PAIRED_RUN`.
+Quantitative calibration is summarized over all biological samples for the
+pooled primary estimand and within phenotype for the stratified secondary
+estimand. The `analysis_scope` column prevents these estimands from being
+silently mixed. Main linkage figures use pooled rows when they are available;
+all linked rows are retained in the source table.

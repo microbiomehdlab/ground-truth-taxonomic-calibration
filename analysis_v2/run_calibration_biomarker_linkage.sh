@@ -13,6 +13,14 @@ for path in "$ENDPOINTS_FILE" "$ENDPOINTS_SUCCESS" "$PAIRED_RUN/SUCCESS" "$PAIRE
   "$PAIRED_RUN/evaluation/biomarker_propagation_metrics.tsv" "$ANALYSIS_SIF"; do
   [[ -s "$path" ]] || { echo "[ERROR] Missing input: $path" >&2; exit 1; }
 done
+secondary_args=()
+if [[ -n "${SECONDARY_PAIRED_RUN:-}" ]]; then
+  secondary_metrics="$SECONDARY_PAIRED_RUN/evaluation/biomarker_propagation_metrics.tsv"
+  for path in "$SECONDARY_PAIRED_RUN/SUCCESS" "$SECONDARY_PAIRED_RUN/evaluation/SUCCESS" "$secondary_metrics"; do
+    [[ -s "$path" ]] || { echo "[ERROR] Missing secondary input: $path" >&2; exit 1; }
+  done
+  secondary_args=(--secondary-biomarker-metrics "$secondary_metrics")
+fi
 if [[ "$ANALYSIS_STATUS" == "DEFINITIVE" ]] && \
    { [[ -e "$PAIRED_RUN/DEVELOPMENT_ONLY.txt" ]] || [[ -e "$(dirname "$ENDPOINTS_FILE")/DEVELOPMENT_ONLY.txt" ]]; }; then
   echo "[ERROR] Development inputs cannot generate a definitive linkage package" >&2; exit 1
@@ -21,5 +29,6 @@ apptainer exec --cleanenv --pwd "$ROOT" "$ANALYSIS_SIF" Rscript analysis_v2/test
 apptainer exec --cleanenv --pwd "$ROOT" "$ANALYSIS_SIF" Rscript analysis_v2/scripts/link_calibration_to_biomarkers.R \
   --endpoints "$ENDPOINTS_FILE" \
   --biomarker-metrics "$PAIRED_RUN/evaluation/biomarker_propagation_metrics.tsv" \
+  "${secondary_args[@]}" \
   --outdir "$OUTDIR" --analysis-status "$ANALYSIS_STATUS"
 echo "[PASS] Sealed calibration-to-biomarker linkage: $OUTDIR"

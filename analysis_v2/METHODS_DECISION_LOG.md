@@ -157,3 +157,16 @@ diagnostics, provenance, and checksums.
 - The primary direct spiked-versus-baseline analysis pools all eligible paired
   biological samples across phenotype backgrounds; it is not a disease contrast.
 - Control-, Adenoma-, and CRC-stratified fits remain secondary.
+
+## Pooled artificial-biomarker estimand and off-target identities
+
+- The artificial biomarker created by controlled read implantation is tested
+  primarily by pooling biological samples and pairing each spiked profile with
+  its own unmodified profile.
+- Phenotype-background analyses are secondary heterogeneity/descriptive
+  analyses, not substitutes for the pooled primary estimand.
+- Detection thresholds include first observed and first sustained detection.
+- Off-target discovery is recorded both as a burden and as a taxon-level
+  recurrence ledger so cross-mapping or compositional effects can be audited.
+- Calibration linkage uses profiler-native baseline-adjusted changes and keeps
+  pooled and phenotype-stratified estimands explicitly separated.

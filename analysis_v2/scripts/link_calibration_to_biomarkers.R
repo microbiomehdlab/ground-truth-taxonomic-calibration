@@ -7,6 +7,7 @@ value <- function(flag, default = NULL) {
   args[[hit + 1L]]
 }
 endpoints_path <- value("--endpoints"); metrics_path <- value("--biomarker-metrics")
+secondary_metrics_path <- value("--secondary-biomarker-metrics")
 outdir <- value("--outdir"); analysis_status <- value("--analysis-status")
 if (is.null(endpoints_path) || is.null(metrics_path) || is.null(outdir) ||
     !analysis_status %in% c("DEVELOPMENT_ONLY", "DEFINITIVE"))
@@ -16,7 +17,9 @@ for (subdir in c("tables", "figure_source", "figures", "diagnostics", "provenanc
   dir.create(file.path(outdir, subdir), showWarnings = FALSE)
 
 endpoints <- read.delim(endpoints_path, check.names=FALSE, stringsAsFactors=FALSE)
-metrics <- read.delim(metrics_path, check.names=FALSE, stringsAsFactors=FALSE, na.strings="NA")
+metric_paths <- c(metrics_path, if(!is.null(secondary_metrics_path)) secondary_metrics_path)
+metrics <- do.call(rbind,lapply(metric_paths,function(path)
+  read.delim(path,check.names=FALSE,stringsAsFactors=FALSE,na.strings="NA")))
 endpoint_required <- c("cohort", "study", "sample_id", "condition", "analysis_population",
   "target_label", "assembly_arm", "profiler", "spike_fraction_target", "response_ratio",
   "recovered_spike_signal", "signed_reference_error", "absolute_reference_error")
@@ -57,10 +60,30 @@ quantitative <- do.call(rbind, lapply(endpoint_groups, function(x) data.frame(
 quantitative$calibration_class <- ifelse(quantitative$median_response_ratio < .8, "under_response",
   ifelse(quantitative$median_response_ratio > 1.2, "over_response", "read_proportional_band"))
 
-metrics$condition <- sub("^spiked_vs_matched_baseline__background_", "", metrics$contrast)
-if (any(metrics$condition == metrics$contrast)) stop("Could not recover phenotype background from contrast.")
+pooled_key <- setdiff(endpoint_key,"condition")
+pooled_groups <- split(endpoints,interaction(endpoints[pooled_key],drop=TRUE,lex.order=TRUE))
+pooled_quantitative <- do.call(rbind,lapply(pooled_groups,function(x) data.frame(
+  x[1,pooled_key,drop=FALSE],condition="ALL",biological_samples=nrow(x),
+  median_achieved_fraction=median(x$spike_fraction_target),median_response_ratio=median(x$response_ratio),
+  mean_response_ratio=mean(x$response_ratio),response_ratio_iqr=IQR(x$response_ratio),
+  median_recovered_spike_signal=median(x$recovered_spike_signal),
+  median_signed_reference_error=median(x$signed_reference_error),
+  median_absolute_reference_error=median(x$absolute_reference_error),stringsAsFactors=FALSE)))
+pooled_quantitative$calibration_class <- ifelse(pooled_quantitative$median_response_ratio<.8,"under_response",
+  ifelse(pooled_quantitative$median_response_ratio>1.2,"over_response","read_proportional_band"))
+quantitative$analysis_scope <- "phenotype_stratified_secondary"
+pooled_quantitative$analysis_scope <- "pooled_primary"
+pooled_quantitative <- pooled_quantitative[names(quantitative)]
+quantitative <- rbind(quantitative,pooled_quantitative)
+metrics$analysis_scope <- ifelse(metrics$contrast=="spiked_vs_matched_baseline__pooled",
+  "pooled_primary","phenotype_stratified_secondary")
+metrics$condition <- ifelse(metrics$analysis_scope=="pooled_primary","ALL",
+  sub("^spiked_vs_matched_baseline__background_", "", metrics$contrast))
+if (any(metrics$analysis_scope=="phenotype_stratified_secondary" & metrics$condition==metrics$contrast))
+  stop("Could not recover phenotype background from contrast.")
+quantitative <- quantitative[quantitative$analysis_scope %in% unique(metrics$analysis_scope),,drop=FALSE]
 join_key <- c("cohort", "study", "analysis_population", "condition", "target_label",
-              "assembly_arm", "profiler", "dose_rank", "dose_fraction_nominal")
+              "assembly_arm", "profiler", "dose_rank", "dose_fraction_nominal", "analysis_scope")
 if (anyDuplicated(quantitative[join_key])) stop("Duplicate quantitative linkage context.")
 if (anyDuplicated(metrics[c(join_key, "q_threshold")])) stop("Duplicate biomarker linkage context.")
 linked <- merge(metrics, quantitative, by=join_key, all=TRUE, sort=FALSE)
@@ -73,7 +96,8 @@ write.table(linked, file.path(outdir, "figure_source", "calibration_biomarker_li
             sep="\t", quote=FALSE, row.names=FALSE, na="NA")
 
 primary <- linked[abs(linked$q_threshold-.05)<1e-12, ]
-association_key <- c("cohort", "analysis_population", "assembly_arm", "profiler")
+if(any(primary$analysis_scope=="pooled_primary")) primary<-primary[primary$analysis_scope=="pooled_primary",]
+association_key <- c("analysis_scope", "cohort", "analysis_population", "assembly_arm", "profiler")
 association_groups <- split(primary, interaction(primary[association_key], drop=TRUE, lex.order=TRUE))
 safe_cor <- function(x,y) if (length(x) >= 3 && sd(x)>0 && sd(y)>0) suppressWarnings(cor(x,y,method="spearman")) else NA_real_
 associations <- do.call(rbind, lapply(association_groups, function(x) data.frame(
@@ -85,7 +109,7 @@ associations <- do.call(rbind, lapply(association_groups, function(x) data.frame
 write.table(associations, file.path(outdir,"tables","calibration_biomarker_associations.tsv"),
             sep="\t",quote=FALSE,row.names=FALSE,na="NA")
 
-class_key <- c("cohort","analysis_population","assembly_arm","profiler","calibration_class")
+class_key <- c("analysis_scope","cohort","analysis_population","assembly_arm","profiler","calibration_class")
 class_groups <- split(primary, interaction(primary[class_key],drop=TRUE,lex.order=TRUE))
 class_summary <- do.call(rbind,lapply(class_groups,function(x) data.frame(
   x[1,class_key,drop=FALSE], contexts=nrow(x), target_recall=mean(x$target_called),
@@ -123,12 +147,12 @@ writeLines(c("# Draft figure captions","",
   "## Calibration versus artificial-target effect","Context-level paired biomarker effect against median read-perturbation response ratio. The ratio evaluates response to implanted sequencing evidence on each profiler's native scale; it is not cellular abundance accuracy.","",
   "## Calibration error versus off-target burden","Off-target enriched calls against absolute deviation from read-proportional response. Points are descriptive experimental contexts, not independent biological replicates.","",
   "## Response-ratio dose response","Median response ratio across biological samples at each frozen nominal implanted fraction. Exact achieved fractions are retained in the source table."),file.path(outdir,"captions.md"))
-manifest <- data.frame(field=c("status","analysis","created_at","endpoints","biomarker_metrics"),
+manifest <- data.frame(field=c("status","analysis","created_at","endpoints","biomarker_metrics","secondary_biomarker_metrics"),
  value=c(analysis_status,"calibration_to_artificial_biomarker_linkage",format(Sys.time(),"%Y-%m-%dT%H:%M:%S%z"),
- normalizePath(endpoints_path),normalizePath(metrics_path)))
+ normalizePath(endpoints_path),normalizePath(metrics_path),if(is.null(secondary_metrics_path)) "NONE" else normalizePath(secondary_metrics_path)))
 write.table(manifest,file.path(outdir,"provenance","run_manifest.tsv"),sep="\t",quote=FALSE,row.names=FALSE)
 if (analysis_status=="DEVELOPMENT_ONLY") writeLines(c("status\tDEVELOPMENT_ONLY","use_for_manuscript\tNO"),file.path(outdir,"DEVELOPMENT_ONLY.txt"))
-files <- c(normalizePath(endpoints_path),normalizePath(metrics_path),list.files(outdir,recursive=TRUE,full.names=TRUE))
+files <- c(normalizePath(endpoints_path),normalizePath(metric_paths),list.files(outdir,recursive=TRUE,full.names=TRUE))
 status <- system2("sha256sum",files,stdout=file.path(outdir,"provenance","linkage.sha256"))
 if (!identical(status,0L)) stop("Could not seal linkage package.")
 writeLines(c("analysis\tcalibration_to_artificial_biomarker_linkage",paste0("analysis_status\t",analysis_status),"status\tPASS"),file.path(outdir,"SUCCESS"))

@@ -36,3 +36,20 @@ A definitive report cannot inherit a development analysis. Every figure has a
 TSV source; tables, diagnostics, captions, provenance, and checksums are sealed.
 Interpret the target effect as recovery of controlled sequencing evidence, not
 as cellular abundance, biomass, or extraction efficiency.
+# Integrated primary and secondary reporting
+
+`run_artificial_biomarker_report.sh` accepts the sealed pooled analysis in
+`PAIRED_RUN` and, optionally, the phenotype-stratified analysis in
+`SECONDARY_PAIRED_RUN`. Rows are explicitly labelled `pooled_primary` or
+`phenotype_stratified_secondary`. If pooled rows are present, the main figures
+show the pooled primary estimand; both scopes remain in the source tables.
+
+The minimum-dose table reports both the first observed significant detection
+and the first **sustained** detection (the lowest tested dose for which the
+target is detected at that dose and every higher dose). The former describes
+sensitivity; the latter is less vulnerable to an isolated non-monotone call.
+
+Where the model call table contains the full context columns, the report also
+writes `off_target_call_ledger.tsv` and `recurrent_off_target_taxa.tsv`. These
+preserve the identities of enriched non-target taxa, rather than reporting
+only their count.

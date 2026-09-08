@@ -10,7 +10,14 @@ if [[ -e "$OUTDIR" ]] && [[ -n "$(find "$OUTDIR" -mindepth 1 -maxdepth 1 -print 
 for path in "$ANALYSIS_SIF" "$PAIRED_RUN/SUCCESS" "$PAIRED_RUN/models/SUCCESS" "$PAIRED_RUN/evaluation/SUCCESS"; do
   [[ -s "$path" ]] || { echo "[ERROR] Missing input: $path" >&2; exit 1; }
 done
+secondary_args=()
+if [[ -n "${SECONDARY_PAIRED_RUN:-}" ]]; then
+  for path in "$SECONDARY_PAIRED_RUN/SUCCESS" "$SECONDARY_PAIRED_RUN/models/SUCCESS" "$SECONDARY_PAIRED_RUN/evaluation/SUCCESS"; do
+    [[ -s "$path" ]] || { echo "[ERROR] Missing secondary input: $path" >&2; exit 1; }
+  done
+  secondary_args=(--secondary-paired-run "$SECONDARY_PAIRED_RUN")
+fi
 apptainer exec --cleanenv --pwd "$ROOT" "$ANALYSIS_SIF" Rscript analysis_v2/tests/test_artificial_biomarker_report.R
 apptainer exec --cleanenv --pwd "$ROOT" "$ANALYSIS_SIF" Rscript analysis_v2/scripts/make_artificial_biomarker_report.R \
-  --paired-run "$PAIRED_RUN" --outdir "$OUTDIR" --report-status "$REPORT_STATUS"
+  --paired-run "$PAIRED_RUN" "${secondary_args[@]}" --outdir "$OUTDIR" --report-status "$REPORT_STATUS"
 echo "[PASS] Sealed artificial-biomarker reporting package: $OUTDIR"
