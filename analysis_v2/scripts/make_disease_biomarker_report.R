@@ -51,13 +51,13 @@ summary_groups <- split(metrics, interaction(metrics[summary_key], drop = TRUE, 
 safe_mean <- function(x) if (all(is.na(x))) NA_real_ else mean(x, na.rm = TRUE)
 summaries <- do.call(rbind, lapply(summary_groups, function(x) data.frame(
   x[1, summary_key, drop = FALSE], contexts = nrow(x),
-  total_baseline_biomarkers = sum(x$baseline_biomarkers),
-  total_dose_biomarkers = sum(x$dose_biomarkers),
-  total_retained = sum(x$retained_biomarkers),
+  context_sum_baseline_biomarkers = sum(x$baseline_biomarkers),
+  context_sum_dose_biomarkers = sum(x$dose_biomarkers),
+  context_sum_retained = sum(x$retained_biomarkers),
   mean_baseline_retention = safe_mean(x$baseline_retention_rate),
   overall_baseline_retention = if (sum(x$baseline_biomarkers) > 0)
     sum(x$retained_biomarkers) / sum(x$baseline_biomarkers) else NA_real_,
-  total_lost = sum(x$lost_biomarkers), total_gained = sum(x$gained_biomarkers),
+  context_sum_lost = sum(x$lost_biomarkers), context_sum_gained = sum(x$gained_biomarkers),
   median_jaccard = if (all(is.na(x$biomarker_set_jaccard_vs_baseline))) NA_real_ else
     median(x$biomarker_set_jaccard_vs_baseline, na.rm = TRUE),
   median_target_effect_change = median(x$target_effect_change_from_baseline))))

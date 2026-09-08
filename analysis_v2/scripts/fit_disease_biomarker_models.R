@@ -104,79 +104,107 @@ make_matrix <- function(records, species) {
   result
 }
 
-primary_rows <- list(); sensitivity_rows <- list(); exclusions <- list()
-pi <- si <- ei <- 1L
+key_string <- function(row, columns) paste(vapply(columns, function(x) as.character(row[[x]][1]), character(1)), collapse = "\r")
+global_columns <- c("cohort", "study", "analysis_population", "profiler")
+
+fit_collection <- function(matrix, metadata, context) {
+  primary <- list(); sensitivity <- list(); bmi_complete <- is.finite(metadata$bmi_numeric)
+  for (feature in colnames(matrix)) {
+    y <- log2(matrix[, feature] + pseudocount)
+    primary_fit <- fit_hc3(y, metadata, FALSE)
+    if (is.null(primary_fit)) stop("Rank-deficient primary disease model: ", context)
+    primary[[feature]] <- primary_fit
+    if (sum(bmi_complete) >= 12L && all(c("Control", "Adenoma", "CRC") %in% unique(metadata$condition[bmi_complete]))) {
+      sensitivity_fit <- fit_hc3(y[bmi_complete], metadata[bmi_complete, ], TRUE)
+      if (is.null(sensitivity_fit)) stop("Rank-deficient BMI sensitivity model: ", context)
+      sensitivity[[feature]] <- sensitivity_fit
+    }
+  }
+  list(primary = primary, sensitivity = sensitivity, bmi_complete = bmi_complete)
+}
+
+# Freeze one baseline-derived universe and one set of baseline fits per cohort/profiler.
+global_groups <- split(manifest, interaction(manifest[global_columns], drop = TRUE, lex.order = TRUE))
+global_configs <- list()
+for (global in global_groups) {
+  first <- global[1, , drop = FALSE]
+  candidates <- global[global$dose == 0, , drop = FALSE]
+  identity_columns <- c("sample_id", "condition", "source_profile", "age_numeric", "sex", "bmi_numeric")
+  per_sample <- split(candidates[identity_columns], candidates$sample_id)
+  if (any(vapply(per_sample, function(x) nrow(unique(x)) != 1L, logical(1))))
+    stop("Inconsistent duplicated baseline metadata or profile paths.")
+  baseline <- candidates[!duplicated(candidates$sample_id), , drop = FALSE]
+  baseline <- baseline[order(baseline$sample_id), , drop = FALSE]
+  if (!all(c("Control", "Adenoma", "CRC") %in% unique(baseline$condition)))
+    stop("Control, Adenoma, and CRC samples are required in every cohort/profiler baseline.")
+  observed_species <- sort(unique(abundance$feature[abundance$profiler == first$profiler &
+                                                     abundance$source_profile %in% baseline$source_profile]))
+  observed_matrix <- make_matrix(baseline, observed_species)
+  prevalence <- colMeans(observed_matrix > 0)
+  implanted_targets <- sort(unique(global$target_feature))
+  universe <- sort(union(observed_species[prevalence >= min_prevalence], implanted_targets))
+  baseline_matrix <- make_matrix(baseline, universe)[baseline$sample_id, , drop = FALSE]
+  context <- paste(unlist(first[1, global_columns, drop = FALSE]), collapse = "/")
+  fits <- fit_collection(baseline_matrix, baseline, paste0(context, "/baseline"))
+  global_configs[[key_string(first, global_columns)]] <- list(
+    metadata = baseline, universe = universe, baseline_fits = fits,
+    excluded_baseline_species = setdiff(observed_species, universe))
+}
+
+render_fits <- function(fits, model_spec, target_list, common, level, dose, metadata, bmi_complete) {
+  for (contrast in c("CRC_vs_Control", "Adenoma_vs_Control")) {
+    valid <- names(fits)
+    pvalues <- vapply(valid, function(feature) fits[[feature]][[contrast]][["p_value"]], numeric(1))
+    qvalues <- p.adjust(pvalues, "BH")
+    for (feature in valid) {
+      stats <- fits[[feature]][[contrast]]
+      target_list[[length(target_list) + 1L]] <- c(common, list(
+        dose_level = level, spike_fraction_target = dose, contrast = contrast,
+        feature = feature, effect = stats[["effect"]], standard_error = stats[["standard_error"]],
+        lower_95 = stats[["lower_95"]], upper_95 = stats[["upper_95"]],
+        p_value = stats[["p_value"]], q_value = qvalues[feature], model_spec = model_spec,
+        n_samples = if (model_spec == "primary_age_sex") nrow(metadata) else sum(bmi_complete),
+        covariates_used = fits[[feature]]$covariates_used,
+        covariates_omitted = fits[[feature]]$covariates_omitted,
+        include = 1, exclusion_reason = "", baseline_reference_kind = "observed_calls"))
+    }
+  }
+  target_list
+}
+
+primary_rows <- list(); sensitivity_rows <- list(); exclusions <- list(); ei <- 1L
 for (family in families) {
-  first <- family[1L, , drop = FALSE]
+  first <- family[1, , drop = FALSE]
+  config <- global_configs[[key_string(first, global_columns)]]
+  metadata <- config$metadata; universe <- config$universe
   levels <- c("baseline", sort(unique(family$dose_level[family$dose > 0])))
   level_records <- lapply(levels, function(level) family[family$dose_level == level, , drop = FALSE])
   sample_sets <- lapply(level_records, function(x) sort(x$sample_id))
   if (any(vapply(level_records, function(x) anyDuplicated(x$sample_id) > 0, logical(1))) ||
-      !all(vapply(sample_sets[-1], identical, logical(1), sample_sets[[1]])))
-    stop("Dose levels do not contain identical unique biological samples.")
-  metadata <- level_records[[1]][match(sample_sets[[1]], level_records[[1]]$sample_id), ]
-  if (!all(c("Control", "Adenoma", "CRC") %in% unique(metadata$condition)))
-    stop("Control, Adenoma, and CRC samples are required in every family.")
-  species <- sort(unique(abundance$feature[abundance$profiler == first$profiler &
-                                            abundance$source_profile %in% family$source_profile]))
-  species <- union(species, first$target_feature)
-  matrices <- lapply(level_records, make_matrix, species = species)
-  prevalence <- colMeans(do.call(rbind, matrices) > 0)
-  keep <- prevalence >= min_prevalence | species == first$target_feature
-  common <- as.list(first[1L, family_columns, drop = FALSE])
+      !all(vapply(sample_sets, identical, logical(1), sort(metadata$sample_id))))
+    stop("Dose levels do not contain the frozen unique baseline samples.")
+  common <- as.list(first[1, family_columns, drop = FALSE])
+  family_species <- sort(unique(abundance$feature[abundance$profiler == first$profiler &
+                                                   abundance$source_profile %in% family$source_profile]))
+  excluded_species <- setdiff(family_species, universe)
   for (level_index in seq_along(levels)) {
-    records <- level_records[[level_index]]
-    matrix <- matrices[[level_index]][metadata$sample_id, , drop = FALSE]
+    records <- level_records[[level_index]][match(metadata$sample_id, level_records[[level_index]]$sample_id), , drop = FALSE]
     dose <- if (levels[level_index] == "baseline") 0 else median(records$dose)
-    primary_fits <- list(); sensitivity_fits <- list()
-    bmi_complete <- is.finite(metadata$bmi_numeric)
-    for (feature in species) {
-      if (!keep[feature]) {
-        exclusions[[ei]] <- c(common, list(dose_level = levels[level_index],
-          spike_fraction_target = dose, contrast = "ALL", feature = feature,
-          model_spec = "not_tested", include = 0,
-          exclusion_reason = "prevalence_below_threshold")); ei <- ei + 1L
-        next
-      }
-      y <- log2(matrix[, feature] + pseudocount)
-      primary_fit <- fit_hc3(y, metadata, FALSE)
-      if (is.null(primary_fit))
-        stop("Rank-deficient primary disease model after invariant-covariate handling: ",
-             paste(unlist(common), collapse = "/"), "/", levels[level_index])
-      primary_fits[[feature]] <- primary_fit
-      if (sum(bmi_complete) >= 12L && all(c("Control", "Adenoma", "CRC") %in%
-                                           unique(metadata$condition[bmi_complete]))) {
-        sensitivity_fit <- fit_hc3(y[bmi_complete], metadata[bmi_complete, ], TRUE)
-        if (is.null(sensitivity_fit))
-          stop("Rank-deficient BMI sensitivity model after invariant-covariate handling: ",
-               paste(unlist(common), collapse = "/"), "/", levels[level_index])
-        sensitivity_fits[[feature]] <- sensitivity_fit
-      }
+    for (feature in excluded_species) {
+      exclusions[[ei]] <- c(common, list(dose_level = levels[level_index], spike_fraction_target = dose,
+        contrast = "ALL", feature = feature, model_spec = "not_tested", include = 0,
+        exclusion_reason = "outside_frozen_baseline_universe")); ei <- ei + 1L
     }
-    render <- function(fits, model_spec, target_list) {
-      for (contrast in c("CRC_vs_Control", "Adenoma_vs_Control")) {
-        valid <- names(fits)[vapply(fits, function(x) !is.null(x), logical(1))]
-        pvalues <- vapply(valid, function(feature) fits[[feature]][[contrast]][["p_value"]], numeric(1))
-        qvalues <- p.adjust(pvalues, "BH")
-        for (feature in valid) {
-          stats <- fits[[feature]][[contrast]]
-          target_list[[length(target_list) + 1L]] <- c(common, list(
-            dose_level = levels[level_index], spike_fraction_target = dose,
-            contrast = contrast, feature = feature, effect = stats[["effect"]],
-            standard_error = stats[["standard_error"]], lower_95 = stats[["lower_95"]],
-            upper_95 = stats[["upper_95"]], p_value = stats[["p_value"]],
-            q_value = qvalues[feature], model_spec = model_spec,
-            n_samples = if (model_spec == "primary_age_sex") nrow(metadata) else sum(bmi_complete),
-            covariates_used = fits[[feature]]$covariates_used,
-            covariates_omitted = fits[[feature]]$covariates_omitted,
-            include = 1, exclusion_reason = "", baseline_reference_kind = "observed_calls"))
-        }
-      }
-      target_list
+    fits <- if (levels[level_index] == "baseline") config$baseline_fits else {
+      matrix <- make_matrix(records, universe)[metadata$sample_id, , drop = FALSE]
+      fit_collection(matrix, metadata, paste(unlist(common), levels[level_index], sep = "/"))
     }
-    primary_rows <- render(primary_fits, "primary_age_sex", primary_rows)
-    if (length(sensitivity_fits))
-      sensitivity_rows <- render(sensitivity_fits, "sensitivity_age_sex_bmi_complete_case", sensitivity_rows)
+    primary_rows <- render_fits(fits$primary, "primary_age_sex", primary_rows, common,
+                                levels[level_index], dose, metadata, fits$bmi_complete)
+    if (length(fits$sensitivity))
+      sensitivity_rows <- render_fits(fits$sensitivity, "sensitivity_age_sex_bmi_complete_case",
+                                      sensitivity_rows, common, levels[level_index], dose,
+                                      metadata, fits$bmi_complete)
   }
 }
 
@@ -194,11 +222,13 @@ write.table(excluded, file.path(outdir, "disease_da_exclusions.tsv"), sep = "\t"
             quote = FALSE, row.names = FALSE)
 settings <- data.frame(setting = c("primary_formula", "sensitivity_formula", "transformation",
                                    "pseudocount_fraction", "minimum_prevalence", "standard_errors",
-                                   "multiplicity_family", "primary_contrast", "secondary_contrast"),
+                                   "feature_universe", "multiplicity_family", "primary_contrast", "secondary_contrast"),
                        value = c("condition + varying(scaled_age, sex)",
                                  "condition + varying(scaled_age, sex, scaled_bmi)",
                                  "log2(abundance_fraction + fixed pseudocount)", pseudocount,
-                                 min_prevalence, "HC3", "BH within cohort/profiler/target/arm/dose/contrast/model",
+                                 min_prevalence, "HC3",
+                                 "baseline prevalence within cohort/profiler plus all implanted targets",
+                                 "BH within cohort/profiler/target/arm/dose/contrast/model over an identical universe",
                                  "CRC_vs_Control", "Adenoma_vs_Control"))
 write.table(settings, file.path(outdir, "disease_da_settings.tsv"), sep = "\t", quote = FALSE, row.names = FALSE)
 summary <- data.frame(metric = c("families", "primary_tests", "bmi_sensitivity_tests",

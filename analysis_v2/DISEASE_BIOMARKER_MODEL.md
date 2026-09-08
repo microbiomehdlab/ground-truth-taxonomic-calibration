@@ -19,11 +19,15 @@ is non-estimable and cannot confound its within-population contrast; it is
 omitted automatically and recorded in every result row. Other rank deficiency
 remains a hard model failure rather than triggering silent term selection.
 
-The species universe is fixed across doses within a family. Species require at
-least 10% nonzero prevalence over all profiles in that family; the implanted
-target is retained regardless of prevalence. BH correction is performed across
-tested species within each cohort/study/population/target/arm/profiler/dose/
-contrast/model family. The baseline call set is an observed disease contrast.
+The species universe is frozen once per cohort and profiler from unmodified
+baseline profiles. Species require at least 10% nonzero baseline prevalence;
+all prespecified implanted targets are then added as one common diagnostic set.
+The same universe is used for every target, assembly arm, and dose. Baseline
+coefficients and q-values are fitted once and reused exactly across contexts.
+BH correction is performed across this common universe separately within each
+cohort, profiler, target, arm, dose, contrast, and model specification. Baseline
+fits and their correction are reused rather than recalculated. The baseline call
+set is an observed disease contrast.
 Disease propagation is therefore summarized by retained, lost, and gained
 biomarkers, baseline retention, Jaccard stability, direction flips, and effect
 changes. Because targets are implanted across phenotype groups, target

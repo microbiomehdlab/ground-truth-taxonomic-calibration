@@ -115,3 +115,13 @@ diagnostics, provenance, and checksums.
   flips, and changes in baseline-biomarker effects.
 - Empty-versus-empty biomarker sets have undefined Jaccard similarity. They are
   not assigned a value of one, which would imply evidence of perfect stability.
+
+## 2026-09-08 — frozen baseline disease feature universe
+
+- Disease-biomarker eligibility is determined once from unmodified baseline
+  profiles within each cohort and profiler, using 10% nonzero prevalence.
+- All prespecified implanted targets are added together as a common diagnostic
+  set. A target or assembly arm cannot change the multiplicity burden.
+- Baseline coefficients and BH-adjusted q-values are computed once and reused
+  across every target, arm, and dose. Positive-dose models use the identical
+  feature universe, preventing post-perturbation feature selection.

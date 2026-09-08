@@ -166,9 +166,12 @@ recompute q-values.
 `DISEASE_BIOMARKER_MODEL.md` defines cohort-specific native-abundance models
 with CRC versus Control primary and Adenoma versus Control secondary. The
 primary adjustment set is age and sex; BMI is a complete-case sensitivity.
-Models use a fixed `1e-8` fraction pseudocount, a cross-dose 10% prevalence
-filter with target exception, HC3 robust uncertainty, and BH correction across
-species within each exact analysis context. The fail-closed entry point is
+Models use a fixed `1e-8` fraction pseudocount and a cohort/profiler feature
+universe frozen from 10% baseline prevalence plus all prespecified targets.
+Baseline fits and q-values are reused across contexts; positive-dose models use
+the identical universe. HC3 robust uncertainty and BH correction apply across
+that universe within each experimental context; baseline correction is reused
+rather than recomputed. The fail-closed entry point is
 `run_disease_biomarker_propagation.sh`. Definitive fitting still requires the
 sealed final cohort inputs. Disease propagation uses the dedicated
 `scripts/evaluate_disease_biomarker_propagation.py`: retained, lost, and gained

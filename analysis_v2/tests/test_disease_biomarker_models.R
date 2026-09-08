@@ -23,11 +23,17 @@ manifest$target_feature <- "Peptostreptococcus anaerobius"
 manifest$age <- 45 + index; manifest$sex <- "Male"
 manifest$bmi <- 20 + (index %% 10); manifest$bmi[index %in% c(2, 12)] <- NA
 manifest$include <- 1; manifest$exclusion_reason <- ""
+second <- manifest
+second$target_label <- "Pint"; second$assembly_arm <- "clean"
+second$target_taxon <- "Prevotella intermedia"; second$target_feature <- "Second target"
+manifest <- rbind(manifest, second)
 write.table(manifest, manifest_path, sep = "\t", quote = FALSE, row.names = FALSE, na = "")
-features <- c("Peptostreptococcus anaerobius", "CRC marker", "Constant", "Rare")
-abundance <- do.call(rbind, lapply(seq_len(nrow(manifest)), function(i) {
-  row <- manifest[i, ]; j <- match(row$sample_id, samples); dose <- as.numeric(row$spike_fraction_target)
-  values <- c(.0001 + dose, .001 + ifelse(condition[j] == "CRC", .01, 0) + runif(1, 0, 1e-4),
+features <- c("Peptostreptococcus anaerobius", "Second target", "CRC marker", "Constant", "Rare")
+profile_rows <- manifest[!duplicated(paste(manifest$profiler, manifest$source_profile)), ]
+abundance <- do.call(rbind, lapply(seq_len(nrow(profile_rows)), function(i) {
+  row <- profile_rows[i, ]; j <- match(row$sample_id, samples); dose <- as.numeric(row$spike_fraction_target)
+  values <- c(.0001 + dose, .0002 + dose,
+              .001 + ifelse(condition[j] == "CRC", .01, 0) + runif(1, 0, 1e-4),
               .02, ifelse(j == 1 && row$dose_level == "dose_02", .001, 0))
   data.frame(profiler = row$profiler, source_profile = row$source_profile,
              feature = features, abundance_fraction = values)
@@ -48,4 +54,11 @@ stopifnot(all(sensitivity$n_samples == 28), all(primary$q_value >= 0 & primary$q
 stopifnot(any(primary$feature == "Constant" & primary$p_value == 1))
 stopifnot(!any(primary$feature == "Rare"))
 stopifnot(all(grepl("sex_invariant", primary$covariates_omitted)))
+baseline <- primary[primary$spike_fraction_target == 0 & primary$contrast == "CRC_vs_Control" &
+                      primary$feature == "CRC marker", ]
+for (profiler in unique(baseline$profiler)) {
+  rows <- baseline[baseline$profiler == profiler, ]
+  stopifnot(length(unique(signif(rows$effect, 14))) == 1,
+            length(unique(signif(rows$q_value, 14))) == 1)
+}
 cat("[PASS] disease biomarker-model fixture\n")
