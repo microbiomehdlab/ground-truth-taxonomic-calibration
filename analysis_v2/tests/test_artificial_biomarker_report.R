@@ -27,6 +27,8 @@ stopifnot(system2("cp",c("-a",paste0(run,"/."),pooled))==0)
 pooled_metrics <- metrics
 pooled_metrics$contrast <- "spiked_vs_matched_baseline__pooled"
 pooled_metrics <- pooled_metrics[!duplicated(pooled_metrics[setdiff(names(pooled_metrics),"condition")]),]
+pooled_metrics$condition <- NULL
+pooled_metrics$pooled_sample_count <- 10L
 write.table(pooled_metrics,file.path(pooled,"evaluation","biomarker_propagation_metrics.tsv"),sep="\t",quote=FALSE,row.names=FALSE,na="NA")
 script <- file.path(repo, "analysis_v2/scripts/make_artificial_biomarker_report.R")
 result <- system2("Rscript", c(script, "--paired-run", pooled, "--secondary-paired-run", run,

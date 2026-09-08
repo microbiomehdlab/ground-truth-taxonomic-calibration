@@ -31,11 +31,20 @@ for (subdir in c("tables", "figure_source", "figures", "diagnostics", "provenanc
 
 scope_for <- function(x) ifelse(x$contrast == "spiked_vs_matched_baseline__pooled",
   "pooled_primary", "phenotype_stratified_secondary")
-metrics <- do.call(rbind, lapply(run_roots, function(root) {
+rbind_fill <- function(parts) {
+  fields <- unique(unlist(lapply(parts,names),use.names=FALSE))
+  parts <- lapply(parts,function(x) {
+    missing <- setdiff(fields,names(x))
+    for(field in missing) x[[field]] <- NA
+    x[fields]
+  })
+  do.call(rbind,parts)
+}
+metrics <- rbind_fill(lapply(run_roots, function(root) {
   x <- read.delim(file.path(root,"evaluation","biomarker_propagation_metrics.tsv"), check.names=FALSE, stringsAsFactors=FALSE, na.strings="NA")
   x$analysis_scope <- scope_for(x); x
 }))
-calls <- do.call(rbind, lapply(run_roots, function(root) {
+calls <- rbind_fill(lapply(run_roots, function(root) {
   x <- read.delim(file.path(root,"models","paired_da_results.tsv"), check.names=FALSE, stringsAsFactors=FALSE, na.strings="NA")
   x$analysis_scope <- if ("contrast" %in% names(x)) scope_for(x) else rep("unknown", nrow(x)); x
 }))

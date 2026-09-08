@@ -18,7 +18,15 @@ for (subdir in c("tables", "figure_source", "figures", "diagnostics", "provenanc
 
 endpoints <- read.delim(endpoints_path, check.names=FALSE, stringsAsFactors=FALSE)
 metric_paths <- c(metrics_path, if(!is.null(secondary_metrics_path)) secondary_metrics_path)
-metrics <- do.call(rbind,lapply(metric_paths,function(path)
+rbind_fill <- function(parts) {
+  fields <- unique(unlist(lapply(parts,names),use.names=FALSE))
+  parts <- lapply(parts,function(x) {
+    for(field in setdiff(fields,names(x))) x[[field]] <- NA
+    x[fields]
+  })
+  do.call(rbind,parts)
+}
+metrics <- rbind_fill(lapply(metric_paths,function(path)
   read.delim(path,check.names=FALSE,stringsAsFactors=FALSE,na.strings="NA")))
 endpoint_required <- c("cohort", "study", "sample_id", "condition", "analysis_population",
   "target_label", "assembly_arm", "profiler", "spike_fraction_target", "response_ratio",
