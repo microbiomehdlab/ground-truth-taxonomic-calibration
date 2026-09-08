@@ -106,6 +106,10 @@ enforcing development/definitive status inheritance.
 `run_artificial_biomarker_report.sh` provide the complementary direct
 spiked-versus-matched-baseline report: target recall, empirical minimum detected
 dose, precision, off-target burden, and paired target effects.
+`CALIBRATION_BIOMARKER_LINKAGE.md` and
+`run_calibration_biomarker_linkage.sh` then connect those calls to the paired
+read-perturbation response ratio, making over- or under-response visible without
+equating profiler-native percentages with cellular abundance.
 
 `METHODS_DECISION_LOG.md` is the dated, tracked record of decisions and
 development-only findings needed when drafting the manuscript. Update it when

@@ -170,6 +170,13 @@ into sealed target-recall, empirical minimum-detected-dose, precision,
 off-target-burden, and target-effect outputs. This direct recovery analysis is
 kept distinct from disease-biomarker propagation.
 
+**IMPLEMENTED FOR CALIBRATION-TO-BIOMARKER LINKAGE.**
+`CALIBRATION_BIOMARKER_LINKAGE.md` and its fail-closed runner join sealed paired
+endpoints to artificial-biomarker calls. Continuous response ratio is primary;
+a prespecified 0.8--1.2 read-proportional band is descriptive. Outputs relate
+calibration to target effects, recall, precision, and off-target burden without
+claiming cellular-abundance accuracy or causal mediation.
+
 **PRESPECIFIED AND IMPLEMENTED FOR DISEASE CONTRASTS.**
 `DISEASE_BIOMARKER_MODEL.md` defines cohort-specific native-abundance models
 with CRC versus Control primary and Adenoma versus Control secondary. The

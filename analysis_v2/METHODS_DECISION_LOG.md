@@ -140,3 +140,14 @@ diagnostics, provenance, and checksums.
   single experimental dose into several summary groups.
 - This analysis complements rather than replaces disease-versus-control
   propagation, and its effects describe sequencing evidence rather than cells.
+
+## 2026-09-08 — calibration-to-biomarker linkage
+
+- Sealed quantitative response endpoints are joined to sealed artificial-
+  biomarker calls; neither source analysis is refitted by the linkage module.
+- Continuous read-perturbation response ratio is primary. A median ratio below
+  0.8, within 0.8--1.2, or above 1.2 is labelled under-response,
+  read-proportional-band, or over-response only for descriptive presentation.
+- Associations with target effects, recall, precision, and off-target burden
+  are descriptive and cannot establish that calibration error causes a
+  biomarker result. Profiler-native response is not cellular-abundance accuracy.
