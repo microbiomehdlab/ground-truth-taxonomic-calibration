@@ -11,9 +11,10 @@ abundance_path <- value("--abundance-long")
 outdir <- value("--outdir")
 min_prevalence <- as.numeric(value("--min-prevalence", "0.10"))
 pseudocount <- as.numeric(value("--pseudocount", "1e-8"))
+condition_mode <- value("--condition-mode", "stratified")
 if (is.null(manifest_path) || is.null(abundance_path) || is.null(outdir))
   stop("Required: --profile-manifest FILE --abundance-long FILE --outdir DIR")
-if (!is.finite(min_prevalence) || min_prevalence < 0 || min_prevalence > 1 ||
+if (!condition_mode %in% c("stratified", "pooled") || !is.finite(min_prevalence) || min_prevalence < 0 || min_prevalence > 1 ||
     !is.finite(pseudocount) || pseudocount <= 0) stop("Invalid filter or pseudocount.")
 dir.create(outdir, recursive = TRUE, showWarnings = FALSE)
 
@@ -36,7 +37,7 @@ abundance$source_profile <- normalizePath(abundance$source_profile, mustWork = F
 if (anyDuplicated(abundance[c("profiler", "source_profile", "feature")]))
   stop("Duplicate native-profile feature rows.")
 
-family_columns <- c("cohort", "study", "analysis_population", "condition",
+family_columns <- c("cohort", "study", "analysis_population", if (condition_mode == "stratified") "condition",
                     "target_label", "assembly_arm", "profiler")
 families <- split(manifest, interaction(manifest[family_columns], drop = TRUE, lex.order = TRUE))
 if (!length(families)) stop("No analysis families.")
@@ -81,7 +82,7 @@ for (family in families) {
   prevalence <- colMeans(do.call(rbind, c(list(base), dose_matrices)) > 0)
   keep <- prevalence >= min_prevalence | species == first$target_feature
   common <- as.list(first[1L, family_columns, drop = FALSE])
-  contrast <- paste0("spiked_vs_matched_baseline__background_", first$condition)
+  contrast <- if (condition_mode == "pooled") "spiked_vs_matched_baseline__pooled_conditions" else paste0("spiked_vs_matched_baseline__background_", first$condition)
   baseline_rows <- list()
   for (feature in species) {
     if (!keep[feature]) {
@@ -158,12 +159,12 @@ write.table(pairs, file.path(outdir, "sample_feature_log2_changes.tsv"), sep = "
             quote = FALSE, row.names = FALSE)
 settings <- data.frame(setting = c("estimand", "transformation", "pseudocount_fraction",
                                    "minimum_prevalence", "target_filter_exception",
-                                   "test", "multiplicity_family"),
+                                   "test", "multiplicity_family", "condition_mode"),
                        value = c("mean paired log2 abundance change",
                                  "log2(abundance_fraction + fixed pseudocount)", pseudocount,
                                  min_prevalence, "always retain intended target",
                                  "two-sided one-sample t-test of paired changes",
-                                 "BH across included species within each context"))
+                                 "BH across included species within each context", condition_mode))
 write.table(settings, file.path(outdir, "paired_da_settings.tsv"), sep = "\t", quote = FALSE,
             row.names = FALSE)
 summary <- data.frame(metric = c("contexts", "included_feature_tests", "excluded_feature_rows",

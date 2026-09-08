@@ -5,7 +5,9 @@
 This model asks whether adding controlled reads produces a reproducible
 species-level differential-abundance call relative to the matched unmodified
 library. It is run separately by cohort, phenotype background, target,
-assembly arm, profiler, and dose. It is a controlled perturbation-recovery
+assembly arm, profiler, and dose. The primary analysis pools phenotype
+backgrounds and uses all eligible paired biological samples; phenotype-
+stratified fits are secondary. It is a controlled perturbation-recovery
 analysis. It is not itself a CRC-versus-control contrast and must not be
 described as one.
 

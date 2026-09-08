@@ -151,3 +151,9 @@ diagnostics, provenance, and checksums.
 - Associations with target effects, recall, precision, and off-target burden
   are descriptive and cannot establish that calibration error causes a
   biomarker result. Profiler-native response is not cellular-abundance accuracy.
+
+## 2026-09-08 — pooled primary artificial-biomarker inference
+
+- The primary direct spiked-versus-baseline analysis pools all eligible paired
+  biological samples across phenotype backgrounds; it is not a disease contrast.
+- Control-, Adenoma-, and CRC-stratified fits remain secondary.

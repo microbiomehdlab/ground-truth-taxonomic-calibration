@@ -89,6 +89,9 @@ Step 6's model-independent evaluation contract is documented in
 `scripts/build_biomarker_abundance_input.py`, and
 `scripts/fit_paired_biomarker_models.R` implement the paired perturbation model.
 The fail-closed entry point is `run_paired_biomarker_propagation.sh`.
+The primary pooled-background entry point is
+`run_pooled_paired_biomarker_propagation.sh`; the original entry point remains
+the secondary phenotype-stratified analysis.
 `DISEASE_BIOMARKER_MODEL.md`, `scripts/fit_disease_biomarker_models.R`, and
 `run_disease_biomarker_propagation.sh` implement the complementary native
 disease-contrast analysis.

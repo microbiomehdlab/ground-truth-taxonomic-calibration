@@ -162,6 +162,10 @@ recall, off-target burden, precision, F1, target-effect change, and biomarker-se
 Jaccard stability at both q-value thresholds. It does not fit DA models or
 recompute q-values.
 
+The primary direct recovery runner pools phenotype backgrounds so all eligible
+paired samples contribute to each target/profiler/dose test. The existing
+background-stratified fits are retained as secondary analyses.
+
 **IMPLEMENTED FOR ARTIFICIAL-BIOMARKER REPORTING.**
 `ARTIFICIAL_BIOMARKER_REPORT.md`,
 `scripts/make_artificial_biomarker_report.R`, and
