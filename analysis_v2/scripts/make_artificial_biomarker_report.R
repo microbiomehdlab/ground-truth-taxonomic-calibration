@@ -29,7 +29,7 @@ dir.create(outdir, recursive = TRUE, showWarnings = FALSE)
 for (subdir in c("tables", "figure_source", "figures", "diagnostics", "provenance"))
   dir.create(file.path(outdir, subdir), showWarnings = FALSE)
 
-scope_for <- function(x) ifelse(x$contrast == "spiked_vs_matched_baseline__pooled",
+scope_for <- function(x) ifelse(x$contrast == "spiked_vs_matched_baseline__pooled_conditions",
   "pooled_primary", "phenotype_stratified_secondary")
 rbind_fill <- function(parts) {
   fields <- unique(unlist(lapply(parts,names),use.names=FALSE))

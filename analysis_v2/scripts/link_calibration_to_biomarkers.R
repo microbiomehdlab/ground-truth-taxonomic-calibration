@@ -83,7 +83,7 @@ quantitative$analysis_scope <- "phenotype_stratified_secondary"
 pooled_quantitative$analysis_scope <- "pooled_primary"
 pooled_quantitative <- pooled_quantitative[names(quantitative)]
 quantitative <- rbind(quantitative,pooled_quantitative)
-metrics$analysis_scope <- ifelse(metrics$contrast=="spiked_vs_matched_baseline__pooled",
+metrics$analysis_scope <- ifelse(metrics$contrast=="spiked_vs_matched_baseline__pooled_conditions",
   "pooled_primary","phenotype_stratified_secondary")
 metrics$condition <- ifelse(metrics$analysis_scope=="pooled_primary","ALL",
   sub("^spiked_vs_matched_baseline__background_", "", metrics$contrast))
