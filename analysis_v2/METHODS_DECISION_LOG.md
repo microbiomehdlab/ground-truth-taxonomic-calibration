@@ -135,5 +135,8 @@ diagnostics, provenance, and checksums.
   BH q <= 0.05. The q <= 0.10 result is a labelled sensitivity analysis.
 - Minimum detected dose is restricted to the tested dose grid and is not called
   a continuous detection limit. Results remain separate by phenotype background.
+- Exact achieved fractions are retained as evidence, but aggregation uses the
+  six frozen nominal dose levels so integer read allocation cannot fragment a
+  single experimental dose into several summary groups.
 - This analysis complements rather than replaces disease-versus-control
   propagation, and its effects describe sequencing evidence rather than cells.

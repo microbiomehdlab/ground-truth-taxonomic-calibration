@@ -36,32 +36,51 @@ for (field in numeric_fields) metrics[[field]] <- as.numeric(metrics[[field]])
 if (!nrow(metrics) || anyNA(metrics[c("spike_fraction_target", "q_threshold", "target_called")]) ||
     any(metrics$spike_fraction_target <= 0)) stop("Invalid artificial-biomarker metrics.")
 
+# Achieved fractions differ slightly because paired-read counts are integers and
+# library sizes differ. Aggregate only on the frozen experimental dose grid,
+# while preserving the exact achieved fraction in the detailed evidence table.
+nominal_doses <- c(0.0001, 0.0005, 0.001, 0.005, 0.01, 0.05)
+nearest_nominal <- vapply(metrics$spike_fraction_target, function(dose) {
+  nominal_doses[which.min(abs(nominal_doses - dose))]
+}, numeric(1))
+tolerance <- pmax(1e-10, nearest_nominal * 0.001)
+if (any(abs(metrics$spike_fraction_target - nearest_nominal) > tolerance))
+  stop("An achieved fraction does not match the frozen six-dose grid within tolerance.")
+metrics$dose_fraction_nominal <- nearest_nominal
+metrics$dose_percent_nominal <- 100 * nearest_nominal
+metrics$dose_rank <- match(nearest_nominal, nominal_doses)
+
 context_key <- c("cohort", "study", "analysis_population", "target_label", "assembly_arm",
                  "profiler", "contrast", "q_threshold")
-metrics <- metrics[do.call(order, metrics[c(context_key, "spike_fraction_target")]), ]
+metrics <- metrics[do.call(order, metrics[c(context_key, "dose_rank")]), ]
 write.table(metrics, file.path(outdir, "figure_source", "artificial_biomarker_metrics.tsv"),
             sep = "\t", quote = FALSE, row.names = FALSE, na = "NA")
 
 contexts <- split(metrics, interaction(metrics[context_key], drop = TRUE, lex.order = TRUE))
 minimum_dose <- do.call(rbind, lapply(contexts, function(x) {
-  detected <- x$spike_fraction_target[x$target_called == 1]
+  detected <- x[x$target_called == 1, , drop = FALSE]
+  first_detected <- if (nrow(detected)) detected[which.min(detected$dose_rank), , drop = FALSE] else NULL
   data.frame(x[1, context_key, drop = FALSE], doses_tested = nrow(x),
-    target_detected_any_dose = as.integer(length(detected) > 0),
-    minimum_detected_fraction = if (length(detected)) min(detected) else NA_real_,
-    minimum_detected_percent = if (length(detected)) 100 * min(detected) else NA_real_,
+    target_detected_any_dose = as.integer(nrow(detected) > 0),
+    minimum_detected_nominal_fraction = if (nrow(detected)) first_detected$dose_fraction_nominal else NA_real_,
+    minimum_detected_nominal_percent = if (nrow(detected)) first_detected$dose_percent_nominal else NA_real_,
+    achieved_fraction_at_first_detection = if (nrow(detected)) first_detected$spike_fraction_target else NA_real_,
     target_detected_all_doses = as.integer(all(x$target_called == 1)),
     maximum_off_target_calls = max(x$off_target_enriched_calls),
-    minimum_precision = min(x$precision), stringsAsFactors = FALSE)
+    precision_at_first_detection = if (nrow(detected)) first_detected$precision else NA_real_,
+    off_target_calls_at_first_detection = if (nrow(detected)) first_detected$off_target_enriched_calls else NA_real_,
+    stringsAsFactors = FALSE)
 }))
 minimum_dose <- minimum_dose[do.call(order, minimum_dose[context_key]), ]
 write.table(minimum_dose, file.path(outdir, "tables", "minimum_detectable_dose.tsv"),
             sep = "\t", quote = FALSE, row.names = FALSE, na = "NA")
 
 summary_key <- c("cohort", "analysis_population", "profiler", "assembly_arm",
-                 "q_threshold", "spike_fraction_target")
+                 "q_threshold", "dose_rank", "dose_fraction_nominal", "dose_percent_nominal")
 groups <- split(metrics, interaction(metrics[summary_key], drop = TRUE, lex.order = TRUE))
 summary <- do.call(rbind, lapply(groups, function(x) data.frame(
   x[1, summary_key, drop = FALSE], contexts = nrow(x),
+  median_achieved_fraction = median(x$spike_fraction_target),
   target_recall = mean(x$target_called), mean_precision = mean(x$precision),
   median_f1 = median(x$f1), context_sum_enriched_calls = sum(x$enriched_calls),
   context_sum_off_target_calls = sum(x$off_target_enriched_calls),
@@ -72,23 +91,22 @@ write.table(summary, file.path(outdir, "tables", "artificial_biomarker_summary.t
 
 labels <- c(kraken2_bracken = "Kraken2 + Bracken", metaphlan4 = "MetaPhlAn 4")
 metrics$profiler_display <- unname(labels[metrics$profiler])
-metrics$dose_percent <- 100 * metrics$spike_fraction_target
 primary <- metrics[abs(metrics$q_threshold - .05) < 1e-12, ]
 if (!nrow(primary)) stop("Primary q <= 0.05 metrics are absent.")
 theme_report <- theme_bw(base_size = 10) + theme(legend.position = "bottom", panel.grid.minor = element_blank())
-p1 <- ggplot(primary, aes(dose_percent, target_called, color = profiler_display, group = profiler_display)) +
+p1 <- ggplot(primary, aes(dose_percent_nominal, target_called, color = profiler_display, group = profiler_display)) +
   stat_summary(fun = mean, geom = "line") + stat_summary(fun = mean, geom = "point") +
   facet_grid(target_label ~ assembly_arm) + scale_y_continuous(limits = c(0, 1), breaks = seq(0, 1, .25)) +
   labs(x = "Implanted target fraction (%)", y = "Artificial-target recall", color = "Profiler") + theme_report
-p2 <- ggplot(primary, aes(dose_percent, precision, color = profiler_display, group = profiler_display)) +
+p2 <- ggplot(primary, aes(dose_percent_nominal, precision, color = profiler_display, group = profiler_display)) +
   stat_summary(fun = mean, geom = "line") + stat_summary(fun = mean, geom = "point") +
   facet_grid(target_label ~ assembly_arm) + scale_y_continuous(limits = c(0, 1), breaks = seq(0, 1, .25)) +
   labs(x = "Implanted target fraction (%)", y = "Mean precision of enriched calls", color = "Profiler") + theme_report
-p3 <- ggplot(primary, aes(dose_percent, off_target_enriched_calls, color = profiler_display,
+p3 <- ggplot(primary, aes(dose_percent_nominal, off_target_enriched_calls, color = profiler_display,
                           group = interaction(profiler_display, contrast))) +
   geom_line(alpha = .45) + geom_point(size = 1) + facet_grid(target_label ~ assembly_arm) +
   labs(x = "Implanted target fraction (%)", y = "Off-target enriched calls", color = "Profiler") + theme_report
-p4 <- ggplot(primary, aes(dose_percent, target_effect, color = profiler_display,
+p4 <- ggplot(primary, aes(dose_percent_nominal, target_effect, color = profiler_display,
                           group = interaction(profiler_display, contrast))) +
   geom_hline(yintercept = 0, linetype = 2, color = "grey50") + geom_line(alpha = .45) +
   geom_point(size = 1) + facet_grid(target_label ~ assembly_arm) +

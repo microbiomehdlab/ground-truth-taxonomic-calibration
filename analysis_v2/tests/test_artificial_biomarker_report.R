@@ -27,8 +27,12 @@ status <- attr(result, "status"); if (is.null(status)) status <- 0L
 if (status != 0L) stop(paste(result, collapse="\n"))
 minimum <- read.delim(file.path(out, "tables", "minimum_detectable_dose.tsv"))
 stopifnot(file.exists(file.path(out, "SUCCESS")), nrow(minimum) == 32,
-          all(abs(minimum$minimum_detected_fraction - .001) < 1e-12),
+          all(abs(minimum$minimum_detected_nominal_fraction - .001) < 1e-12),
+          all(abs(minimum$achieved_fraction_at_first_detection - .001) < 1e-12),
           file.exists(file.path(out, "figures", "artificial_target_recall.pdf")),
           file.exists(file.path(out, "figures", "off_target_discovery_burden.png")),
           file.exists(file.path(out, "provenance", "report.sha256")))
+summary <- read.delim(file.path(out, "tables", "artificial_biomarker_summary.tsv"))
+stopifnot(nrow(summary) == 24, all(summary$contexts == 4),
+          length(unique(summary$dose_fraction_nominal)) == 3)
 cat("[PASS] artificial-biomarker report fixture\n")
