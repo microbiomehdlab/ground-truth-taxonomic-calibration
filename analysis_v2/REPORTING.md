@@ -16,6 +16,14 @@ target. `run_calibration_biomarker_linkage.sh` links those calls to quantitative
 read-perturbation response, preserving exact achieved fractions and producing
 separate figure-source, diagnostic, caption, and provenance files.
 
+`run_combined_calibration_report.sh` consolidates the cohort-specific detection
+and continuous-recovery fits across Feng and Zeller, retaining independent and
+community spike experiments as separate facets. It writes the complete model
+contrasts, figure-source TSVs, combined diagnostics, draft captions, and sealed
+PDF/PNG candidate figures. The same entry point is used for development and
+definitive inputs; status inheritance prevents development results from being
+presented as final evidence.
+
 Status inheritance is fail-closed: a source containing `DEVELOPMENT_ONLY.txt`
 cannot produce a `DEFINITIVE` report. Development figures are for integration
 and presentation testing only. The definitive package will be regenerated from
