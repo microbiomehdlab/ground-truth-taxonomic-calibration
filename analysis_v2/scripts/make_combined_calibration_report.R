@@ -71,6 +71,13 @@ write_tsv(continuous_diagnostic, file.path(outdir, "diagnostics", "continuous_mo
 
 curve$dose_percent <- 100 * as.numeric(curve$spike_fraction_target)
 residual$dose_percent <- 100 * as.numeric(residual$spike_fraction_target)
+dose_values <- sort(unique(curve$dose_percent))
+dose_label <- function(x) ifelse(x == 0, "Baseline",
+  ifelse(x < .1, format(x, scientific = FALSE, trim = TRUE, digits = 6),
+         format(x, scientific = FALSE, trim = TRUE, digits = 6)))
+dose_levels <- dose_label(dose_values)
+curve$dose_display <- factor(dose_label(curve$dose_percent), levels = dose_levels)
+residual$dose_display <- factor(dose_label(residual$dose_percent), levels = dose_levels[dose_values > 0])
 labels <- c(kraken2_bracken = "Kraken2 + Bracken", metaphlan4 = "MetaPhlAn 4")
 curve$profiler_display <- unname(labels[curve$profiler])
 slopes$profiler_display <- unname(labels[slopes$profiler])
@@ -79,27 +86,56 @@ write_tsv(curve, file.path(outdir, "figure_source", "detection_probability_curve
 write_tsv(slopes, file.path(outdir, "figure_source", "quantitative_response_slopes.tsv"))
 write_tsv(residual, file.path(outdir, "figure_source", "quantitative_residuals_by_dose.tsv"))
 
+slopes$calibration_class <- ifelse(slopes$lower_95 > 1, "over-response",
+  ifelse(slopes$upper_95 < 1, "under-response", "compatible_with_proportional"))
+write_tsv(slopes[, c("cohort", "analysis_population", "profiler", "response_slope",
+  "lower_95", "upper_95", "deviation_from_one", "p_value_vs_one",
+  "q_value_bh_vs_one", "calibration_class")],
+  file.path(outdir, "tables", "calibration_interpretation.tsv"))
+positive_curve <- curve[curve$dose_percent > 0, , drop = FALSE]
+detection_summary <- do.call(rbind, lapply(split(positive_curve,
+  list(positive_curve$cohort, positive_curve$analysis_population, positive_curve$profiler),
+  drop = TRUE), function(z) {
+    reached <- z[z$predicted_detection_probability >= .95, , drop = FALSE]
+    data.frame(cohort = z$cohort[1], analysis_population = z$analysis_population[1],
+      profiler = z$profiler[1], minimum_dose_percent_predicted_detection_ge_0p95 =
+        if (nrow(reached)) min(reached$dose_percent) else NA_real_,
+      minimum_positive_dose_detection_probability =
+        z$predicted_detection_probability[which.min(z$dose_percent)])
+  }))
+write_tsv(detection_summary, file.path(outdir, "tables", "detection_summary.tsv"))
+consistency <- do.call(rbind, lapply(split(slopes,
+  list(slopes$analysis_population, slopes$profiler), drop = TRUE), function(z) {
+    directions <- sign(z$deviation_from_one)
+    data.frame(analysis_population = z$analysis_population[1], profiler = z$profiler[1],
+      cohorts = paste(sort(z$cohort), collapse = ","),
+      direction_consistent = length(unique(directions)) == 1,
+      all_cohorts_exclude_one = all(z$lower_95 > 1 | z$upper_95 < 1),
+      minimum_response_slope = min(z$response_slope), maximum_response_slope = max(z$response_slope))
+  }))
+write_tsv(consistency, file.path(outdir, "tables", "cohort_consistency.tsv"))
+
 theme_report <- theme_bw(base_size = 10) +
   theme(legend.position = "bottom", panel.grid.minor = element_blank())
-p_detection <- ggplot(curve, aes(dose_percent, predicted_detection_probability,
+p_detection <- ggplot(curve, aes(dose_display, predicted_detection_probability,
                                   color = profiler_display, group = profiler_display)) +
-  geom_ribbon(aes(ymin = lower_95_descriptive, ymax = upper_95_descriptive,
-                  fill = profiler_display), alpha = .12, color = NA) +
+  geom_errorbar(aes(ymin = lower_95_descriptive, ymax = upper_95_descriptive),
+                width = .16, alpha = .65, position = position_dodge(width = .25)) +
   geom_line() + geom_point() + facet_grid(analysis_population ~ cohort) +
   scale_y_continuous(limits = c(0, 1)) +
   labs(x = "Implanted target fraction (%)", y = "Predicted detection probability",
-       color = "Profiler", fill = "Profiler") + theme_report
+       color = "Profiler") + theme_report + theme(axis.text.x = element_text(angle = 45, hjust = 1))
 p_slopes <- ggplot(slopes, aes(profiler_display, response_slope, color = profiler_display)) +
   geom_hline(yintercept = 1, linetype = 2, color = "grey50") +
   geom_pointrange(aes(ymin = lower_95, ymax = upper_95), position = position_dodge(width = .4)) +
   facet_grid(analysis_population ~ cohort) +
   labs(x = NULL, y = "Observed/expected response slope", color = "Profiler") + theme_report
-p_residual <- ggplot(residual, aes(dose_percent, residual_median, color = profiler_display,
+p_residual <- ggplot(residual, aes(dose_display, residual_median, color = profiler_display,
                                     group = profiler_display)) +
   geom_hline(yintercept = 0, linetype = 2, color = "grey50") + geom_line() + geom_point() +
   facet_grid(analysis_population ~ cohort) +
   labs(x = "Implanted target fraction (%)", y = "Median quantitative-model residual",
-       color = "Profiler") + theme_report
+       color = "Profiler") + theme_report + theme(axis.text.x = element_text(angle = 45, hjust = 1))
 plots <- list(detection_probability = p_detection, quantitative_response_slopes = p_slopes,
               quantitative_residuals = p_residual)
 for (name in names(plots)) {
@@ -109,7 +145,7 @@ for (name in names(plots)) {
 
 writeLines(c(
   "# Draft combined calibration figure captions", "",
-  "Detection probability is estimated separately by cohort and spike population from categorical-dose models that include the unspiked baseline.", "",
+  "Detection probability is estimated separately by cohort and spike population from categorical-dose models that include the unspiked baseline. Points are model predictions and bars are descriptive 95% intervals; dose is shown as an ordered categorical axis to preserve the frozen low-dose grid.", "",
   "Quantitative response slopes summarize observed relative recovery per unit expected relative perturbation; the dashed line at one represents proportional recovery.", "",
   "Residual summaries diagnose dose-dependent departures from the prespecified linear quantitative model. Development outputs are not manuscript results."
 ), file.path(outdir, "captions.md"))

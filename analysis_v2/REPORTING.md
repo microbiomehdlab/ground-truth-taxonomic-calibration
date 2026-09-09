@@ -22,7 +22,10 @@ community spike experiments as separate facets. It writes the complete model
 contrasts, figure-source TSVs, combined diagnostics, draft captions, and sealed
 PDF/PNG candidate figures. The same entry point is used for development and
 definitive inputs; status inheritance prevents development results from being
-presented as final evidence.
+presented as final evidence. Low doses are displayed on an ordered categorical
+axis, detection uncertainty uses interval bars, and interpretation tables state
+the proportional-recovery classification and cross-cohort directional
+consistency without replacing the underlying estimates.
 
 Status inheritance is fail-closed: a source containing `DEVELOPMENT_ONLY.txt`
 cannot produce a `DEFINITIVE` report. Development figures are for integration
