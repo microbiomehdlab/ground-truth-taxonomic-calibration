@@ -117,3 +117,20 @@ equating profiler-native percentages with cellular abundance.
 `METHODS_DECISION_LOG.md` is the dated, tracked record of decisions and
 development-only findings needed when drafting the manuscript. Update it when
 an estimand, model, multiplicity family, or interpretation rule changes.
+
+## Definitive Yachida gate
+
+`run_yachida_definitive_analysis.sbatch` is the only intended entry point for
+the final Yachida v2 analysis. Its shell driver first builds the complete
+canonical table from sealed native profiles, then runs
+`scripts/check_yachida_definitive_readiness.py`, and refuses to proceed unless
+the 201-sample production seal, complete validated canonical input, both
+analysis populations, both profilers, frozen analysis image, and the sealed
+30-sample assembly-sensitivity experiment are present. It then runs the
+quantitative, artificial-biomarker, disease-biomarker, reporting, and linkage
+stages and writes a final checksummed `SUCCESS` package.
+
+The driver never constructs or repairs upstream evidence; it only derives the
+canonical analysis table from it. A previously staged canonical table may be
+supplied explicitly. Set `PREFLIGHT_ONLY=1` to build/validate the table and
+exercise every readiness gate without fitting models.

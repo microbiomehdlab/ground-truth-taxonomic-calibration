@@ -170,3 +170,17 @@ diagnostics, provenance, and checksums.
   recurrence ledger so cross-mapping or compositional effects can be audited.
 - Calibration linkage uses profiler-native baseline-adjusted changes and keeps
   pooled and phenotype-stratified estimands explicitly separated.
+
+## Definitive Yachida execution gate
+
+- Manuscript-labelled Yachida results require a checksummed 201-sample
+  production seal and a validated canonical table covering all community
+  samples and the nested 30-sample independent subset.
+- The definitive driver is fail-closed and cannot inherit development status.
+- Independent and community calibration models are both mandatory. The pooled
+  paired artificial-biomarker analysis is primary; phenotype-stratified and
+  clean-assembly analyses remain secondary.
+- Community target doses are reconstructed from the exact integer allocation
+  used during spike generation. The target-specific read fraction is its
+  allocated pair count divided by the final library pair count; equal division
+  of the nominal community fraction is not assumed.
