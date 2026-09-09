@@ -57,3 +57,19 @@ intervals, sign-flip metadata, adjusted values, diagnostics, session
 information, checksums, and a `SUCCESS` marker. A final-data result is invalid
 unless canonical construction, native-profile auditing, and endpoint derivation
 all pass first.
+
+## Detection and biomarker propagation
+
+For every sample, target, profiler, and positive dose, target detection is
+paired between original and clean arms. Arm-specific detection rates,
+clean-only detections, original-only detections, and two-sided exact McNemar
+tests are reported. These secondary tests are BH-adjusted together across the
+two targets, two profilers, and six doses.
+
+The same validated canonical profiles also enter the frozen pooled paired
+artificial-biomarker workflow. Target calls, paired target effects, precision,
+and off-target enriched calls are compared descriptively between arms at each
+dose and q-value threshold. Identities of off-target taxa are retained in the
+call and recurrence ledgers. No causal contamination claim is made: an arm
+difference can reflect assembly quality, strain choice, or database
+representation.

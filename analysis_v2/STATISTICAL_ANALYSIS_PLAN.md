@@ -216,7 +216,7 @@ Yachida samples and fractions using matched seed identities. Analyse detection,
 dose-response, off-target assignments, and biomarker propagation. Describe this
 as assembly-choice/quality sensitivity, not a causal contamination experiment.
 
-**IMPLEMENTED FOR QUANTITATIVE RESPONSE.**
+**IMPLEMENTED.**
 `scripts/build_assembly_sensitivity_input.py` builds validated paired original
 and clean canonical rows. The primary
 `scripts/fit_assembly_sensitivity_sample_level.R` first estimates each
@@ -224,8 +224,13 @@ sample-target-profiler-arm six-dose slope and performs inference on paired
 clean-minus-original sample differences. Bootstrap resampling and sign flips
 therefore operate at biological-sample level. The random-slope GAM in
 `scripts/fit_assembly_sensitivity.R` is a secondary trajectory diagnostic. The
-fail-closed runner executes both. Detection, off-target, and
-biomarker-propagation assembly comparisons remain pending.
+fail-closed runner executes both, then applies the pooled paired
+artificial-biomarker workflow to both arms. Detection is compared within
+sample using exact McNemar tests with BH adjustment across the 24
+target-by-profiler-by-dose tests. Target-effect, precision, and off-target-call
+arm differences are descriptive secondary endpoints with complete taxon
+ledgers. A sealed assembly-sensitivity report provides tables, figure-source
+data, figures, captions, status, and checksums.
 
 ## 9. Multiplicity and uncertainty
 

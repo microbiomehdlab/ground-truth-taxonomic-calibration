@@ -184,3 +184,14 @@ diagnostics, provenance, and checksums.
   used during spike generation. The target-specific read fraction is its
   allocated pair count divided by the final library pair count; equal division
   of the nominal community fraction is not assumed.
+
+## Completed assembly-choice sensitivity endpoints
+
+- Pana/Pint clean-versus-original detection uses paired binary outcomes within
+  sample, target, profiler, and dose; exact McNemar p-values are BH-adjusted
+  across the 24 secondary comparisons.
+- Pooled paired artificial-biomarker models are applied identically to both
+  assembly arms. Target calls/effects, precision, and off-target burden are
+  compared descriptively, with complete off-target taxon ledgers.
+- These results are labelled assembly-choice sensitivity and cannot isolate a
+  causal effect of contamination from strain or database representation.

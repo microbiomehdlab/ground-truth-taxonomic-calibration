@@ -8,6 +8,10 @@ cd "$ROOT"
 : "${BASELINE_ROOT:=$ORIGINAL_ROOT}"
 : "${ANALYSIS_SIF:?Set ANALYSIS_SIF to the frozen downstream image}"
 : "${OUTDIR:?Set OUTDIR to a new, empty analysis-v2 run directory}"
+ANALYSIS_STATUS="${ANALYSIS_STATUS:-DEVELOPMENT_ONLY}"
+[[ "$ANALYSIS_STATUS" == DEVELOPMENT_ONLY || "$ANALYSIS_STATUS" == DEFINITIVE ]] || {
+  echo "[ERROR] ANALYSIS_STATUS must be DEVELOPMENT_ONLY or DEFINITIVE" >&2; exit 1;
+}
 MANIFEST="${MANIFEST:-work/yachida_67x3/metadata/independent_10_per_condition.tsv}"
 ARMS="${ARMS:-datasets/yachida/assembly_sensitivity_arms.tsv}"
 SPIKE_PANEL="${SPIKE_PANEL:-spikes/spike_panel.tsv}"
@@ -20,11 +24,13 @@ fi
 for path in "$MANIFEST" "$ARMS" "$SPIKE_PANEL" "$ALIASES" "$ANALYSIS_SIF"; do
   [[ -s "$path" ]] || { echo "[ERROR] Missing input: $path" >&2; exit 1; }
 done
-mkdir -p "$OUTDIR"/{canonical,profiler_semantics,endpoints,models,provenance}
+mkdir -p "$OUTDIR"/{canonical,profiler_semantics,endpoints,models,comparisons,reports,provenance}
+[[ "$ANALYSIS_STATUS" != DEVELOPMENT_ONLY ]] || printf 'status\tDEVELOPMENT_ONLY\nuse_for_manuscript\tNO\n' > "$OUTDIR/DEVELOPMENT_ONLY.txt"
 
 {
   printf 'field\tvalue\n'
   printf 'status\tIN_PROGRESS\n'
+  printf 'analysis_status\t%s\n' "$ANALYSIS_STATUS"
   printf 'created_at\t%s\n' "$(date -Iseconds)"
   printf 'repository_commit\t%s\n' "$(git rev-parse HEAD)"
   printf 'manifest\t%s\n' "$(realpath "$MANIFEST")"
@@ -64,6 +70,32 @@ apptainer exec --cleanenv --pwd "$ROOT" "$ANALYSIS_SIF" \
   --outdir "$OUTDIR/models/assembly_sensitivity_primary" \
   --cohort yachida --population independent
 
+env CANONICAL_INPUT="$OUTDIR/canonical/canonical_input.tsv" \
+  CANONICAL_VALIDATION_SUCCESS="$OUTDIR/canonical/validation/SUCCESS" \
+  ANALYSIS_SIF="$ANALYSIS_SIF" ANALYSIS_STATUS="$ANALYSIS_STATUS" \
+  OUTDIR="$OUTDIR/models/biomarker_propagation" \
+  bash analysis_v2/run_pooled_paired_biomarker_propagation.sh
+
+env PAIRED_RUN="$OUTDIR/models/biomarker_propagation" ANALYSIS_SIF="$ANALYSIS_SIF" \
+  REPORT_STATUS="$ANALYSIS_STATUS" OUTDIR="$OUTDIR/reports/artificial_biomarker" \
+  bash analysis_v2/run_artificial_biomarker_report.sh
+
+python3 analysis_v2/tests/test_assembly_outcome_comparison.py
+python3 analysis_v2/scripts/compare_assembly_sensitivity_outcomes.py \
+  --canonical "$OUTDIR/canonical/canonical_input.tsv" \
+  --biomarker-metrics "$OUTDIR/models/biomarker_propagation/evaluation/biomarker_propagation_metrics.tsv" \
+  --outdir "$OUTDIR/comparisons"
+
+apptainer exec --cleanenv --pwd "$ROOT" "$ANALYSIS_SIF" \
+  Rscript analysis_v2/tests/test_assembly_sensitivity_report.R
+apptainer exec --cleanenv --pwd "$ROOT" "$ANALYSIS_SIF" \
+  Rscript analysis_v2/scripts/make_assembly_sensitivity_report.R \
+  --comparison-dir "$OUTDIR/comparisons" \
+  --quantitative-dir "$OUTDIR/models/assembly_sensitivity_primary" \
+  --artificial-report "$OUTDIR/reports/artificial_biomarker" \
+  --outdir "$OUTDIR/reports/assembly_sensitivity" \
+  --report-status "$ANALYSIS_STATUS"
+
 apptainer exec --cleanenv --pwd "$ROOT" "$ANALYSIS_SIF" \
   Rscript analysis_v2/tests/test_assembly_sensitivity_model.R
 apptainer exec --cleanenv --pwd "$ROOT" "$ANALYSIS_SIF" \
@@ -80,7 +112,10 @@ sha256sum "$MANIFEST" "$ARMS" "$SPIKE_PANEL" "$ALIASES" "$ANALYSIS_SIF" \
   "$OUTDIR/models/assembly_sensitivity_primary/sample_paired_slope_differences.tsv" \
   "$OUTDIR/models/assembly_sensitivity_gam_secondary/assembly_profiler_response_slopes.tsv" \
   "$OUTDIR/models/assembly_sensitivity_gam_secondary/assembly_slope_contrasts.tsv" \
+  "$OUTDIR/models/biomarker_propagation/SUCCESS" \
+  "$OUTDIR/comparisons/SUCCESS" \
+  "$OUTDIR/reports/assembly_sensitivity/SUCCESS" \
   > "$OUTDIR/provenance/run_inputs_and_primary_outputs.sha256"
 sed -i 's/^status\tIN_PROGRESS$/status\tPASS/' "$OUTDIR/provenance/run_manifest.tsv"
-printf 'analysis\tyachida_assembly_choice_sensitivity\nstatus\tPASS\n' > "$OUTDIR/SUCCESS"
+printf 'analysis\tyachida_assembly_choice_sensitivity\nanalysis_status\t%s\nstatus\tPASS\n' "$ANALYSIS_STATUS" > "$OUTDIR/SUCCESS"
 echo "[PASS] Sealed assembly-choice sensitivity analysis: $OUTDIR"

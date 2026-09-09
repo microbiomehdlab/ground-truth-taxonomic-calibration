@@ -15,6 +15,7 @@ export SENSITIVITY_ROOT="$PWD/work/yachida_assembly_sensitivity_20260901"
 export ORIGINAL_ROOT="$PWD/work/yachida_strict_final_20260823"
 export BASELINE_ROOT="$ORIGINAL_ROOT"
 export ANALYSIS_SIF=/mnt/beegfs/apptainer/images/ground_truth_analysis_v1.sif
+export ANALYSIS_STATUS=DEFINITIVE
 export OUTDIR="$PWD/work/analysis_v2_yachida_assembly_sensitivity_$(date +%Y%m%d_%H%M%S)"
 
 bash analysis_v2/run_assembly_sensitivity.sh
@@ -23,8 +24,10 @@ bash analysis_v2/run_assembly_sensitivity.sh
 Do not reuse `work/analysis_v2_development_20260904` as the output directory.
 That directory is explicitly development-only. A successful definitive run
 contains top-level `SUCCESS`, canonical validation, an exact native-profile
-semantics audit, paired endpoints, model diagnostics and estimates, provenance,
-and SHA-256 seals. Failure at any gate prevents the final `SUCCESS` marker.
+semantics audit, paired endpoints, quantitative and detection comparisons,
+artificial-biomarker and off-target analyses, publication-ready figures and
+source tables, provenance, and SHA-256 seals. Failure at any gate prevents the
+final `SUCCESS` marker.
 
 Before interpreting estimates, verify:
 
@@ -34,6 +37,9 @@ test -s "$OUTDIR/canonical/validation/SUCCESS"
 test -s "$OUTDIR/endpoints/SUCCESS"
 test -s "$OUTDIR/models/assembly_sensitivity_primary/SUCCESS"
 test -s "$OUTDIR/models/assembly_sensitivity_gam_secondary/SUCCESS"
+test -s "$OUTDIR/models/biomarker_propagation/SUCCESS"
+test -s "$OUTDIR/comparisons/SUCCESS"
+test -s "$OUTDIR/reports/assembly_sensitivity/SUCCESS"
 grep -P '^status\tPASS$' "$OUTDIR/provenance/run_manifest.tsv"
 ```
 

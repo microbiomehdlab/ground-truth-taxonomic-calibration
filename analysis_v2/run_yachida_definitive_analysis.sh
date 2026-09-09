@@ -51,6 +51,7 @@ python3 analysis_v2/scripts/derive_paired_endpoints.py --input "$CANONICAL_INPUT
 ORIGINAL_ROOT="${YACHIDA_ORIGINAL_ROOT:-$(dirname "$PERSISTENT_RESULTS_ROOT")}" \
 SENSITIVITY_ROOT="$ASSEMBLY_SENSITIVITY_ROOT" BASELINE_ROOT="${YACHIDA_BASELINE_ROOT:-$(dirname "$PERSISTENT_RESULTS_ROOT")}" \
 ANALYSIS_SIF="$ANALYSIS_SIF" OUTDIR="$RUN_ROOT/models/assembly_sensitivity" \
+ANALYSIS_STATUS=DEFINITIVE \
   bash analysis_v2/run_assembly_sensitivity.sh
 
 for population in independent community; do
