@@ -207,3 +207,18 @@ diagnostics, provenance, and checksums.
   profile counts, validated canonical table, and native-profile audit.
 - Three-cohort synthesis is allowed only from definitive Yachida, Feng, and
   Zeller packages; incomplete feature coverage remains in the synthesis ledger.
+
+## 2026-09-09 — Cross-cutting analysis policy frozen
+
+- Native abundance greater than zero is the operational detection definition;
+  it is not interpreted as a common analytical detection limit or biological
+  presence/absence truth.
+- Unconditional quantitative summaries retain non-detections as zero. Paired
+  calibration endpoints use no pseudocount or transform, retain negative
+  baseline-adjusted responses, and define response ratios only for positive
+  implanted fractions.
+- The fixed `1e-8` fraction pseudocount applies only to the prespecified log2
+  biomarker models. Detected-only and species-closed results are secondary.
+- `ANALYSIS_POLICY.tsv` records these rules and all BH-family boundaries.
+  Definitive runners validate and checksum this policy into every cohort
+  package before analysis begins.

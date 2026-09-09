@@ -18,6 +18,8 @@ CANONICAL_SUCCESS="${CANONICAL_VALIDATION_SUCCESS:-$(dirname "$CANONICAL_INPUT")
 SENSITIVITY_SUCCESS="${ASSEMBLY_SENSITIVITY_SUCCESS:-$ASSEMBLY_SENSITIVITY_ROOT/experiment_seal/SUCCESS}"
 [[ ! -e "$RUN_ROOT" || -z "$(find "$RUN_ROOT" -mindepth 1 -print -quit)" ]] || { echo "[ERROR] RUN_ROOT must be new or empty" >&2; exit 1; }
 mkdir -p "$RUN_ROOT"/{canonical,readiness,profiler_semantics,endpoints,models,reports,provenance}
+python3 analysis_v2/scripts/validate_analysis_policy.py \
+  --policy analysis_v2/ANALYSIS_POLICY.tsv --outdir "$RUN_ROOT/provenance/analysis_policy"
 
 if [[ ! -s "$CANONICAL_INPUT" ]]; then
   [[ "$CANONICAL_INPUT" == "$RUN_ROOT/canonical/canonical_input.tsv" ]] || {
@@ -81,6 +83,9 @@ env ENDPOINTS_FILE="$RUN_ROOT/endpoints/paired_endpoints.tsv" ENDPOINTS_SUCCESS=
 sha256sum "$MANIFEST" "$INDEPENDENT_MANIFEST" "$SPIKE_PANEL" "$ALIASES" \
   "$CANONICAL_INPUT" "$ANALYSIS_SIF" "$SENSITIVITY_SUCCESS" \
   "$RUN_ROOT/readiness/SUCCESS" "$RUN_ROOT/profiler_semantics/SUCCESS" "$RUN_ROOT/endpoints/SUCCESS" \
+  "$RUN_ROOT/provenance/analysis_policy/analysis_policy.tsv" \
+  "$RUN_ROOT/provenance/analysis_policy/analysis_policy.sha256" \
+  "$RUN_ROOT/provenance/analysis_policy/SUCCESS" \
   "$RUN_ROOT/models/assembly_sensitivity/SUCCESS" \
   "$RUN_ROOT/reports/artificial/SUCCESS" "$RUN_ROOT/reports/disease/SUCCESS" \
   "$RUN_ROOT/reports/calibration_linkage/SUCCESS" > "$RUN_ROOT/provenance/definitive_run.sha256"

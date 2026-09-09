@@ -7,10 +7,10 @@ fit pending completion of the upstream and canonical-input gates.
 
 The model consumes the validated canonical table, including its zero-dose rows,
 and uses `detected_native_nonzero`, the mechanical indicator that the native
-target abundance is greater than zero. This threshold is provisional
-until the empirical native-output audit confirms that zero has the same
-operational meaning throughout each frozen profiler workflow. Any change after
-that audit must be documented before comparative results are inspected.
+target abundance is greater than zero. This operational threshold is frozen in
+`ANALYSIS_POLICY.tsv`. It does not imply a shared analytical limit of detection
+or biological absence. Every definitive cohort run repeats the native-output
+audit and fails if the expected profiler semantics are violated.
 
 ## Primary model
 

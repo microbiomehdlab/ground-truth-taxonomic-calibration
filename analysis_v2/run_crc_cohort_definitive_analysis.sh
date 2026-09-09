@@ -18,6 +18,8 @@ CANONICAL_INPUT="${CANONICAL_INPUT:-$RUN_ROOT/canonical/canonical_input.tsv}"
 CANONICAL_SUCCESS="${CANONICAL_VALIDATION_SUCCESS:-$(dirname "$CANONICAL_INPUT")/validation/SUCCESS}"
 [[ ! -e "$RUN_ROOT" || -z "$(find "$RUN_ROOT" -mindepth 1 -print -quit)" ]] || { echo "[ERROR] RUN_ROOT must be new or empty" >&2; exit 1; }
 mkdir -p "$RUN_ROOT"/{canonical,readiness,profiler_semantics,endpoints,models,reports,provenance}
+python3 analysis_v2/scripts/validate_analysis_policy.py \
+  --policy analysis_v2/ANALYSIS_POLICY.tsv --outdir "$RUN_ROOT/provenance/analysis_policy"
 
 if [[ ! -s "$CANONICAL_INPUT" ]]; then
   [[ "$CANONICAL_INPUT" == "$RUN_ROOT/canonical/canonical_input.tsv" ]] || { echo "[ERROR] Supplied canonical input is missing" >&2; exit 1; }
@@ -57,6 +59,9 @@ env DISEASE_RUN="$RUN_ROOT/models/disease" ANALYSIS_SIF="$ANALYSIS_SIF" REPORT_S
 env ENDPOINTS_FILE="$RUN_ROOT/endpoints/paired_endpoints.tsv" ENDPOINTS_SUCCESS="$RUN_ROOT/endpoints/SUCCESS" PAIRED_RUN="$RUN_ROOT/models/artificial_pooled" SECONDARY_PAIRED_RUN="$RUN_ROOT/models/artificial_stratified" ANALYSIS_SIF="$ANALYSIS_SIF" ANALYSIS_STATUS=DEFINITIVE OUTDIR="$RUN_ROOT/reports/calibration_linkage" bash analysis_v2/run_calibration_biomarker_linkage.sh
 sha256sum "$MANIFEST" "$INDEPENDENT_MANIFEST" "$CANONICAL_INPUT" "$ANALYSIS_SIF" \
   "$RUN_ROOT/readiness/SUCCESS" "$RUN_ROOT/profiler_semantics/SUCCESS" "$RUN_ROOT/endpoints/SUCCESS" \
+  "$RUN_ROOT/provenance/analysis_policy/analysis_policy.tsv" \
+  "$RUN_ROOT/provenance/analysis_policy/analysis_policy.sha256" \
+  "$RUN_ROOT/provenance/analysis_policy/SUCCESS" \
   "$RUN_ROOT/reports/artificial/SUCCESS" "$RUN_ROOT/reports/disease/SUCCESS" "$RUN_ROOT/reports/calibration_linkage/SUCCESS" \
   > "$RUN_ROOT/provenance/definitive_run.sha256"
 printf 'analysis\t%s_definitive_v2\nstatus\tPASS\n' "$COHORT" > "$RUN_ROOT/SUCCESS"

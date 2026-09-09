@@ -33,10 +33,12 @@ comparators, not the primary inference.
 
 ## Current status
 
-`STATISTICAL_ANALYSIS_PLAN.md` is a draft specification. No definitive v2 model
-should be fitted and no manuscript figure should be replaced until every item
-marked **TO FREEZE** is resolved and the final upstream input manifests are
-sealed. Development with synthetic fixtures is allowed before then.
+`STATISTICAL_ANALYSIS_PLAN.md` is the prespecified analysis specification.
+`ANALYSIS_POLICY.tsv` freezes its cross-cutting zero, transformation,
+pseudocount, threshold, and multiplicity rules in machine-readable form. No
+definitive v2 model should be fitted and no manuscript figure should be
+replaced until the final upstream input manifests are sealed. Development with
+synthetic fixtures is allowed before then.
 
 Planned implementation order:
 

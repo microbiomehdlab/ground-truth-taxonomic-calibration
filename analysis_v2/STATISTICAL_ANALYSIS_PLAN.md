@@ -1,6 +1,7 @@
 # Statistical analysis plan — paired dose-response v2
 
-**Status:** DRAFT; created before the final three-cohort comparative analysis.
+**Status:** PRESPECIFIED AND FROZEN; definitive execution awaits the sealed
+three-cohort inputs.
 
 This document separates decisions already made from choices that must be frozen
 before examining definitive v2 comparisons. Updating a **TO FREEZE** item after
@@ -63,14 +64,16 @@ their difference. Categorical dose is a frozen nonlinearity diagnostic.
 
 ### Co-primary detection endpoint
 
-**PRESPECIFIED, PENDING EMPIRICAL SEMANTICS GATE.** Detection is provisionally
-native abundance greater than zero. Cohort-specific binomial GAMs use
+**FROZEN.** Detection is native abundance greater than zero. This is an
+operational endpoint on each profiler's native output, not a common limit of
+detection or evidence of biological absence. Cohort-specific binomial GAMs use
 categorical dose, profiler-by-dose effects, condition, and random intercepts for
 biological sample and target. The primary contrast is the whole
 profiler-by-dose interaction; dose-specific profiler contrasts are secondary
 and BH-adjusted across positive doses. `DETECTION_MODEL.md` records the complete
-model, diagnostic requirements, and failure policy. The zero definition is
-frozen only after representative final native outputs pass the semantics audit.
+model, diagnostic requirements, and failure policy. Every definitive run
+repeats the native-output semantics audit and fails closed if its contract is
+violated.
 
 ### Secondary endpoints
 
@@ -127,11 +130,15 @@ of MetaPhlAn species rows will not automatically be called unclassified.
 Species-closed renormalization, if retained, is sensitivity-only. Native units
 and baseline-adjusted within-profiler response are primary.
 
-**TO FREEZE.** Define detection thresholds, pseudocount policy, transformation,
-handling of baseline zero, and unconditional versus detected-only summaries.
-Primary unconditional quantitative summaries retain non-detections as zero.
-Ratios with zero or nearly zero references will not be used without explicit
-stability rules.
+**FROZEN.** `ANALYSIS_POLICY.tsv` is the machine-readable authority. Primary
+quantitative summaries are unconditional and retain native non-detections as
+zero. Deterministic paired endpoints use no pseudocount and no transform;
+negative baseline-adjusted responses are retained. Response ratios are defined
+only at positive implanted fractions, so they never divide by baseline
+abundance and baseline zero requires no replacement. Detected-only summaries
+are secondary and descriptive. The fixed `1e-8` fraction pseudocount is
+restricted to prespecified log2 biomarker models. Species-closed
+renormalization is sensitivity-only.
 
 ## 6. Biomarker-discovery propagation
 
@@ -234,11 +241,11 @@ data, figures, captions, status, and checksums.
 
 ## 9. Multiplicity and uncertainty
 
-**PARTLY FROZEN.** For assembly sensitivity, the four target-by-profiler paired
+**FROZEN.** For assembly sensitivity, the four target-by-profiler paired
 slope differences are one primary BH family; target-pooled and profiler
-difference-in-differences are secondary. For the main detection, continuous,
-and biomarker analyses, define families across targets, profilers, fractions, conditions,
-cohorts, and endpoints. Distinguish confirmatory from exploratory tests. Report
+difference-in-differences are secondary. The exact detection,
+artificial-biomarker, disease-biomarker, and cross-cohort BH families are
+recorded in `ANALYSIS_POLICY.tsv` and the component model specifications. Report
 effect sizes and uncertainty even when multiplicity-adjusted significance is not
 reached. Bootstrap or resampling procedures must operate at sample level.
 
