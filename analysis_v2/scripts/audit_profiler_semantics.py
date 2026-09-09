@@ -6,13 +6,15 @@ from __future__ import annotations
 import argparse
 import csv
 import hashlib
+from decimal import Decimal, InvalidOperation
 from pathlib import Path
 
 
 OUTPUT_FIELDS = [
     "profiler", "profile", "sample_id", "rows", "species_rows",
     "reported_total", "species_total", "unclassified_total",
-    "non_species_total", "native_unit", "status",
+    "non_species_total", "excess_over_composition", "rounding_tolerance",
+    "native_unit", "status",
 ]
 PERCENT_TOLERANCE = 0.001  # Printed MetaPhlAn rounding, in percentage points.
 
@@ -38,20 +40,39 @@ def audit_bracken(path: Path) -> dict[str, object]:
     if missing:
         raise ValueError(f"{path}: missing columns: {', '.join(sorted(missing))}")
     species = [row for row in rows if row["taxonomy_lvl"].strip().upper() == "S"]
-    fractions = [number(row["fraction_total_reads"], "fraction_total_reads", path)
-                 for row in species]
+    fraction_text = [row["fraction_total_reads"].strip() for row in species]
+    fractions = [number(value, "fraction_total_reads", path)
+                 for value in fraction_text]
     estimates = [number(row["new_est_reads"], "new_est_reads", path)
                  for row in species]
     if any(value < 0 for value in fractions + estimates):
         raise ValueError(f"{path}: negative native abundance")
     fraction_sum = sum(fractions)
-    status = "PASS" if fraction_sum <= 1.000001 else "FAIL_FRACTION_GT_ONE"
+    try:
+        # Each displayed value may differ from its unrounded value by at most
+        # half a unit in its final printed decimal place. Summing those bounds
+        # gives a conservative, profile-specific rounding tolerance.
+        rounding_tolerance = sum(
+            0.5 * 10.0 ** min(0, Decimal(value).as_tuple().exponent)
+            for value in fraction_text
+        )
+    except InvalidOperation as error:
+        raise ValueError(f"{path}: invalid printed Bracken fraction") from error
+    excess = max(0.0, fraction_sum - 1.0)
+    if excess <= 1e-12:
+        status = "PASS"
+    elif excess <= rounding_tolerance + 1e-12:
+        status = "PASS_ROUNDING_TOLERANCE"
+    else:
+        status = "FAIL_FRACTION_GT_ONE"
     return {
         "profiler": "kraken2_bracken", "profile": str(path.resolve()),
         "sample_id": sample_id(path, ".bracken.S.tsv"), "rows": len(rows),
         "species_rows": len(species), "reported_total": fraction_sum,
         "species_total": fraction_sum, "unclassified_total": "",
-        "non_species_total": "", "native_unit": "fraction_total_reads",
+        "non_species_total": "", "excess_over_composition": excess,
+        "rounding_tolerance": rounding_tolerance,
+        "native_unit": "fraction_total_reads",
         "status": status,
     }
 
@@ -123,6 +144,8 @@ def audit_metaphlan(path: Path) -> dict[str, object]:
         "species_rows": len(species), "reported_total": total,
         "species_total": species_total, "unclassified_total": unclassified,
         "non_species_total": non_species,
+        "excess_over_composition": max(0.0, total - 100.0),
+        "rounding_tolerance": PERCENT_TOLERANCE,
         "native_unit": "relative_abundance_pct", "status": status,
     }
 
@@ -196,7 +219,8 @@ def main() -> None:
         writer.writeheader()
         writer.writerows(records)
 
-    failures = [record for record in records if record["status"] != "PASS"]
+    failures = [record for record in records
+                if not str(record["status"]).startswith("PASS")]
     if failures:
         for record in failures[:20]:
             print("[ERROR] {status}: {profile}".format(**record))

@@ -11,6 +11,12 @@ analysis retains both fields and does not silently close the species table to
 100%. A remainder in the species fractions is not automatically labelled
 “unclassified”: it can also reflect ranks or taxa absent from the retained
 Bracken species table and the configured threshold.
+Because historical Bracken tables print each species fraction at limited
+decimal precision, independently rounded rows can sum slightly above one. The
+audit computes a conservative profile-specific bound by summing half a unit of
+the final printed decimal place for every species row. Excess within that bound
+is retained and labelled `PASS_ROUNDING_TOLERANCE`; larger excess fails. Values
+are never clipped or renormalized.
 
 MetaPhlAn 4 profiles paired FASTQs with the frozen database and
 `--ignore_eukaryotes --ignore_archaea`. The command does not request

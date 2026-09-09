@@ -17,7 +17,7 @@ def main() -> None:
             "name\ttaxonomy_id\ttaxonomy_lvl\tkraken_assigned_reads\t"
             "added_reads\tnew_est_reads\tfraction_total_reads\n"
             "Target species\t1\tS\t60\t20\t80\t0.80\n"
-            "Other species\t2\tS\t5\t5\t10\t0.10\n",
+            "Other species\t2\tS\t5\t5\t10\t0.20001\n",
             encoding="utf-8",
         )
         metaphlan = root / "sample.metaphlan.tsv"
@@ -48,7 +48,10 @@ def main() -> None:
         with (outdir / "profile_semantics_audit.tsv").open(newline="") as handle:
             rows = list(csv.DictReader(handle, delimiter="\t"))
         assert len(rows) == 2
-        assert rows[0]["species_total"] == "0.9"
+        assert rows[0]["species_total"] == "1.00001"
+        assert rows[0]["status"] == "PASS_ROUNDING_TOLERANCE"
+        assert float(rows[0]["excess_over_composition"]) > 0
+        assert float(rows[0]["rounding_tolerance"]) >= 0.00001
         assert rows[0]["unclassified_total"] == ""
         assert abs(float(rows[1]["reported_total"]) - 100.000113) < 1e-9
         assert rows[1]["species_total"] == "72.5"
