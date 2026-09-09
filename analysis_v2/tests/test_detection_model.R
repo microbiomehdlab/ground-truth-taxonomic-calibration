@@ -11,7 +11,7 @@ repo <- normalizePath(file.path(dirname(this_file), "..", ".."))
 script <- file.path(repo, "analysis_v2", "scripts", "fit_detection_dose_response.R")
 tmp <- tempfile("detection_model.")
 dir.create(tmp)
-input <- file.path(tmp, "endpoints.tsv")
+input <- file.path(tmp, "canonical_input.tsv")
 outdir <- file.path(tmp, "model")
 
 set.seed(41)

@@ -58,7 +58,7 @@ ANALYSIS_STATUS=DEFINITIVE \
 
 for population in independent community; do
   apptainer exec --cleanenv --pwd "$ROOT" "$ANALYSIS_SIF" Rscript analysis_v2/scripts/fit_detection_dose_response.R \
-    --input "$RUN_ROOT/endpoints/paired_endpoints.tsv" --outdir "$RUN_ROOT/models/detection_$population" \
+    --input "$CANONICAL_INPUT" --outdir "$RUN_ROOT/models/detection_$population" \
     --cohort yachida --population "$population" --assembly-arm original
   apptainer exec --cleanenv --pwd "$ROOT" "$ANALYSIS_SIF" Rscript analysis_v2/scripts/fit_continuous_dose_response.R \
     --input "$RUN_ROOT/endpoints/paired_endpoints.tsv" --outdir "$RUN_ROOT/models/continuous_$population" \

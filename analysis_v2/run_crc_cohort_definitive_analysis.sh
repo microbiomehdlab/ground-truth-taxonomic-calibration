@@ -44,7 +44,7 @@ python3 analysis_v2/scripts/audit_profiler_semantics.py "${audit_args[@]}"
 python3 analysis_v2/scripts/derive_paired_endpoints.py --input "$CANONICAL_INPUT" --outdir "$RUN_ROOT/endpoints"
 for population in independent community; do
   apptainer exec --cleanenv --pwd "$ROOT" "$ANALYSIS_SIF" Rscript analysis_v2/scripts/fit_detection_dose_response.R \
-    --input "$RUN_ROOT/endpoints/paired_endpoints.tsv" --outdir "$RUN_ROOT/models/detection_$population" \
+    --input "$CANONICAL_INPUT" --outdir "$RUN_ROOT/models/detection_$population" \
     --cohort "$COHORT" --population "$population" --assembly-arm original
   apptainer exec --cleanenv --pwd "$ROOT" "$ANALYSIS_SIF" Rscript analysis_v2/scripts/fit_continuous_dose_response.R \
     --input "$RUN_ROOT/endpoints/paired_endpoints.tsv" --outdir "$RUN_ROOT/models/continuous_$population" \
