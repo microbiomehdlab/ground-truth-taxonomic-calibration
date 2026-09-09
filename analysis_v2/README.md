@@ -40,6 +40,14 @@ definitive v2 model should be fitted and no manuscript figure should be
 replaced until the final upstream input manifests are sealed. Development with
 synthetic fixtures is allowed before then.
 
+Incomplete historical native Feng/Zeller profiles can also be used strictly
+for integration and figure development through
+`scripts/build_legacy_native_development_input.py`. The adapter defaults to the
+common-profiler intersection, records every exclusion, and stamps its output
+`DEVELOPMENT_ONLY`; see `LEGACY_NATIVE_DEVELOPMENT.md`. These outputs cannot
+support manuscript claims and are replaced, without changing downstream
+interfaces, when the sealed strict-production cohorts become available.
+
 Planned implementation order:
 
 1. define and validate a canonical long-format input contract;
