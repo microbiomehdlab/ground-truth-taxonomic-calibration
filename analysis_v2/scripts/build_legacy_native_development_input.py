@@ -38,13 +38,21 @@ def accession_map(paths: list[tuple[str, Path]]) -> dict[str, dict[str, str]]:
     result = {}
     for cohort, path in paths:
         for row in read_rows(path):
-            for accession in row["run_accessions"].split(";"):
+            sample_accessions = sorted(
+                accession.strip() for accession in row["run_accessions"].split(";")
+                if accession.strip()
+            )
+            if not sample_accessions:
+                raise ValueError(f"sample has no run accession: {row['sample_id']}")
+            primary_accession = sample_accessions[0]
+            for accession in sample_accessions:
                 accession = accession.strip()
                 if accession in result and result[accession]["sample_id"] != row["sample_id"]:
                     raise ValueError(f"run accession maps to multiple samples: {accession}")
                 result[accession] = {
                     "cohort": cohort, "sample_id": row["sample_id"],
                     "condition": row["condition"], "study": row["study"],
+                    "primary_accession": primary_accession,
                 }
     return result
 
@@ -82,6 +90,9 @@ def main() -> None:
                 exclusions.append([directory.name, run, label, dose_tag, "outside_frozen_dose_grid"]); continue
             if run not in accessions:
                 exclusions.append([directory.name, run, label, dose_tag, "run_not_in_frozen_manifests"]); continue
+            if run != accessions[run]["primary_accession"]:
+                exclusions.append([directory.name, run, label, dose_tag,
+                                   "non_primary_run_for_multirun_sample"]); continue
             dose = float(dose_tag.replace("p", "."))
             baseline_dir = a.results_root / run
             paths = {

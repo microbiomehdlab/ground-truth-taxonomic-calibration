@@ -11,7 +11,7 @@ def write(path, text):
 
 with tempfile.TemporaryDirectory() as tmp:
     t = Path(tmp); results = t / "results"; out = t / "out"
-    manifest = "sample_id\tcondition\tstudy\trun_accessions\nS1\tControl\tStudy1\tERR1\n"
+    manifest = "sample_id\tcondition\tstudy\trun_accessions\nS1\tControl\tStudy1\tERR1;ERR2\n"
     write(t / "feng.tsv", manifest); write(t / "zeller.tsv", "sample_id\tcondition\tstudy\trun_accessions\n")
     write(t / "panel.tsv", "label\ttaxon_name\tassembly\tfasta\tweight\turl\nBfrag\tBacteroides fragilis\tA\tx\t1\t\n")
     write(t / "aliases.csv", "canonical,alias,tool,spike_label\nBacteroides fragilis,Bacteroides fragilis,kraken2_bracken,\nBacteroides fragilis,Bacteroides fragilis,metaphlan4,\n")
@@ -24,6 +24,13 @@ with tempfile.TemporaryDirectory() as tmp:
     # default common-profiler comparison set.
     write(results / "ERR1_Bfrag_f0p005" / "metaphlan4" /
           "ERR1_Bfrag_f0p005.metaphlan.tsv", metaphlan)
+    for profiler, suffix, content in (
+        ("kraken2_bracken", ".bracken.S.tsv", bracken),
+        ("metaphlan4", ".metaphlan.tsv", metaphlan),
+    ):
+        write(results / "ERR2" / profiler / ("ERR2" + suffix), content)
+        write(results / "ERR2_Bfrag_f0p01" / profiler /
+              ("ERR2_Bfrag_f0p01" + suffix), content)
     subprocess.run([
         "python3", str(ROOT / "analysis_v2/scripts/build_legacy_native_development_input.py"),
         "--results-root", str(results), "--feng-manifest", str(t / "feng.tsv"),
@@ -36,6 +43,7 @@ with tempfile.TemporaryDirectory() as tmp:
     assert {r["cohort"] for r in rows} == {"feng"}
     assert "profiler_coverage=paired" in (out / "DEVELOPMENT_ONLY.txt").read_text()
     assert "incomplete_common_profiler_pair" in (out / "exclusion_ledger.tsv").read_text()
+    assert "non_primary_run_for_multirun_sample" in (out / "exclusion_ledger.tsv").read_text()
     assert (out / "DEVELOPMENT_ONLY.txt").is_file()
     assert (out / "validation/SUCCESS").is_file()
 print("[PASS] legacy-native development adapter fixture")

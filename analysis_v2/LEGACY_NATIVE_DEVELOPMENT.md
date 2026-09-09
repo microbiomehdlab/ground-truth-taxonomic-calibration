@@ -12,6 +12,14 @@ canonical input plus an exclusion ledger and checksums. By default it retains
 only baseline–spike profiles available for both profilers, so direct profiler
 comparisons use the same biological samples and perturbations.
 
+Some frozen biological samples combine multiple ERR runs. Historical outputs
+profiled those runs separately, so they cannot be reconstructed as the final
+concatenated sample. For development only, the adapter deterministically keeps
+the lexicographically first ERR accession per biological sample and records
+the remaining run directories as `non_primary_run_for_multirun_sample`. This
+prevents pseudoreplication; it is not a substitute for the definitive combined
+sample.
+
 The historical run did not preserve exact implanted pair-allocation records.
 Consequently, its directory-name fractions are treated as nominal doses and
 the generated output is stamped `DEVELOPMENT_ONLY`. Community (`CRCpanel`)
