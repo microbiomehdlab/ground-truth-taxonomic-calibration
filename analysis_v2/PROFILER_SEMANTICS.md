@@ -60,3 +60,9 @@ native files from every cohort, including a detection and non-detection case.
 Archive its TSV, input checksums, and `SUCCESS` marker with the downstream run.
 Freeze detection and transformation rules only after this audit, without using
 the direction of final profiler differences to choose them.
+
+For a canonical development or definitive table, use `--canonical`. The audit
+reads and deduplicates included `source_profile` paths directly, avoiding shell
+argument-length limits and repeated auditing of baseline files represented by
+many target rows. Explicit `--bracken` and `--metaphlan` arguments remain
+available for small targeted audits.

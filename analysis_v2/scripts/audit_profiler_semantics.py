@@ -139,12 +139,47 @@ def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--bracken", type=Path, action="append", default=[])
     parser.add_argument("--metaphlan", type=Path, action="append", default=[])
+    parser.add_argument(
+        "--canonical", type=Path,
+        help="Read unique included native profile paths from a canonical input TSV.",
+    )
     parser.add_argument("--outdir", type=Path, required=True)
     return parser.parse_args()
 
 
+def profiles_from_canonical(path: Path) -> tuple[list[Path], list[Path]]:
+    with path.open(newline="", encoding="utf-8") as handle:
+        rows = list(csv.DictReader(handle, delimiter="\t"))
+    required = {"profiler", "source_profile", "include"}
+    fields = set(rows[0]) if rows else set()
+    missing = required - fields
+    if missing:
+        raise ValueError(f"{path}: missing columns: {', '.join(sorted(missing))}")
+    profiles: dict[str, set[Path]] = {
+        "kraken2_bracken": set(), "metaphlan4": set()
+    }
+    for row in rows:
+        if row["include"] != "1":
+            continue
+        profiler = row["profiler"]
+        if profiler not in profiles:
+            raise ValueError(f"{path}: unsupported profiler: {profiler!r}")
+        profiles[profiler].add(Path(row["source_profile"]))
+    return (sorted(profiles["kraken2_bracken"]),
+            sorted(profiles["metaphlan4"]))
+
+
 def main() -> None:
     args = parse_args()
+    try:
+        if args.canonical:
+            canonical_bracken, canonical_metaphlan = profiles_from_canonical(args.canonical)
+            args.bracken.extend(canonical_bracken)
+            args.metaphlan.extend(canonical_metaphlan)
+        args.bracken = sorted(set(args.bracken))
+        args.metaphlan = sorted(set(args.metaphlan))
+    except (OSError, ValueError) as error:
+        raise SystemExit(f"[ERROR] {error}") from error
     if not args.bracken and not args.metaphlan:
         raise SystemExit("[ERROR] supply at least one native profile")
     for path in args.bracken + args.metaphlan:
@@ -172,6 +207,8 @@ def main() -> None:
 
     checksums = args.outdir / "profile_semantics_inputs.sha256"
     with checksums.open("w", encoding="utf-8") as handle:
+        if args.canonical:
+            handle.write(f"{digest(args.canonical)}  {args.canonical.resolve()}\n")
         for path in args.bracken + args.metaphlan:
             handle.write(f"{digest(path)}  {path.resolve()}\n")
         handle.write(f"{digest(output)}  {output.resolve()}\n")

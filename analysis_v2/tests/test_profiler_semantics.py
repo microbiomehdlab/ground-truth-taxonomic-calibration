@@ -33,9 +33,17 @@ def main() -> None:
             encoding="utf-8",
         )
         outdir = root / "audit"
+        canonical = root / "canonical.tsv"
+        canonical.write_text(
+            "profiler\tsource_profile\tinclude\n"
+            f"kraken2_bracken\t{bracken}\t1\n"
+            f"kraken2_bracken\t{bracken}\t1\n"
+            f"metaphlan4\t{metaphlan}\t1\n",
+            encoding="utf-8",
+        )
         subprocess.run([
-            "python3", str(script), "--bracken", str(bracken),
-            "--metaphlan", str(metaphlan), "--outdir", str(outdir),
+            "python3", str(script), "--canonical", str(canonical),
+            "--outdir", str(outdir),
         ], check=True)
         with (outdir / "profile_semantics_audit.tsv").open(newline="") as handle:
             rows = list(csv.DictReader(handle, delimiter="\t"))
@@ -47,6 +55,8 @@ def main() -> None:
         assert rows[1]["non_species_total"] == "17.500113"
         assert rows[1]["unclassified_total"] == "10.0"
         assert (outdir / "SUCCESS").is_file()
+        checksum_text = (outdir / "profile_semantics_inputs.sha256").read_text()
+        assert str(canonical.resolve()) in checksum_text
 
     print("[PASS] profiler-semantics fixture test")
 
