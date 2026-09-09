@@ -195,3 +195,15 @@ diagnostics, provenance, and checksums.
   compared descriptively, with complete off-target taxon ledgers.
 - These results are labelled assembly-choice sensitivity and cannot isolate a
   causal effect of contamination from strain or database representation.
+
+## Shared CRC-cohort definitive framework
+
+- Feng and Zeller share implementation code but remain separate studies for
+  estimation and reporting. Their production populations contain 154 and 156
+  eligible samples, respectively; each individual-spike subset is the frozen
+  balanced 10/10/10 selection.
+- A cohort cannot enter definitive analysis without a checksummed upstream
+  seal, complete sample-flow ledger, covariate-missingness audit, exact expected
+  profile counts, validated canonical table, and native-profile audit.
+- Three-cohort synthesis is allowed only from definitive Yachida, Feng, and
+  Zeller packages; incomplete feature coverage remains in the synthesis ledger.

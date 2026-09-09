@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Fail-closed readiness gate for the definitive Yachida downstream run."""
+"""Fail-closed readiness gate for a definitive CRC-cohort downstream run."""
 from __future__ import annotations
 
 import argparse
@@ -41,32 +41,37 @@ def verify_seal(seal: Path) -> None:
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--manifest", required=True, type=Path)
+    parser.add_argument("--cohort", choices=("yachida", "feng", "zeller"), default="yachida")
     parser.add_argument("--state-dir", required=True, type=Path)
     parser.add_argument("--canonical", required=True, type=Path)
     parser.add_argument("--canonical-success", required=True, type=Path)
     parser.add_argument("--analysis-sif", required=True, type=Path)
-    parser.add_argument("--assembly-sensitivity-success", required=True, type=Path)
+    parser.add_argument("--assembly-sensitivity-success", type=Path)
     parser.add_argument("--expected-samples", type=int, default=201)
     parser.add_argument("--expected-independent", type=int, default=30)
     parser.add_argument("--outdir", required=True, type=Path)
     args = parser.parse_args()
 
     try:
-        for path, label in ((args.manifest, "manifest"), (args.canonical, "canonical input"),
+        files = [(args.manifest, "manifest"), (args.canonical, "canonical input"),
                             (args.canonical_success, "canonical validation marker"),
-                            (args.analysis_sif, "analysis image"),
-                            (args.assembly_sensitivity_success, "assembly-sensitivity seal")):
+                            (args.analysis_sif, "analysis image")]
+        if args.assembly_sensitivity_success:
+            files.append((args.assembly_sensitivity_success, "assembly-sensitivity seal"))
+        for path, label in files:
             require_file(path, label)
         manifest = rows(args.manifest)
         if len(manifest) != args.expected_samples:
             raise ValueError(f"expected {args.expected_samples} manifest samples; found {len(manifest)}")
-        required = {"sample_id", "Target_Condition"}
-        if not manifest or not required.issubset(manifest[0]):
-            raise ValueError("manifest lacks sample_id or Target_Condition")
+        if not manifest or "sample_id" not in manifest[0]:
+            raise ValueError("manifest lacks sample_id")
+        conditions = [row.get("condition") or row.get("Target_Condition") or "" for row in manifest]
+        if any(not value for value in conditions):
+            raise ValueError("manifest lacks condition values")
         identifiers = [row["sample_id"] for row in manifest]
         if len(set(identifiers)) != len(identifiers):
             raise ValueError("manifest contains duplicate sample IDs")
-        if args.expected_samples == 201 and Counter(row["Target_Condition"] for row in manifest) != {
+        if args.cohort == "yachida" and args.expected_samples == 201 and Counter(conditions) != {
                 "Control": 67, "Adenoma": 67, "CRC": 67}:
             raise ValueError("manifest is not the frozen balanced 67/67/67 design")
         state = args.state_dir.resolve()
@@ -82,8 +87,8 @@ def main() -> None:
         if not canonical or not needed.issubset(canonical[0]):
             raise ValueError("canonical input lacks readiness columns")
         included = [row for row in canonical if row["include"] == "1"]
-        if {row["cohort"] for row in included} != {"yachida"}:
-            raise ValueError("canonical input is not Yachida-only")
+        if {row["cohort"] for row in included} != {args.cohort}:
+            raise ValueError(f"canonical input is not {args.cohort}-only")
         if {row["profiler"] for row in included} != {"kraken2_bracken", "metaphlan4"}:
             raise ValueError("canonical input does not contain both frozen profilers")
         populations = {row["analysis_population"] for row in included}
@@ -112,8 +117,9 @@ def main() -> None:
             f"{digest(args.canonical)}  {args.canonical.resolve()}\n"
             f"{digest(args.analysis_sif)}  {args.analysis_sif.resolve()}\n"
             f"{digest(report)}  {report.resolve()}\n", encoding="utf-8")
-        (args.outdir / "SUCCESS").write_text("analysis\tyachida_definitive_readiness\nstatus\tPASS\n", encoding="utf-8")
-        print(f"[PASS] Definitive Yachida readiness: {len(manifest)} samples; both populations")
+        (args.outdir / "SUCCESS").write_text(
+            f"analysis\t{args.cohort}_definitive_readiness\nstatus\tPASS\n", encoding="utf-8")
+        print(f"[PASS] Definitive {args.cohort} readiness: {len(manifest)} samples; both populations")
     except (ValueError, OSError, KeyError) as error:
         raise SystemExit(f"[ERROR] {error}") from error
 

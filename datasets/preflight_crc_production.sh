@@ -74,7 +74,7 @@ import csv, pathlib, sys
 
 production, independent = map(pathlib.Path, sys.argv[1:])
 required = {
-    "sample_id", "Study", "Target_Condition", "run_count", "run_accessions",
+    "sample_id", "study", "condition", "run_count", "run_accessions",
     "fastq1_urls", "fastq2_urls", "fastq1_md5s", "fastq2_md5s",
     "fastq1_bytes", "fastq2_bytes",
 }
@@ -100,7 +100,7 @@ if len(ind) != 30 or not {row["sample_id"] for row in ind}.issubset(prod_ids):
     raise SystemExit("[ERROR] Independent manifest must be a 30-sample subset of production")
 counts = {}
 for row in ind:
-    counts[row["Target_Condition"]] = counts.get(row["Target_Condition"], 0) + 1
+    counts[row["condition"]] = counts.get(row["condition"], 0) + 1
 if counts != {"Control": 10, "Adenoma": 10, "CRC": 10}:
     raise SystemExit(f"[ERROR] Independent condition counts are not 10/10/10: {counts}")
 print(f"[PASS] Production manifest: {len(prod)} unique samples")

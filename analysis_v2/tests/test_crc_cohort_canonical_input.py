@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Integration fixture for the complete Yachida canonical builder."""
+"""Integration fixture for the shared CRC-cohort canonical builder."""
 import csv
 import subprocess
 import sys
@@ -21,7 +21,7 @@ with tempfile.TemporaryDirectory() as tmp:
     manifest = root / "manifest.tsv"
     independent = root / "independent.tsv"
     panel = root / "panel.tsv"; aliases = root / "aliases.csv"
-    write(manifest, "sample_id\tStudy\tTarget_Condition\nS1\tStudy\tControl\n")
+    write(manifest, "sample_id\tstudy\tcondition\nS1\tStudy\tControl\n")
     write(independent, "sample_id\nS1\n")
     write(panel, "label\ttaxon_name\tweight\nTarget\tTarget species\t1\n")
     write(aliases,
@@ -48,11 +48,11 @@ with tempfile.TemporaryDirectory() as tmp:
     write(sample_root / "profiles/independent/Target/S1_Target_f0p1/S1_Target_f0p1.metaphlan.tsv",
           "#fixture\nk__Bacteria|s__Target_species\t1\t20.0\n")
     out = root / "out"
-    command = [sys.executable, str(repo / "analysis_v2/scripts/build_yachida_canonical_input.py"),
+    command = [sys.executable, str(repo / "analysis_v2/scripts/build_crc_cohort_canonical_input.py"),
                "--manifest", str(manifest), "--independent-manifest", str(independent),
                "--results-root", str(results), "--spike-panel", str(panel),
                "--aliases", str(aliases), "--outdir", str(out),
-               "--expected-samples", "1", "--expected-independent", "1",
+               "--cohort", "feng", "--expected-samples", "1", "--expected-independent", "1",
                "--expected-independent-doses", "1", "--expected-community-doses", "1"]
     subprocess.run(command, check=True)
     with (out / "canonical_input.tsv").open(newline="", encoding="utf-8") as handle:
@@ -63,4 +63,4 @@ with tempfile.TemporaryDirectory() as tmp:
     assert {row["analysis_population"] for row in positives} == {"community", "independent"}
     assert all(row["implanted_read_pairs_target"] == "11" for row in positives)
     assert (out / "validation/SUCCESS").is_file()
-print("[PASS] complete Yachida canonical-input fixture")
+print("[PASS] CRC cohort canonical-input fixture")

@@ -24,14 +24,14 @@ if [[ ! -s "$CANONICAL_INPUT" ]]; then
     echo "[ERROR] Externally supplied CANONICAL_INPUT is missing: $CANONICAL_INPUT" >&2
     exit 1
   }
-  python3 analysis_v2/scripts/build_yachida_canonical_input.py \
+  python3 analysis_v2/scripts/build_crc_cohort_canonical_input.py \
     --manifest "$MANIFEST" --independent-manifest "$INDEPENDENT_MANIFEST" \
     --results-root "$PERSISTENT_RESULTS_ROOT" --spike-panel "$SPIKE_PANEL" \
     --aliases "$ALIASES" --outdir "$RUN_ROOT/canonical"
 fi
 
-python3 analysis_v2/scripts/check_yachida_definitive_readiness.py \
-  --manifest "$MANIFEST" --state-dir "$YACHIDA_STATE_DIR" \
+python3 analysis_v2/scripts/check_cohort_definitive_readiness.py \
+  --cohort yachida --manifest "$MANIFEST" --state-dir "$YACHIDA_STATE_DIR" \
   --canonical "$CANONICAL_INPUT" --canonical-success "$CANONICAL_SUCCESS" \
   --analysis-sif "$ANALYSIS_SIF" --assembly-sensitivity-success "$SENSITIVITY_SUCCESS" \
   --outdir "$RUN_ROOT/readiness"

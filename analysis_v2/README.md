@@ -123,7 +123,7 @@ an estimand, model, multiplicity family, or interpretation rule changes.
 `run_yachida_definitive_analysis.sbatch` is the only intended entry point for
 the final Yachida v2 analysis. Its shell driver first builds the complete
 canonical table from sealed native profiles, then runs
-`scripts/check_yachida_definitive_readiness.py`, and refuses to proceed unless
+`scripts/check_cohort_definitive_readiness.py`, and refuses to proceed unless
 the 201-sample production seal, complete validated canonical input, both
 analysis populations, both profilers, frozen analysis image, and the sealed
 30-sample assembly-sensitivity experiment are present. It then runs the
@@ -134,3 +134,13 @@ The driver never constructs or repairs upstream evidence; it only derives the
 canonical analysis table from it. A previously staged canonical table may be
 supplied explicitly. Set `PREFLIGHT_ONLY=1` to build/validate the table and
 exercise every readiness gate without fitting models.
+
+## Feng, Zeller, and three-cohort execution
+
+`CRC_COHORT_DEFINITIVE_RUNBOOK.md` documents the shared fail-closed framework
+for Feng and Zeller. `scripts/seal_crc_cohort_upstream.py` creates participant
+flow and covariate-missingness ledgers and seals only complete cohorts.
+`run_crc_cohort_definitive_analysis.sh` applies the same canonical contract and
+downstream endpoints separately to each cohort. After all three definitive
+packages pass, `run_three_cohort_definitive_synthesis.sh` gates the existing
+random-effects synthesis on complete, non-development cohort evidence.

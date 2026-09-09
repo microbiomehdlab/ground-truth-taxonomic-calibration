@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Build the complete, fail-closed Yachida canonical v2 evidence table."""
+"""Build a complete, fail-closed CRC-cohort canonical v2 evidence table."""
 
 from __future__ import annotations
 
@@ -56,12 +56,12 @@ class Profiles:
 def make_row(meta: dict[str, str], population: str, target: dict[str, str],
              profiler: str, profile_id: str, baseline_id: str, total_fraction: float,
              target_fraction: float, pairs: int, abundance: float, profile: Path,
-             design: str) -> dict[str, str]:
+             design: str, cohort: str) -> dict[str, str]:
     unit = "fraction_total_reads" if profiler == "kraken2_bracken" else "relative_abundance_pct"
     abundance_fraction = abundance if profiler == "kraken2_bracken" else abundance / 100.0
     return {
-        "schema_version": SCHEMA, "cohort": "yachida", "study": meta["Study"],
-        "sample_id": meta["sample_id"], "condition": meta["Target_Condition"],
+        "schema_version": SCHEMA, "cohort": cohort, "study": meta["study"],
+        "sample_id": meta["sample_id"], "condition": meta["condition"],
         "analysis_population": population, "target_label": target["label"],
         "target_taxon": target["taxon_name"], "assembly_arm": "original",
         "profiler": profiler, "profile_id": profile_id,
@@ -85,6 +85,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--spike-panel", required=True, type=Path)
     parser.add_argument("--aliases", required=True, type=Path)
     parser.add_argument("--outdir", required=True, type=Path)
+    parser.add_argument("--cohort", choices=("yachida", "feng", "zeller"), default="yachida")
     parser.add_argument("--expected-samples", type=int, default=201)
     parser.add_argument("--expected-independent", type=int, default=30)
     parser.add_argument("--expected-independent-doses", type=int, default=6)
@@ -99,7 +100,12 @@ def main() -> None:
         independent_manifest = read_rows(args.independent_manifest)
         panel = read_rows(args.spike_panel)
         aliases = read_rows(args.aliases, delimiter=",")
-        require_columns(manifest, {"sample_id", "Study", "Target_Condition"}, "manifest")
+        require_columns(manifest, {"sample_id"}, "manifest")
+        for row in manifest:
+            row["study"] = row.get("study") or row.get("Study") or ""
+            row["condition"] = row.get("condition") or row.get("Target_Condition") or ""
+            if not row["study"] or not row["condition"]:
+                raise ValueError("manifest lacks study/condition values")
         require_columns(independent_manifest, {"sample_id"}, "independent manifest")
         require_columns(panel, {"label", "taxon_name", "weight"}, "spike panel")
         require_columns(aliases, {"canonical", "alias", "tool"}, "aliases")
@@ -117,7 +123,7 @@ def main() -> None:
 
         for meta in manifest:
             sample = meta["sample_id"]
-            sample_root = args.results_root / meta["Study"] / sample
+            sample_root = args.results_root / meta["study"] / sample
             baseline_root = sample_root / "profiles" / "baseline"
             community_design = sample_root / "spike_design" / "community" / "CRCpanel.tsv"
             community_rows = read_rows(community_design)
@@ -135,7 +141,7 @@ def main() -> None:
                     baseline_abundance = profiles.abundance(baseline_profile, profiler, alias)
                     output_rows.append(make_row(meta, "community", target, profiler, sample, sample,
                                                 0.0, 0.0, 0, baseline_abundance,
-                                                baseline_profile, "BASELINE"))
+                                                baseline_profile, "BASELINE", args.cohort))
                     for design in sorted(community_rows, key=lambda row: float(row["fraction"])):
                         profile_id = f"{sample}_CRCpanel_{fraction_tag(design['fraction'])}"
                         suffix = ".bracken.S.tsv" if profiler == "kraken2_bracken" else ".metaphlan.tsv"
@@ -147,7 +153,7 @@ def main() -> None:
                         output_rows.append(make_row(
                             meta, "community", target, profiler, profile_id, sample,
                             float(design["f_hat"]), target_pairs / denominator, target_pairs,
-                            abundance, profile, str(community_design.resolve())))
+                            abundance, profile, str(community_design.resolve()), args.cohort))
 
                 if sample not in independent:
                     continue
@@ -163,7 +169,7 @@ def main() -> None:
                     baseline_abundance = profiles.abundance(baseline_profile, profiler, alias)
                     output_rows.append(make_row(meta, "independent", target, profiler, sample, sample,
                                                 0.0, 0.0, 0, baseline_abundance,
-                                                baseline_profile, "BASELINE"))
+                                                baseline_profile, "BASELINE", args.cohort))
                     for design in sorted(independent_rows, key=lambda row: float(row["fraction"])):
                         profile_id = f"{sample}_{target['label']}_{fraction_tag(design['fraction'])}"
                         suffix = ".bracken.S.tsv" if profiler == "kraken2_bracken" else ".metaphlan.tsv"
@@ -173,7 +179,7 @@ def main() -> None:
                         output_rows.append(make_row(
                             meta, "independent", target, profiler, profile_id, sample,
                             achieved, achieved, int(design["N_inserted"]), abundance,
-                            profile, str(independent_design.resolve())))
+                            profile, str(independent_design.resolve()), args.cohort))
 
         expected_rows = args.expected_samples * len(panel) * len(PROFILERS) * (args.expected_community_doses + 1)
         expected_rows += args.expected_independent * len(panel) * len(PROFILERS) * (args.expected_independent_doses + 1)
@@ -187,7 +193,7 @@ def main() -> None:
         validator = Path(__file__).with_name("validate_canonical_input.py")
         subprocess.run([sys.executable, str(validator), "--input", str(output),
                         "--outdir", str(args.outdir / "validation")], check=True)
-        print(f"[PASS] Complete Yachida canonical input built: {len(output_rows)} rows")
+        print(f"[PASS] Complete {args.cohort} canonical input built: {len(output_rows)} rows")
         print(f"[INFO] {output}")
     except (ValueError, OSError, KeyError, subprocess.CalledProcessError) as error:
         raise SystemExit(f"[ERROR] {error}") from error

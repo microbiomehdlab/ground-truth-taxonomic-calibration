@@ -120,6 +120,12 @@ Private evidence may remain under ignored `work/`, but it must be backed up and
 must not exist only in a terminal scrollback. Public code, example configuration,
 schemas, and non-sensitive methods belong in Git.
 
+For final downstream execution, follow
+`analysis_v2/YACHIDA_DEFINITIVE_RUNBOOK.md` and
+`analysis_v2/CRC_COHORT_DEFINITIVE_RUNBOOK.md`. Each cohort must be sealed and
+analyzed independently before `analysis_v2/run_three_cohort_definitive_synthesis.sh`
+will accept it for cross-cohort synthesis.
+
 ## Current qualification
 
 The repository contains reproducible upstream production and audit components,
