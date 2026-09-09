@@ -15,6 +15,11 @@ Both the historical `kraken_bracken` directory name and the current
 `kraken2_bracken` name are recognized and mapped to the canonical
 `kraken2_bracken` profiler identifier.
 
+The spike and baseline directories may live under different historical roots.
+In that case, pass the spike directory as `--results-root` and the directory
+containing bare-accession baselines as `--baseline-root`. Both resolved paths
+are recorded in `DEVELOPMENT_ONLY.txt`.
+
 Some frozen biological samples combine multiple ERR runs. Historical outputs
 profiled those runs separately, so they cannot be reconstructed as the final
 concatenated sample. For development only, the adapter deterministically keeps
@@ -40,7 +45,8 @@ cd /mnt/nfs/microbiomehd/crc-lab/projects/ground-truth-taxonomic-calibration
 DEV_OUT="$PWD/work/analysis_v2_legacy_native_dev_$(date +%Y%m%d_%H%M%S)"
 
 python3 analysis_v2/scripts/build_legacy_native_development_input.py \
-  --results-root /mnt/nfs/microbiomehd/tax_benchmarking_for_biomarker/results_old_v2 \
+  --results-root /mnt/nfs/microbiomehd/tax_benchmarking_for_biomarker/results \
+  --baseline-root /mnt/nfs/microbiomehd/tax_benchmarking_for_biomarker/results_old_v2 \
   --feng-manifest datasets/fengq/manifests/production_manifest.tsv \
   --zeller-manifest datasets/zellerg/manifests/production_manifest.tsv \
   --spike-panel spikes/spike_panel.tsv \

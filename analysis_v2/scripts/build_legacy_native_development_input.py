@@ -26,6 +26,10 @@ NAME = re.compile(r"^(ERR\d+)(?:_([A-Za-z0-9]+)_f(0p[0-9]+))?$")
 def args_parser() -> argparse.Namespace:
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument("--results-root", required=True, type=Path)
+    p.add_argument(
+        "--baseline-root", type=Path,
+        help="Optional separate root containing bare-accession baseline directories.",
+    )
     p.add_argument("--feng-manifest", required=True, type=Path)
     p.add_argument("--zeller-manifest", required=True, type=Path)
     p.add_argument("--spike-panel", required=True, type=Path)
@@ -72,11 +76,12 @@ def abundance(path: Path, profiler: str, alias: str) -> float:
     return (bracken_abundance if profiler == "kraken2_bracken" else metaphlan_abundance)(path, alias)
 
 
-def select_representative_runs(results_root: Path, accessions: dict[str, dict[str, str]],
+def select_representative_runs(spike_root: Path, baseline_root: Path,
+                               accessions: dict[str, dict[str, str]],
                                targets: dict[str, dict[str, str]]) -> dict[tuple[str, str], str]:
     """Choose one historical run per biological sample by paired-profile coverage."""
     scores: dict[str, int] = {accession: 0 for accession in accessions}
-    for directory in results_root.iterdir():
+    for directory in spike_root.iterdir():
         if not directory.is_dir():
             continue
         match = NAME.fullmatch(directory.name)
@@ -86,7 +91,7 @@ def select_representative_runs(results_root: Path, accessions: dict[str, dict[st
         if (run not in accessions or dose_tag not in FROZEN_DOSES or
                 (label != "CRCpanel" and label not in targets)):
             continue
-        baseline = results_root / run
+        baseline = baseline_root / run
         if all(one_profile(baseline, run, profiler) is not None and
                one_profile(directory, directory.name, profiler) is not None
                for profiler in PROFILERS):
@@ -104,16 +109,20 @@ def select_representative_runs(results_root: Path, accessions: dict[str, dict[st
 def main() -> None:
     a = args_parser()
     try:
+        spike_root = a.results_root
+        baseline_root = a.baseline_root or spike_root
         panel = read_rows(a.spike_panel)
         targets = {row["label"]: row for row in panel}
         aliases = read_rows(a.aliases, delimiter=",")
         alias = {(row["canonical"], row["tool"]): row["alias"] for row in aliases}
         accessions = accession_map([("feng", a.feng_manifest), ("zeller", a.zeller_manifest)])
-        representatives = select_representative_runs(a.results_root, accessions, targets)
+        representatives = select_representative_runs(
+            spike_root, baseline_root, accessions, targets
+        )
         positives: list[tuple[dict[str, str], str, str, float, str, Path, Path]] = []
         exclusions: list[list[str]] = []
 
-        for directory in sorted(a.results_root.iterdir()):
+        for directory in sorted(spike_root.iterdir()):
             if not directory.is_dir():
                 continue
             match = NAME.fullmatch(directory.name)
@@ -131,7 +140,7 @@ def main() -> None:
                 exclusions.append([directory.name, run, label, dose_tag,
                                    "non_primary_run_for_multirun_sample"]); continue
             dose = float(dose_tag.replace("p", "."))
-            baseline_dir = a.results_root / run
+            baseline_dir = baseline_root / run
             paths = {
                 profiler: (
                     one_profile(baseline_dir, run, profiler),
@@ -189,6 +198,7 @@ def main() -> None:
         (a.outdir / "DEVELOPMENT_ONLY.txt").write_text(
             "status=DEVELOPMENT_ONLY\nexact_implanted_pair_counts_available=0\n"
             f"fractions=historical_nominal\nprofiler_coverage={a.profiler_coverage}\n"
+            f"spike_root={spike_root.resolve()}\nbaseline_root={baseline_root.resolve()}\n"
             "prohibited_for_manuscript_results=1\n", encoding="utf-8")
         validator = Path(__file__).with_name("validate_canonical_input.py")
         subprocess.run([sys.executable, str(validator), "--input", str(canonical),
