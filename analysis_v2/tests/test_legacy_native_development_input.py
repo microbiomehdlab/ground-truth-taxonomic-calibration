@@ -18,7 +18,7 @@ with tempfile.TemporaryDirectory() as tmp:
     bracken = "name\ttaxonomy_id\ttaxonomy_lvl\tkraken_assigned_reads\tadded_reads\tnew_est_reads\tfraction_total_reads\nBacteroides fragilis\t1\tS\t1\t0\t1\t0.1\n"
     metaphlan = "#mpa_vJan25_CHOCOPhlAnSGB_202503\n#clade_name\tNCBI_tax_id\trelative_abundance\n" + "k__Bacteria|s__Bacteroides_fragilis\t1\t10\n"
     for name in ("ERR1", "ERR1_Bfrag_f0p01", "ERR1_CRCpanel_f0p1"):
-        write(results / name / "kraken2_bracken" / f"{name}.bracken.S.tsv", bracken)
+        write(results / name / "kraken_bracken" / f"{name}.bracken.S.tsv", bracken)
         write(results / name / "metaphlan4" / f"{name}.metaphlan.tsv", metaphlan)
     # A historical spike available for only one profiler must not enter the
     # default common-profiler comparison set.

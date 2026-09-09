@@ -11,6 +11,9 @@ the frozen cohort manifests, keeps the frozen dose grid, and writes a validated
 canonical input plus an exclusion ledger and checksums. By default it retains
 only baseline–spike profiles available for both profilers, so direct profiler
 comparisons use the same biological samples and perturbations.
+Both the historical `kraken_bracken` directory name and the current
+`kraken2_bracken` name are recognized and mapped to the canonical
+`kraken2_bracken` profiler identifier.
 
 Some frozen biological samples combine multiple ERR runs. Historical outputs
 profiled those runs separately, so they cannot be reconstructed as the final

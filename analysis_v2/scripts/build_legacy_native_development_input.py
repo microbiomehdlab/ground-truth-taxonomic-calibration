@@ -15,6 +15,10 @@ from build_crc_cohort_canonical_input import make_row
 
 PROFILERS = ("kraken2_bracken", "metaphlan4")
 SUFFIX = {"kraken2_bracken": ".bracken.S.tsv", "metaphlan4": ".metaphlan.tsv"}
+PROFILE_DIRS = {
+    "kraken2_bracken": ("kraken2_bracken", "kraken_bracken"),
+    "metaphlan4": ("metaphlan4",),
+}
 FROZEN_DOSES = {"0p0001", "0p0005", "0p001", "0p005", "0p01", "0p05", "0p1"}
 NAME = re.compile(r"^(ERR\d+)(?:_([A-Za-z0-9]+)_f(0p[0-9]+))?$")
 
@@ -58,7 +62,11 @@ def accession_map(paths: list[tuple[str, Path]]) -> dict[str, dict[str, str]]:
 
 
 def one_profile(root: Path, accession: str, profiler: str) -> Path | None:
-    found = sorted((root / profiler).glob(accession + "*" + SUFFIX[profiler]))
+    found = sorted(
+        path
+        for directory in PROFILE_DIRS[profiler]
+        for path in (root / directory).glob(accession + "*" + SUFFIX[profiler])
+    )
     return found[0] if len(found) == 1 else None
 
 
@@ -74,7 +82,7 @@ def main() -> None:
         aliases = read_rows(a.aliases, delimiter=",")
         alias = {(row["canonical"], row["tool"]): row["alias"] for row in aliases}
         accessions = accession_map([("feng", a.feng_manifest), ("zeller", a.zeller_manifest)])
-        positives: list[tuple[dict[str, str], str, str, float, Path, Path]] = []
+        positives: list[tuple[dict[str, str], str, str, float, str, Path, Path]] = []
         exclusions: list[list[str]] = []
 
         for directory in sorted(a.results_root.iterdir()):
@@ -114,12 +122,11 @@ def main() -> None:
                 base, spike = paths[profiler]
                 if base is None or spike is None:
                     exclusions.append([directory.name, run, label, dose_tag, f"missing_{profiler}_pair"]); continue
-                positives.append((accessions[run], run, label, dose, base, spike))
+                positives.append((accessions[run], run, label, dose, profiler, base, spike))
 
         rows = []
         seen_baselines = set()
-        for meta, run, label, total_dose, base, spike in positives:
-            profiler = "kraken2_bracken" if "kraken2_bracken" in base.parts else "metaphlan4"
+        for meta, run, label, total_dose, profiler, base, spike in positives:
             population = "community" if label == "CRCpanel" else "independent"
             # Community profiles are expanded once per panel member.
             expanded = panel if population == "community" else [targets[label]]
