@@ -48,7 +48,6 @@ def accession_map(paths: list[tuple[str, Path]]) -> dict[str, dict[str, str]]:
             )
             if not sample_accessions:
                 raise ValueError(f"sample has no run accession: {row['sample_id']}")
-            primary_accession = sample_accessions[0]
             for accession in sample_accessions:
                 accession = accession.strip()
                 if accession in result and result[accession]["sample_id"] != row["sample_id"]:
@@ -56,7 +55,6 @@ def accession_map(paths: list[tuple[str, Path]]) -> dict[str, dict[str, str]]:
                 result[accession] = {
                     "cohort": cohort, "sample_id": row["sample_id"],
                     "condition": row["condition"], "study": row["study"],
-                    "primary_accession": primary_accession,
                 }
     return result
 
@@ -74,6 +72,35 @@ def abundance(path: Path, profiler: str, alias: str) -> float:
     return (bracken_abundance if profiler == "kraken2_bracken" else metaphlan_abundance)(path, alias)
 
 
+def select_representative_runs(results_root: Path, accessions: dict[str, dict[str, str]],
+                               targets: dict[str, dict[str, str]]) -> dict[tuple[str, str], str]:
+    """Choose one historical run per biological sample by paired-profile coverage."""
+    scores: dict[str, int] = {accession: 0 for accession in accessions}
+    for directory in results_root.iterdir():
+        if not directory.is_dir():
+            continue
+        match = NAME.fullmatch(directory.name)
+        if not match or match.group(2) is None:
+            continue
+        run, label, dose_tag = match.groups()
+        if (run not in accessions or dose_tag not in FROZEN_DOSES or
+                (label != "CRCpanel" and label not in targets)):
+            continue
+        baseline = results_root / run
+        if all(one_profile(baseline, run, profiler) is not None and
+               one_profile(directory, directory.name, profiler) is not None
+               for profiler in PROFILERS):
+            scores[run] += 1
+
+    grouped: dict[tuple[str, str], list[str]] = {}
+    for accession, meta in accessions.items():
+        grouped.setdefault((meta["cohort"], meta["sample_id"]), []).append(accession)
+    return {
+        sample: sorted(runs, key=lambda run: (-scores[run], run))[0]
+        for sample, runs in grouped.items()
+    }
+
+
 def main() -> None:
     a = args_parser()
     try:
@@ -82,6 +109,7 @@ def main() -> None:
         aliases = read_rows(a.aliases, delimiter=",")
         alias = {(row["canonical"], row["tool"]): row["alias"] for row in aliases}
         accessions = accession_map([("feng", a.feng_manifest), ("zeller", a.zeller_manifest)])
+        representatives = select_representative_runs(a.results_root, accessions, targets)
         positives: list[tuple[dict[str, str], str, str, float, str, Path, Path]] = []
         exclusions: list[list[str]] = []
 
@@ -98,7 +126,8 @@ def main() -> None:
                 exclusions.append([directory.name, run, label, dose_tag, "outside_frozen_dose_grid"]); continue
             if run not in accessions:
                 exclusions.append([directory.name, run, label, dose_tag, "run_not_in_frozen_manifests"]); continue
-            if run != accessions[run]["primary_accession"]:
+            sample_key = (accessions[run]["cohort"], accessions[run]["sample_id"])
+            if run != representatives[sample_key]:
                 exclusions.append([directory.name, run, label, dose_tag,
                                    "non_primary_run_for_multirun_sample"]); continue
             dose = float(dose_tag.replace("p", "."))

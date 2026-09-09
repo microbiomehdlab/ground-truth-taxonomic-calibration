@@ -18,10 +18,12 @@ Both the historical `kraken_bracken` directory name and the current
 Some frozen biological samples combine multiple ERR runs. Historical outputs
 profiled those runs separately, so they cannot be reconstructed as the final
 concatenated sample. For development only, the adapter deterministically keeps
-the lexicographically first ERR accession per biological sample and records
-the remaining run directories as `non_primary_run_for_multirun_sample`. This
-prevents pseudoreplication; it is not a substitute for the definitive combined
-sample.
+the single ERR accession with the greatest number of complete paired-profiler
+baseline–spike profiles per biological sample (breaking ties by accession) and
+records the remaining run directories as
+`non_primary_run_for_multirun_sample`. This prevents pseudoreplication while
+retaining the most useful historical trajectory; it is not a substitute for
+the definitive combined sample.
 
 The historical run did not preserve exact implanted pair-allocation records.
 Consequently, its directory-name fractions are treated as nominal doses and
