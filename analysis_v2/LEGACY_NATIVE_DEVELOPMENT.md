@@ -11,6 +11,9 @@ the frozen cohort manifests, keeps the frozen dose grid, and writes a validated
 canonical input plus an exclusion ledger and checksums. By default it retains
 only baseline–spike profiles available for both profilers, so direct profiler
 comparisons use the same biological samples and perturbations.
+It also retains only complete frozen dose trajectories by default, making the
+development table suitable for the downstream repeated-dose models. Incomplete
+trajectories are recorded in the exclusion ledger rather than silently used.
 Both the historical `kraken_bracken` directory name and the current
 `kraken2_bracken` name are recognized and mapped to the canonical
 `kraken2_bracken` profiler identifier.
@@ -52,6 +55,7 @@ python3 analysis_v2/scripts/build_legacy_native_development_input.py \
   --spike-panel spikes/spike_panel.tsv \
   --aliases examples/spike_taxon_aliases.csv \
   --profiler-coverage paired \
+  --trajectory-coverage complete \
   --outdir "$DEV_OUT"
 
 test -s "$DEV_OUT/DEVELOPMENT_ONLY.txt" &&

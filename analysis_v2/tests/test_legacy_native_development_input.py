@@ -38,7 +38,8 @@ with tempfile.TemporaryDirectory() as tmp:
         "--results-root", str(results), "--feng-manifest", str(t / "feng.tsv"),
         "--baseline-root", str(baselines),
         "--zeller-manifest", str(t / "zeller.tsv"), "--spike-panel", str(t / "panel.tsv"),
-        "--aliases", str(t / "aliases.csv"), "--outdir", str(out)], check=True)
+        "--aliases", str(t / "aliases.csv"), "--trajectory-coverage", "available",
+        "--outdir", str(out)], check=True)
     with (out / "canonical_input.tsv").open(newline="", encoding="utf-8") as handle:
         rows = list(csv.DictReader(handle, delimiter="\t"))
     assert len(rows) == 8

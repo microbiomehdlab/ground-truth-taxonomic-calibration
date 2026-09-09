@@ -39,6 +39,10 @@ def args_parser() -> argparse.Namespace:
         "--profiler-coverage", choices=("paired", "available"), default="paired",
         help="Use only common Kraken/MetaPhlAn profile pairs (default), or all available profiles.",
     )
+    p.add_argument(
+        "--trajectory-coverage", choices=("complete", "available"), default="complete",
+        help="Keep only complete frozen dose trajectories (default), or all available doses.",
+    )
     return p.parse_args()
 
 
@@ -162,6 +166,28 @@ def main() -> None:
                     exclusions.append([directory.name, run, label, dose_tag, f"missing_{profiler}_pair"]); continue
                 positives.append((accessions[run], run, label, dose, profiler, base, spike))
 
+        if a.trajectory_coverage == "complete":
+            expected_independent = {0.0001, 0.0005, 0.001, 0.005, 0.01, 0.05}
+            expected_community = expected_independent | {0.1}
+            observed: dict[tuple[str, str, str], set[float]] = {}
+            for meta, _, label, dose, _, _, _ in positives:
+                key = (meta["cohort"], meta["sample_id"], label)
+                observed.setdefault(key, set()).add(dose)
+            incomplete = {
+                key for key, doses in observed.items()
+                if doses != (expected_community if key[2] == "CRCpanel"
+                             else expected_independent)
+            }
+            for cohort, sample, label in sorted(incomplete):
+                exclusions.append([
+                    sample, "", label, "*", "incomplete_frozen_dose_trajectory"
+                ])
+            positives = [
+                record for record in positives
+                if (record[0]["cohort"], record[0]["sample_id"], record[2])
+                not in incomplete
+            ]
+
         rows = []
         seen_baselines = set()
         for meta, run, label, total_dose, profiler, base, spike in positives:
@@ -198,6 +224,7 @@ def main() -> None:
         (a.outdir / "DEVELOPMENT_ONLY.txt").write_text(
             "status=DEVELOPMENT_ONLY\nexact_implanted_pair_counts_available=0\n"
             f"fractions=historical_nominal\nprofiler_coverage={a.profiler_coverage}\n"
+            f"trajectory_coverage={a.trajectory_coverage}\n"
             f"spike_root={spike_root.resolve()}\nbaseline_root={baseline_root.resolve()}\n"
             "prohibited_for_manuscript_results=1\n", encoding="utf-8")
         validator = Path(__file__).with_name("validate_canonical_input.py")
