@@ -87,6 +87,11 @@ parameters="$outdir/profiling_parameters.tsv"
 receipt="$outdir/retained_outputs.tsv"
 rm -f -- "$outdir/SUCCESS"
 mapout="$SAMPLE_WORK/${SAMPLE_ID}.baseline_smoke.mapout.bz2"
+# MetaPhlAn refuses to overwrite an existing mapout. This file is a disposable
+# intermediate (it is not part of the retained-output receipt), so clear any
+# copy left by an interrupted attempt and remove it on normal or error exit.
+rm -f -- "$mapout"
+trap 'rm -f -- "$mapout"' EXIT
 container_home="$SAMPLE_WORK/profile_homes/$SAMPLE_ID"
 mkdir -p "$container_home/.cache" "$container_home/.config" "$container_home/.local/share"
 
@@ -155,8 +160,6 @@ grep -qE '(^|[|])s__[^|[:space:]]+' "$metaphlan_profile" || {
     exit 1
   fi
 }
-rm -f -- "$mapout"
-
 python3 - "$outdir" "$receipt" <<'PY'
 import hashlib
 import pathlib

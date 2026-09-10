@@ -26,6 +26,15 @@ class PreproductionIntegrityTests(unittest.TestCase):
         self.assertIn('${ALLOW_NO_METAPHLAN_SPECIES:-false}', runner)
         self.assertIn('[ERROR] MetaPhlAn profile contains no species-level rows', runner)
 
+    def test_profile_retry_clears_disposable_metaphlan_mapout(self):
+        runner = (ROOT / "datasets/yachida/run_baseline_profiling_smoke.sh").read_text()
+        assignment = 'mapout="$SAMPLE_WORK/${SAMPLE_ID}.baseline_smoke.mapout.bz2"'
+        cleanup = 'rm -f -- "$mapout"'
+        invocation = '--mapout "$mapout"'
+        self.assertIn("trap 'rm -f -- \"$mapout\"' EXIT", runner)
+        self.assertLess(runner.index(assignment), runner.index(cleanup))
+        self.assertLess(runner.index(cleanup), runner.index(invocation))
+
     def test_pure_pool_summary_reports_native_denominators(self):
         script = (ROOT / "datasets/yachida/summarize_pure_pool_audit.py").read_text()
         self.assertIn('expected_target_pct', script)
