@@ -160,3 +160,8 @@ random-effects synthesis on complete, non-development cohort evidence.
 `run_three_cohort_publication_report.sh` then creates the final overview tables
 and figures; `MANUSCRIPT_RESULTS_CHECKLIST.tsv` maps each planned claim to its
 estimand, source table, candidate display, and required seal.
+For large legacy Feng/Zeller development runs, `submit_legacy_biomarker_development_dag.sh`
+is the parallel Slurm alternative to `run_legacy_biomarker_development.sbatch`. It runs the
+pooled-artificial, stratified-artificial, and disease model branches concurrently, then uses
+`afterok` dependencies for their reports and the final fail-closed seal. Each invocation must
+use a new `OUTDIR`; this permits a DAG run to coexist safely with an older sequential run.
