@@ -6,7 +6,11 @@
 
 set -euo pipefail
 
-ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd -P)"
+ROOT="${PROJECT:-${SLURM_SUBMIT_DIR:-}}"
+[[ -n "$ROOT" && -s "$ROOT/analysis_v2/run_legacy_biomarker_development.sh" ]] || {
+  echo "[ERROR] Submit this job from the project root or export PROJECT" >&2
+  exit 1
+}
 cd "$ROOT"
 
 : "${DEV_INPUT_ROOT:?Export DEV_INPUT_ROOT before submitting}"
