@@ -172,3 +172,7 @@ boundaries, while disease models are partitioned only by cohort/population so th
 all-target feature universe remains intact. Reducers reject missing or duplicate shard output
 before evaluation, reporting, or the final seal. `MAP_CONCURRENCY` (default 12) and
 `DISEASE_CONCURRENCY` (default 4) bound simultaneous array tasks.
+After sequential and map-reduce development runs complete,
+`scripts/compare_biomarker_development_runs.py` compares ten primary scientific tables after
+deterministic row sorting and numeric normalization. A map-reduce run should not replace its
+sequential reference unless this equivalence audit passes.
