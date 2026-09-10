@@ -157,3 +157,6 @@ flow and covariate-missingness ledgers and seals only complete cohorts.
 downstream endpoints separately to each cohort. After all three definitive
 packages pass, `run_three_cohort_definitive_synthesis.sh` gates the existing
 random-effects synthesis on complete, non-development cohort evidence.
+`run_three_cohort_publication_report.sh` then creates the final overview tables
+and figures; `MANUSCRIPT_RESULTS_CHECKLIST.tsv` maps each planned claim to its
+estimand, source table, candidate display, and required seal.

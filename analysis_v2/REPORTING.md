@@ -31,3 +31,14 @@ Status inheritance is fail-closed: a source containing `DEVELOPMENT_ONLY.txt`
 cannot produce a `DEFINITIVE` report. Development figures are for integration
 and presentation testing only. The definitive package will be regenerated from
 sealed complete cohort analyses without changing code or graphical definitions.
+
+`run_three_cohort_publication_report.sh` is the final overview layer. It
+combines sealed cohort reports without refitting models, preserves cohort and
+independent/community facets, and exports artificial-target recall, native
+disease-marker retention, quantitative response, and off-target burden panels
+with their complete source TSVs. Definitive mode requires exactly three
+non-development cohort packages plus sealed cross-cohort synthesis and Yachida
+assembly-sensitivity reports. `MANUSCRIPT_RESULTS_CHECKLIST.tsv` maps each
+planned claim to its estimand, source evidence, candidate display, and gate.
+The input contract and execution examples are in
+`THREE_COHORT_PUBLICATION_REPORT.md`.
