@@ -6,7 +6,7 @@ root=Path(a.shard_manifest).parent; out=Path(a.outdir); out.mkdir(parents=True,e
 with open(a.shard_manifest,newline='',encoding='utf-8') as h: shards=[r for r in csv.DictReader(h,delimiter='\t') if r['kind']==a.kind]
 if not shards: raise SystemExit('[ERROR] no expected shards')
 files = (['paired_da_results.tsv','sample_feature_log2_changes.tsv'] if a.kind=='paired' else
-         ['primary_disease_da_results.tsv','sensitivity_bmi_disease_da_results.tsv','disease_da_exclusions.tsv'])
+         ['primary_disease_da_results.tsv','sensitivity_bmi_disease_da_results.tsv','disease_da_exclusions.tsv','disease_sample_panel_audit.tsv'])
 seen={name:set() for name in files}; counts={}
 for name in files:
     output=out/name; header=None; total=0

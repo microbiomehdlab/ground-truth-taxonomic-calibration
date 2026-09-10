@@ -26,6 +26,8 @@ manifest$include <- 1; manifest$exclusion_reason <- ""
 second <- manifest
 second$target_label <- "Pint"; second$assembly_arm <- "clean"
 second$target_taxon <- "Prevotella intermedia"; second$target_feature <- "Second target"
+# Exercise the frozen common-sample intersection with one incomplete target panel.
+second <- second[second$sample_id != "S30", ]
 manifest <- rbind(manifest, second)
 write.table(manifest, manifest_path, sep = "\t", quote = FALSE, row.names = FALSE, na = "")
 features <- c("Peptostreptococcus anaerobius", "Second target", "CRC marker", "Constant", "Rare")
@@ -48,9 +50,12 @@ if (status != 0L) stop(paste(result, collapse = "\n"))
 stopifnot(file.exists(file.path(outdir, "SUCCESS")))
 primary <- read.delim(file.path(outdir, "primary_disease_da_results.tsv"))
 sensitivity <- read.delim(file.path(outdir, "sensitivity_bmi_disease_da_results.tsv"))
+panel_audit <- read.delim(file.path(outdir, "disease_sample_panel_audit.tsv"))
 stopifnot(all(c("CRC_vs_Control", "Adenoma_vs_Control") %in% primary$contrast))
-stopifnot(all(primary$model_spec == "primary_age_sex"), all(primary$n_samples == 30))
-stopifnot(all(sensitivity$n_samples == 28), all(primary$q_value >= 0 & primary$q_value <= 1))
+stopifnot(all(primary$model_spec == "primary_age_sex"), all(primary$n_samples == 29))
+stopifnot(all(sensitivity$n_samples == 27), all(primary$q_value >= 0 & primary$q_value <= 1))
+stopifnot(panel_audit$input_samples == 30, panel_audit$retained_samples == 29,
+          panel_audit$excluded_samples == 1)
 stopifnot(any(primary$feature == "Constant" & primary$p_value == 1))
 stopifnot(!any(primary$feature == "Rare"))
 stopifnot(all(grepl("sex_invariant", primary$covariates_omitted)))

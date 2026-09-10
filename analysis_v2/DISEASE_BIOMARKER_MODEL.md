@@ -45,3 +45,8 @@ requires a validated canonical table, a frozen sample metadata manifest, the
 frozen analysis image, a new output directory, and an explicit
 `DEVELOPMENT_ONLY` or `DEFINITIVE` status. Development results must not be used
 as manuscript evidence.
+Before fitting, each cohort/population uses the intersection of biological samples having
+every required target, assembly-arm, profiler, and dose cell. This prevents historical or
+partial inputs from silently comparing different sample panels across targets. The retained
+and excluded counts are recorded in `disease_sample_panel_audit.tsv`; a complete definitive
+input is expected to exclude zero samples.

@@ -40,6 +40,38 @@ abundance$source_profile <- normalizePath(abundance$source_profile, mustWork = F
 
 family_columns <- c("cohort", "study", "analysis_population", "target_label",
                     "assembly_arm", "profiler")
+
+# Historical development inputs can contain complete target trajectories for slightly
+# different sample sets. Freeze one auditable common panel per cohort/population so every
+# target, arm, profiler, and dose is compared on identical biological samples. Definitive
+# complete inputs retain all samples under this operation.
+panel_columns <- c("target_label", "assembly_arm", "profiler", "dose_level")
+panel_group_columns <- c("cohort", "study", "analysis_population")
+panel_groups <- split(manifest, interaction(manifest[panel_group_columns], drop = TRUE,
+                                            lex.order = TRUE))
+retained_groups <- list(); panel_audit_rows <- list(); panel_index <- 1L
+for (panel_group in panel_groups) {
+  first_panel <- panel_group[1, , drop = FALSE]
+  expected_cells <- nrow(unique(panel_group[panel_columns]))
+  observed <- unique(panel_group[c("sample_id", panel_columns)])
+  observed_counts <- table(observed$sample_id)
+  retained_samples <- names(observed_counts)[observed_counts == expected_cells]
+  if (length(retained_samples) < 2L)
+    stop("Common disease-model sample intersection contains fewer than two samples.")
+  retained_groups[[length(retained_groups) + 1L]] <-
+    panel_group[panel_group$sample_id %in% retained_samples, , drop = FALSE]
+  panel_audit_rows[[panel_index]] <- data.frame(
+    cohort = first_panel$cohort, study = first_panel$study,
+    analysis_population = first_panel$analysis_population,
+    input_samples = length(unique(panel_group$sample_id)),
+    retained_samples = length(retained_samples),
+    excluded_samples = length(unique(panel_group$sample_id)) - length(retained_samples),
+    expected_cells_per_sample = expected_cells,
+    policy = "complete_common_target_arm_profiler_dose_intersection",
+    stringsAsFactors = FALSE)
+  panel_index <- panel_index + 1L
+}
+manifest <- do.call(rbind, retained_groups)
 families <- split(manifest, interaction(manifest[family_columns], drop = TRUE, lex.order = TRUE))
 if (!length(families)) stop("No disease-analysis families.")
 
@@ -219,6 +251,9 @@ write.table(primary, file.path(outdir, "primary_disease_da_results.tsv"), sep = 
 write.table(sensitivity, file.path(outdir, "sensitivity_bmi_disease_da_results.tsv"), sep = "\t",
             quote = FALSE, row.names = FALSE)
 write.table(excluded, file.path(outdir, "disease_da_exclusions.tsv"), sep = "\t",
+            quote = FALSE, row.names = FALSE)
+panel_audit <- do.call(rbind, panel_audit_rows)
+write.table(panel_audit, file.path(outdir, "disease_sample_panel_audit.tsv"), sep = "\t",
             quote = FALSE, row.names = FALSE)
 settings <- data.frame(setting = c("primary_formula", "sensitivity_formula", "transformation",
                                    "pseudocount_fraction", "minimum_prevalence", "standard_errors",
