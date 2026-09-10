@@ -165,3 +165,10 @@ is the parallel Slurm alternative to `run_legacy_biomarker_development.sbatch`. 
 pooled-artificial, stratified-artificial, and disease model branches concurrently, then uses
 `afterok` dependencies for their reports and the final fail-closed seal. Each invocation must
 use a new `OUTDIR`; this permits a DAG run to coexist safely with an older sequential run.
+
+`submit_legacy_biomarker_mapreduce.sh` provides finer publication-safe parallelism. Paired
+artificial-biomarker models are partitioned only at complete cohort/population/target family
+boundaries, while disease models are partitioned only by cohort/population so their frozen
+all-target feature universe remains intact. Reducers reject missing or duplicate shard output
+before evaluation, reporting, or the final seal. `MAP_CONCURRENCY` (default 12) and
+`DISEASE_CONCURRENCY` (default 4) bound simultaneous array tasks.
