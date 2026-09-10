@@ -74,6 +74,21 @@ def main() -> None:
     parser.add_argument("--expected-samples", type=int, default=201)
     args = parser.parse_args()
 
+    state = args.state_dir.resolve()
+    seal = state / "production_seal"
+    seal.mkdir(parents=True, exist_ok=True)
+    # Invalidate publication authority before doing any potentially long audit.
+    # A failed, cancelled, or interrupted rerun must not leave an older seal
+    # looking current.
+    for marker in (seal / "SUCCESS", seal / "production_seal.sha256"):
+        marker.unlink(missing_ok=True)
+    in_progress = seal / "AUDIT_IN_PROGRESS"
+    in_progress.write_text(
+        "status\tIN_PROGRESS\n"
+        f"manifest\t{args.manifest.resolve()}\n",
+        encoding="utf-8",
+    )
+
     with args.manifest.open(newline="", encoding="utf-8") as handle:
         rows = list(csv.DictReader(handle, delimiter="\t"))
     required = {"sample_id", "Target_Condition", "batch_id"}
@@ -99,7 +114,6 @@ def main() -> None:
         raise SystemExit(f"[ERROR] Expected 30 independent-subset samples; observed {len(independent)}")
     independent_set = set(independent)
 
-    state = args.state_dir.resolve()
     sample_state = state / "samples"
     completion: list[dict[str, str]] = []
     by_batch: dict[str, list[dict[str, str]]] = defaultdict(list)
@@ -172,7 +186,6 @@ def main() -> None:
             encoding="utf-8",
         )
 
-    seal = state / "production_seal"
     write_table(seal / "dataset_completion.tsv", fields, completion)
     manifest_copy = seal / "pilot_batched.tsv"
     manifest_copy.write_bytes(args.manifest.read_bytes())
@@ -192,9 +205,13 @@ def main() -> None:
         seal / "dataset_completion.tsv", seal / "dataset_completion.tsv.sha256",
         manifest_copy, independent_copy, seal / "SUCCESS",
     ]
-    (seal / "production_seal.sha256").write_text(
+    checksum = seal / "production_seal.sha256"
+    checksum_temporary = seal / "production_seal.sha256.tmp"
+    checksum_temporary.write_text(
         "".join(f"{digest(path)}  {path.name}\n" for path in sealed), encoding="utf-8"
     )
+    checksum_temporary.replace(checksum)
+    in_progress.unlink()
     print(f"[PASS] Yachida production sealed: {len(completion)} samples, {len(by_batch)} batches")
     print(f"[INFO] Seal: {seal}")
 

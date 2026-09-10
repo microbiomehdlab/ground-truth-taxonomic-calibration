@@ -65,6 +65,20 @@ def test_yachida_production_audit_seals_verified_receipts():
         assert (state / "batches/batch_001/SUCCESS").is_file()
         assert (state / "production_seal/SUCCESS").is_file()
         assert (state / "production_seal/production_seal.sha256").is_file()
+        assert not (state / "production_seal/AUDIT_IN_PROGRESS").exists()
+
+        retained.write_text("corrupted\n", encoding="utf-8")
+        failed = subprocess.run([
+            "python3", str(ROOT / "datasets/yachida/audit_production.py"),
+            "--manifest", str(manifest), "--scratch-root", str(scratch),
+            "--results-root", str(root / "results"),
+            "--independent-manifest", str(independent),
+            "--state-dir", str(state), "--expected-samples", "1",
+        ])
+        assert failed.returncode != 0
+        assert not (state / "production_seal/SUCCESS").exists()
+        assert not (state / "production_seal/production_seal.sha256").exists()
+        assert (state / "production_seal/AUDIT_IN_PROGRESS").is_file()
 
 
 def test_production_gate_shell_syntax():
