@@ -36,9 +36,30 @@ def test_yachida_production_audit_seals_verified_receipts():
             )
             writer.writeheader()
             writer.writerow({"sample_id": "S1", "Target_Condition": "Control", "batch_id": "batch_001"})
+        independent = root / "independent.tsv"
+        independent.write_text("sample_id\nS1\n", encoding="utf-8")
+        sample_root = root / "results/YachidaS_2019/S1"
+        for group, count in (("baseline", 1), ("independent", 60), ("community", 7)):
+            for index in range(count):
+                marker = sample_root / "profiles" / group / f"profile_{index}" / "SUCCESS"
+                marker.parent.mkdir(parents=True, exist_ok=True)
+                marker.touch()
+        (sample_root / "sample_completion.tsv").write_text(
+            "field\tvalue\n"
+            "sample_id\tS1\n"
+            "condition\tControl\n"
+            "independent_subset\t1\n"
+            "expected_profiles\t68\n"
+            "observed_profiles\t68\n"
+            "community_design_rows\t7\n"
+            "independent_design_rows\t60\n",
+            encoding="utf-8",
+        )
         subprocess.run([
             "python3", str(ROOT / "datasets/yachida/audit_production.py"),
             "--manifest", str(manifest), "--scratch-root", str(scratch),
+            "--results-root", str(root / "results"),
+            "--independent-manifest", str(independent),
             "--state-dir", str(state), "--expected-samples", "1",
         ], check=True)
         assert (state / "batches/batch_001/SUCCESS").is_file()

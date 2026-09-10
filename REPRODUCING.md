@@ -88,7 +88,10 @@ both native profiler outputs, retained-output checksums, and the applicable
 verified marker. Final datasets require a completeness report and sealed batch
 markers. Use `test -f` for markers created with `touch`. Once all 201 Yachida
 samples are present, submit `run_yachida_production_audit.sbatch`; it rehashes
-every receipt entry and writes batch seals plus a dataset-level production seal.
+every receipt entry, independently requires the exact 201-sample profile
+topology (201 baselines, 1,407 community profiles, and 1,800 independent
+profiles for the frozen nested 30), validates the per-sample completion records,
+and writes batch seals plus a dataset-level production seal.
 
 Before starting FengQ or ZellerG, run the read-only cohort gate:
 

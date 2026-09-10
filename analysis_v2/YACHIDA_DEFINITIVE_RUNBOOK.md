@@ -3,6 +3,10 @@
 This workflow is blocked until the upstream audit reports 201/201 verified
 samples and `run_yachida_production_audit.sbatch` creates a valid production
 seal. Development outputs must never be passed to this runner.
+The production audit independently enforces 1 baseline and 7 community
+profiles for every sample, plus 60 independent profiles for each member of the
+frozen nested 30-sample subset, and records these counts in the sealed dataset
+completion table.
 
 The runner deterministically builds and validates the canonical input from the
 sealed native profiles. The table covers all 201 samples for community spikes

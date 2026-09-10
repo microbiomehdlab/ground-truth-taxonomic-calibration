@@ -47,11 +47,30 @@ def write_table(path: pathlib.Path, fieldnames: list[str], rows: list[dict[str, 
     )
 
 
+def read_key_value_table(path: pathlib.Path) -> dict[str, str]:
+    if not path.is_file() or not path.stat().st_size:
+        raise SystemExit(f"[ERROR] Missing sample-completion table: {path}")
+    with path.open(newline="", encoding="utf-8") as handle:
+        rows = list(csv.reader(handle, delimiter="\t"))
+    if not rows or rows[0] != ["field", "value"]:
+        raise SystemExit(f"[ERROR] Invalid sample-completion table: {path}")
+    values = {row[0]: row[1] for row in rows[1:] if len(row) == 2}
+    if len(values) != len(rows) - 1:
+        raise SystemExit(f"[ERROR] Duplicate or malformed sample-completion fields: {path}")
+    return values
+
+
+def count_success(root: pathlib.Path) -> int:
+    return sum(1 for path in root.rglob("SUCCESS") if path.is_file()) if root.is_dir() else 0
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--manifest", required=True, type=pathlib.Path)
     parser.add_argument("--scratch-root", required=True, type=pathlib.Path)
+    parser.add_argument("--results-root", required=True, type=pathlib.Path)
     parser.add_argument("--state-dir", required=True, type=pathlib.Path)
+    parser.add_argument("--independent-manifest", required=True, type=pathlib.Path)
     parser.add_argument("--expected-samples", type=int, default=201)
     args = parser.parse_args()
 
@@ -69,6 +88,17 @@ def main() -> None:
     if args.expected_samples == 201 and counts != {"Control": 67, "Adenoma": 67, "CRC": 67}:
         raise SystemExit(f"[ERROR] Expected frozen 67/67/67 design; observed {dict(counts)}")
 
+    with args.independent_manifest.open(newline="", encoding="utf-8") as handle:
+        independent_rows = list(csv.DictReader(handle, delimiter="\t"))
+    if not independent_rows or "sample_id" not in independent_rows[0]:
+        raise SystemExit("[ERROR] Independent manifest is empty or lacks sample_id")
+    independent = [row["sample_id"] for row in independent_rows]
+    if len(independent) != len(set(independent)) or not set(independent).issubset(ids):
+        raise SystemExit("[ERROR] Independent manifest is duplicated or not nested in production manifest")
+    if args.expected_samples == 201 and len(independent) != 30:
+        raise SystemExit(f"[ERROR] Expected 30 independent-subset samples; observed {len(independent)}")
+    independent_set = set(independent)
+
     state = args.state_dir.resolve()
     sample_state = state / "samples"
     completion: list[dict[str, str]] = []
@@ -82,18 +112,58 @@ def main() -> None:
             sample_state / f"{sample}.retained_outputs.tsv",
             args.scratch_root.resolve() / sample,
         )
+        sample_root = args.results_root.resolve() / "YachidaS_2019" / sample
+        completion_values = read_key_value_table(sample_root / "sample_completion.tsv")
+        baseline_profiles = count_success(sample_root / "profiles" / "baseline")
+        independent_profiles = count_success(sample_root / "profiles" / "independent")
+        community_profiles = count_success(sample_root / "profiles" / "community")
+        expected_independent = 60 if sample in independent_set else 0
+        expected_total = 1 + expected_independent + 7
+        observed_total = baseline_profiles + independent_profiles + community_profiles
+        expected_completion = {
+            "sample_id": sample,
+            "condition": row["Target_Condition"],
+            "independent_subset": "1" if sample in independent_set else "0",
+            "expected_profiles": str(expected_total),
+            "observed_profiles": str(expected_total),
+            "community_design_rows": "7",
+            "independent_design_rows": str(expected_independent),
+        }
+        mismatches = {
+            field: (completion_values.get(field), expected)
+            for field, expected in expected_completion.items()
+            if completion_values.get(field) != expected
+        }
+        if mismatches:
+            raise SystemExit(f"[ERROR] Sample-completion mismatch for {sample}: {mismatches}")
+        if (baseline_profiles, independent_profiles, community_profiles, observed_total) != (
+            1, expected_independent, 7, expected_total
+        ):
+            raise SystemExit(
+                f"[ERROR] Profile topology mismatch for {sample}: baseline={baseline_profiles}, "
+                f"independent={independent_profiles}, community={community_profiles}, "
+                f"total={observed_total}"
+            )
         record = {
             "sample_id": sample,
             "condition": row["Target_Condition"],
             "batch_id": row["batch_id"],
             "retained_outputs": str(outputs),
+            "baseline_profiles": str(baseline_profiles),
+            "independent_profiles": str(independent_profiles),
+            "community_profiles": str(community_profiles),
+            "observed_profiles": str(observed_total),
             "status": "PASS",
         }
         completion.append(record)
         by_batch[row["batch_id"]].append(record)
         print(f"[OK] {sample}: {outputs} retained outputs")
 
-    fields = ["sample_id", "condition", "batch_id", "retained_outputs", "status"]
+    fields = [
+        "sample_id", "condition", "batch_id", "retained_outputs",
+        "baseline_profiles", "independent_profiles", "community_profiles",
+        "observed_profiles", "status",
+    ]
     for batch, batch_rows in sorted(by_batch.items()):
         root = state / "batches" / batch
         write_table(root / "batch_completion.tsv", fields, batch_rows)
@@ -106,17 +176,21 @@ def main() -> None:
     write_table(seal / "dataset_completion.tsv", fields, completion)
     manifest_copy = seal / "pilot_batched.tsv"
     manifest_copy.write_bytes(args.manifest.read_bytes())
+    independent_copy = seal / "independent_10_per_condition.tsv"
+    independent_copy.write_bytes(args.independent_manifest.read_bytes())
     (seal / "SUCCESS").write_text(
         "dataset\tYachidaS_2019\n"
         f"samples\t{len(completion)}\n"
         f"batches\t{len(by_batch)}\n"
+        f"independent_subset\t{len(independent)}\n"
+        f"profiles\tbaseline={len(completion)};independent={len(independent) * 60};community={len(completion) * 7}\n"
         "conditions\tControl=67;Adenoma=67;CRC=67\n"
         "status\tPASS\n",
         encoding="utf-8",
     )
     sealed = [
         seal / "dataset_completion.tsv", seal / "dataset_completion.tsv.sha256",
-        manifest_copy, seal / "SUCCESS",
+        manifest_copy, independent_copy, seal / "SUCCESS",
     ]
     (seal / "production_seal.sha256").write_text(
         "".join(f"{digest(path)}  {path.name}\n" for path in sealed), encoding="utf-8"
