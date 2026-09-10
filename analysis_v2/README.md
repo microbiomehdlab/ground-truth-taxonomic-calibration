@@ -47,6 +47,9 @@ common-profiler intersection, records every exclusion, and stamps its output
 `DEVELOPMENT_ONLY`; see `LEGACY_NATIVE_DEVELOPMENT.md`. These outputs cannot
 support manuscript claims and are replaced, without changing downstream
 interfaces, when the sealed strict-production cohorts become available.
+`run_legacy_biomarker_development.sbatch` runs the complete artificial-marker,
+disease-marker, reporting, and calibration-linkage stack on that temporary
+input while preserving the development-only boundary.
 
 Planned implementation order:
 

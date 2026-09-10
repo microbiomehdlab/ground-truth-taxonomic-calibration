@@ -70,3 +70,19 @@ availability may differ. All reports derived from this adapter must inherit
 the development-only status. When strict outputs are complete, replace this
 adapter output with the canonical input produced by the definitive cohort
 builder; downstream model and reporting interfaces remain unchanged.
+
+## Biomarker-propagation development
+
+`run_legacy_biomarker_development.sh` consumes a completed legacy development
+input and runs the pooled artificial-target, phenotype-stratified artificial-
+target, and disease-biomarker modules without mixing their inferential roles.
+It constructs sample metadata from the frozen Feng and Zeller manifests after
+restricting them to samples actually present in the canonical table. The
+artificial, disease, and calibration-linkage reports are stored in a new output
+tree, inherit `DEVELOPMENT_ONLY`, and are sealed independently.
+
+Submit the combined workflow through
+`analysis_v2/run_legacy_biomarker_development.sbatch` on the cluster. The job
+requests four CPUs, 64 GB RAM, and two days; it fails closed unless the sealed
+canonical input, paired endpoints, frozen manifests, and analysis image are
+present. The output directory must be new or empty.
