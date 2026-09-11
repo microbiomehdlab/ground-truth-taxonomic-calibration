@@ -7,12 +7,18 @@ with open(a.shard_manifest,newline='',encoding='utf-8') as h: shards=[r for r in
 if not shards: raise SystemExit('[ERROR] no expected shards')
 files = (['paired_da_results.tsv','sample_feature_log2_changes.tsv'] if a.kind=='paired' else
          ['primary_disease_da_results.tsv','sensitivity_bmi_disease_da_results.tsv','disease_da_exclusions.tsv','disease_sample_panel_audit.tsv'])
-seen={name:set() for name in files}; counts={}
+counts={}
 for name in files:
     output=out/name; header=None; total=0
     with output.open('w',newline='',encoding='utf-8') as oh:
         writer=None
         for shard in shards:
+            # Shards are disjoint by construction. Validate that every output row
+            # belongs to its declared shard, then retain duplicate signatures only
+            # for the current shard. This bounds RAM by the largest shard instead of
+            # the full merged result while still rejecting within- and cross-shard
+            # identity violations.
+            shard_seen=set()
             d=Path(shard['directory'])/(a.model_subdir or '')
             if not (d/'SUCCESS').is_file(): raise SystemExit(f"[ERROR] incomplete shard: {d}")
             path=d/name
@@ -22,9 +28,13 @@ for name in files:
                 if header is None: header=reader.fieldnames; writer=csv.DictWriter(oh,fieldnames=header,delimiter='\t',lineterminator='\n'); writer.writeheader()
                 elif reader.fieldnames != header: raise SystemExit(f'[ERROR] schema mismatch: {path}')
                 for row in reader:
+                    if row.get('cohort') != shard['cohort'] or row.get('analysis_population') != shard['population']:
+                        raise SystemExit(f'[ERROR] row outside declared shard in {path}')
+                    if shard['target_label'] != 'ALL' and row.get('target_label') != shard['target_label']:
+                        raise SystemExit(f'[ERROR] target outside declared shard in {path}')
                     signature=tuple(row[x] for x in header)
-                    if signature in seen[name]: raise SystemExit(f'[ERROR] duplicate row while merging {name}')
-                    seen[name].add(signature); writer.writerow(row); total+=1
+                    if signature in shard_seen: raise SystemExit(f'[ERROR] duplicate row within shard while merging {name}')
+                    shard_seen.add(signature); writer.writerow(row); total+=1
     counts[name]=total
 settings='paired_da_settings.tsv' if a.kind=='paired' else 'disease_da_settings.tsv'
 first=Path(shards[0]['directory'])/(a.model_subdir or '')/settings
