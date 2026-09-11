@@ -27,7 +27,7 @@ replication.
 | Obtain target genomes | `spikes/scripts/spikein/download_refs_ncbi.sh` | versioned accessions, NCBI reports, FASTA checksums |
 | Build and freeze pools | `spikes/README.md` | settings, seeds, pair counts, checksums, preproduction audit |
 | Freeze cohorts | `datasets/CRC_MANIFESTS.md`, `datasets/yachida/README.md` | eligibility, run accessions, URLs, sizes, MD5s, selection provenance |
-| Strict preprocessing and profiling | `datasets/submit_crc_batch.sh`, `datasets/yachida/submit_batch.sh` | pinned MetaShotgunPrep commit, host/database/image identity, receipts and output checksums |
+| Strict preprocessing and profiling | `datasets/submit_crc_rolling.sh`, `datasets/yachida/submit_batch.sh` | bounded verified input staging, pinned MetaShotgunPrep commit, host/database/image identity, receipts and output checksums |
 | Audit batches | `run_yachida_batch_audit.sbatch` and `run_yachida_production_audit.sbatch` | rehashed receipts, sealed batches, dataset seal, failure/retry ledger |
 | Pure-pool assignment | `run_yachida_pure_pool_audit.sbatch` | systematic full-pool sample, native profiles, checksummed summary |
 | Assembly-choice sensitivity | `datasets/yachida/submit_assembly_sensitivity.sh` | two additive clean-assembly arms on the frozen 30-sample independent subset; original production remains unchanged |

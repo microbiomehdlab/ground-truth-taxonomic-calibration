@@ -152,6 +152,27 @@ def verify_checksum_sidecar(path: pathlib.Path) -> None:
         raise SystemExit(f"[ERROR] input provenance checksum mismatch: {path}")
 
 
+def verify_staged_inputs(path: pathlib.Path, sample: str) -> tuple[pathlib.Path, pathlib.Path]:
+    verify_checksum_sidecar(path)
+    with path.open(newline="", encoding="utf-8") as handle:
+        rows = list(csv.DictReader(handle, delimiter="\t"))
+    if not rows or {row["sample_id"] for row in rows} != {sample}:
+        raise SystemExit(f"[ERROR] invalid staged-input provenance for {sample}: {path}")
+    values = {(row["assembled_r1"], row["assembled_r2"], row["assembled_r1_sha256"],
+               row["assembled_r2_sha256"], row["assembled_r1_bytes"], row["assembled_r2_bytes"])
+              for row in rows}
+    if len(values) != 1:
+        raise SystemExit(f"[ERROR] inconsistent assembled inputs in provenance: {path}")
+    r1_text, r2_text, r1_sha, r2_sha, r1_bytes, r2_bytes = values.pop()
+    assembled = (pathlib.Path(r1_text), pathlib.Path(r2_text))
+    for mate, expected_sha, expected_bytes in zip(assembled, (r1_sha, r2_sha),
+                                                   (r1_bytes, r2_bytes)):
+        if (not mate.is_file() or mate.stat().st_size != int(expected_bytes)
+                or checksum(mate, "sha256") != expected_sha):
+            raise SystemExit(f"[ERROR] staged assembled input failed verification: {mate}")
+    return assembled
+
+
 def write_input_provenance(path: pathlib.Path, sample: str, runs: list[dict[str, object]],
                            assembled_r1: pathlib.Path, assembled_r2: pathlib.Path) -> None:
     fields = [
@@ -193,6 +214,11 @@ def main() -> None:
     parser.add_argument("--state-dir", required=True, type=pathlib.Path)
     parser.add_argument("--runner", required=True, type=pathlib.Path)
     parser.add_argument("--delete-inputs-after-verification", action="store_true")
+    mode = parser.add_mutually_exclusive_group()
+    mode.add_argument("--stage-only", action="store_true",
+                      help="download, verify, assemble, and stop before the runner")
+    mode.add_argument("--run-staged-only", action="store_true",
+                      help="require verified staged inputs and run without network access")
     args = parser.parse_args()
 
     with args.manifest.open(newline="", encoding="utf-8") as handle:
@@ -217,6 +243,7 @@ def main() -> None:
     receipt = state_dir / f"{args.sample_id}.retained_outputs.tsv"
     input_provenance = state_dir / f"{args.sample_id}.input_provenance.tsv"
     verified_marker = state_dir / f"{args.sample_id}.verified"
+    staged_marker = state_dir / f"{args.sample_id}.staged"
     if verified_marker.is_file() and receipt.is_file() and input_provenance.is_file():
         verify_checksum_sidecar(input_provenance)
         outputs = verify_receipt(receipt, work)
@@ -225,31 +252,43 @@ def main() -> None:
             safe_cleanup(work)
         return
 
-    work.mkdir(parents=True, exist_ok=True)
-    (work / SENTINEL).write_text("managed disposable sample directory\n", encoding="utf-8")
-    run_root = work / "raw" / "runs"
-    run_root.mkdir(parents=True, exist_ok=True)
-    mate_paths: dict[int, list[pathlib.Path]] = {1: [], 2: []}
-    for run in runs:
-        accession = str(run["run_accession"])
-        for mate in (1, 2):
-            destination = run_root / f"{accession}_{mate}.fastq.gz"
-            download(str(run[f"fastq{mate}_url"]), destination,
-                     str(run[f"fastq{mate}_md5"]), int(run[f"fastq{mate}_bytes"]))
-            mate_paths[mate].append(destination)
+    if args.run_staged_only:
+        assembled_r1, assembled_r2 = verify_staged_inputs(input_provenance, args.sample_id)
+        print(f"[PASS] verified staged inputs for {args.sample_id}")
+    else:
+        work.mkdir(parents=True, exist_ok=True)
+        (work / SENTINEL).write_text("managed disposable sample directory\n", encoding="utf-8")
+        run_root = work / "raw" / "runs"
+        run_root.mkdir(parents=True, exist_ok=True)
+        mate_paths: dict[int, list[pathlib.Path]] = {1: [], 2: []}
+        for run in runs:
+            accession = str(run["run_accession"])
+            for mate in (1, 2):
+                destination = run_root / f"{accession}_{mate}.fastq.gz"
+                download(str(run[f"fastq{mate}_url"]), destination,
+                         str(run[f"fastq{mate}_md5"]), int(run[f"fastq{mate}_bytes"]))
+                mate_paths[mate].append(destination)
 
-    assembled_root = work / "raw" / "assembled"
-    assembled_root.mkdir(parents=True, exist_ok=True)
-    assembled_r1 = assembled_root / f"{args.sample_id}_1.fastq.gz"
-    assembled_r2 = assembled_root / f"{args.sample_id}_2.fastq.gz"
-    concatenate_gzip_members(mate_paths[1], assembled_r1)
-    concatenate_gzip_members(mate_paths[2], assembled_r2)
-    if assembled_r1.stat().st_size != sum(path.stat().st_size for path in mate_paths[1]):
-        raise SystemExit("[ERROR] assembled R1 byte count does not equal its gzip members")
-    if assembled_r2.stat().st_size != sum(path.stat().st_size for path in mate_paths[2]):
-        raise SystemExit("[ERROR] assembled R2 byte count does not equal its gzip members")
-    write_input_provenance(input_provenance, args.sample_id, runs, assembled_r1, assembled_r2)
-    print(f"[PASS] assembled {len(runs)} verified paired runs for {args.sample_id}")
+        assembled_root = work / "raw" / "assembled"
+        assembled_root.mkdir(parents=True, exist_ok=True)
+        assembled_r1 = assembled_root / f"{args.sample_id}_1.fastq.gz"
+        assembled_r2 = assembled_root / f"{args.sample_id}_2.fastq.gz"
+        concatenate_gzip_members(mate_paths[1], assembled_r1)
+        concatenate_gzip_members(mate_paths[2], assembled_r2)
+        if assembled_r1.stat().st_size != sum(path.stat().st_size for path in mate_paths[1]):
+            raise SystemExit("[ERROR] assembled R1 byte count does not equal its gzip members")
+        if assembled_r2.stat().st_size != sum(path.stat().st_size for path in mate_paths[2]):
+            raise SystemExit("[ERROR] assembled R2 byte count does not equal its gzip members")
+        write_input_provenance(input_provenance, args.sample_id, runs, assembled_r1, assembled_r2)
+        staged_marker.write_text(
+            f"sample_id\t{args.sample_id}\ninput_provenance\t{input_provenance}\n",
+            encoding="utf-8",
+        )
+        print(f"[PASS] assembled {len(runs)} verified paired runs for {args.sample_id}")
+
+    if args.stage_only:
+        print(f"[STAGED] verified inputs ready for compute: {args.sample_id}")
+        return
 
     environment = os.environ.copy()
     environment.update({
@@ -267,6 +306,7 @@ def main() -> None:
         f"input_provenance\t{input_provenance}\n",
         encoding="utf-8",
     )
+    staged_marker.unlink(missing_ok=True)
     print(f"[OK] verified {len(outputs)} retained outputs for {args.sample_id}")
     if args.delete_inputs_after_verification:
         safe_cleanup(work)

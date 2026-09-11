@@ -26,8 +26,13 @@ For publication reproduction, use the version-controlled manifests under
 `fengq/manifests/` and `zellerg/manifests/`, not the historical bulk download
 commands below. The frozen manifests preserve eligibility, deterministic
 independent-subset membership, ENA run order, URLs, byte counts, MD5 values,
-and provenance. See [`CRC_MANIFESTS.md`](CRC_MANIFESTS.md) and submit them with
-`datasets/submit_crc_batch.sh` after configuring an ignored `CRC_ENV` file.
+and provenance. See [`CRC_MANIFESTS.md`](CRC_MANIFESTS.md). After configuring an
+ignored `CRC_ENV` file, use [`submit_crc_rolling.sh`](submit_crc_rolling.sh) for
+full production. It separates verified input staging from computation, limits
+simultaneous ENA downloads, and maintains independent rolling compute lanes;
+see [`CRC_ROLLING_PRODUCTION.md`](CRC_ROLLING_PRODUCTION.md). The older
+`submit_crc_batch.sh` remains useful for a single-sample smoke test or targeted
+retry.
 
 The generic `fengq_download.sh` and `zellerg_download.sh` helpers are retained
 for exploratory acquisition and backward compatibility. They are not the

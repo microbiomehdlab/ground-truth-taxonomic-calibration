@@ -14,12 +14,14 @@ source "$CRC_ENV"
 : "${CRC_STATE_DIR:?set in CRC_ENV}"
 : "${INDEPENDENT_MANIFEST:?set in CRC_ENV}"
 
-line="$(awk -F'\t' -v task="${SLURM_ARRAY_TASK_ID:?}" 'NR > 1 && ++seen == task {print; exit}' "$BATCH_MANIFEST")"
-[[ -n "$line" ]] || { echo "[ERROR] No manifest row for array task $SLURM_ARRAY_TASK_ID" >&2; exit 1; }
+manifest_index=$(( ${MANIFEST_INDEX_OFFSET:-0} + ${SLURM_ARRAY_TASK_ID:?} ))
+line="$(awk -F'\t' -v task="$manifest_index" 'NR > 1 && ++seen == task {print; exit}' "$BATCH_MANIFEST")"
+[[ -n "$line" ]] || { echo "[ERROR] No manifest row for index $manifest_index" >&2; exit 1; }
 sample_id="$(printf '%s\n' "$line" | cut -f1)"
 echo "[INFO] Job: ${SLURM_JOB_ID}_${SLURM_ARRAY_TASK_ID}"
 echo "[INFO] Production manifest: $BATCH_MANIFEST"
 echo "[INFO] Sample: $sample_id"
+echo "[INFO] Manifest index: $manifest_index"
 echo "[INFO] Delete verified scratch: ${DELETE_INPUTS:-0}"
 
 # The downstream runner uses this historical variable name; CRC_ENV is the
@@ -33,4 +35,5 @@ args=(
   --runner "$ROOT/datasets/yachida/run_full_streaming_sample.sh"
 )
 [[ "${DELETE_INPUTS:-0}" == 1 ]] && args+=(--delete-inputs-after-verification)
+[[ "${CRC_STAGED_ONLY:-0}" == 1 ]] && args+=(--run-staged-only)
 python3 "$ROOT/datasets/stream_multirun_sample.py" "${args[@]}"

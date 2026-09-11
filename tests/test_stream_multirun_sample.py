@@ -62,17 +62,22 @@ class MultiRunStreamingTests(unittest.TestCase):
             )
             runner.chmod(0o755)
             environment = {**os.environ, "RETAINED": str(retained), "CRC_DOWNLOAD_ATTEMPTS": "1"}
-            subprocess.run([
+            common = [
                 "python3", str(ROOT / "datasets/stream_multirun_sample.py"),
                 "--manifest", str(manifest), "--sample-id", "sample",
                 "--scratch-root", str(scratch), "--state-dir", str(state),
                 "--runner", str(runner),
-            ], check=True, env=environment)
+            ]
+            subprocess.run([*common, "--stage-only"], check=True, env=environment)
+            self.assertFalse((retained / "assembled.txt").exists())
+            self.assertTrue((state / "sample.staged").is_file())
+            subprocess.run([*common, "--run-staged-only"], check=True, env=environment)
             self.assertEqual((retained / "assembled.txt").read_bytes(), b"first-mate1\nsecond-mate1\n")
             provenance = (state / "sample.input_provenance.tsv").read_text(encoding="utf-8")
             self.assertLess(provenance.index("ERR1"), provenance.index("ERR2"))
             self.assertTrue((state / "sample.input_provenance.tsv.sha256").is_file())
             self.assertTrue((state / "sample.verified").is_file())
+            self.assertFalse((state / "sample.staged").exists())
 
 
 if __name__ == "__main__":
