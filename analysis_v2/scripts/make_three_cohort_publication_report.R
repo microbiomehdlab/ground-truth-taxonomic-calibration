@@ -77,13 +77,22 @@ write_tsv(primary_artificial, file.path(outdir, "figure_source", "artificial_bio
 write_tsv(primary_disease, file.path(outdir, "figure_source", "disease_biomarkers_q005.tsv"))
 write_tsv(primary_linkage, file.path(outdir, "figure_source", "calibration_linkage_q005.tsv"))
 
+# Retention and Jaccard are undefined when a context contains no significant
+# baseline disease biomarkers. Preserve those rows in the source table, but
+# exclude them explicitly from the retention plot rather than allowing ggplot
+# to discard them with an opaque warning.
+disease_retention <- primary_disease[
+  is.finite(as.numeric(primary_disease$overall_baseline_retention)), , drop = FALSE]
+write_tsv(disease_retention,
+          file.path(outdir, "figure_source", "disease_biomarker_retention_defined_q005.tsv"))
+
 theme_publication <- theme_bw(base_size = 10) +
   theme(legend.position = "bottom", panel.grid.minor = element_blank())
 p1 <- ggplot(primary_artificial, aes(as.numeric(dose_percent_nominal), as.numeric(target_recall),
   color = profiler_display, group = profiler_display)) + geom_line() + geom_point() +
   facet_grid(analysis_population ~ cohort) + scale_y_continuous(limits = c(0, 1)) +
   labs(x = "Implanted target fraction (%)", y = "Artificial-target recall", color = "Profiler") + theme_publication
-p2 <- ggplot(primary_disease, aes(100 * as.numeric(spike_fraction_target),
+p2 <- ggplot(disease_retention, aes(100 * as.numeric(spike_fraction_target),
   as.numeric(overall_baseline_retention), color = profiler_display,
   group = interaction(profiler_display, contrast))) + geom_line(alpha = .6) + geom_point() +
   facet_grid(analysis_population ~ cohort) + scale_y_continuous(limits = c(0, 1)) +
@@ -117,12 +126,15 @@ if (!is.null(assembly_report)) {
   writeLines(normalizePath(assembly_report), file.path(outdir, "provenance", "assembly_sensitivity_report.txt"))
   extra_inputs <- c(extra_inputs, marker)
 }
-diagnostics <- data.frame(metric = c("cohorts", "artificial_rows", "disease_rows", "linkage_rows", "status"),
-  value = c(length(observed), nrow(artificial), nrow(disease), nrow(linkage), status))
+diagnostics <- data.frame(metric = c("cohorts", "artificial_rows", "disease_rows", "linkage_rows",
+  "primary_disease_rows", "defined_disease_retention_rows", "undefined_disease_retention_rows", "status"),
+  value = c(length(observed), nrow(artificial), nrow(disease), nrow(linkage), nrow(primary_disease),
+    nrow(disease_retention), nrow(primary_disease) - nrow(disease_retention), status))
 write_tsv(diagnostics, file.path(outdir, "diagnostics", "publication_report_diagnostics.tsv"))
 writeLines(c("# Draft overview captions", "",
   "All panels preserve cohort-specific estimates and separate independent from community spike experiments.",
   "Artificial-target panels compare spiked profiles with matched unspiked profiles; disease-marker panels measure stability of native phenotype associations after the same controlled perturbation.",
+  "Disease-biomarker retention is undefined and omitted when a context has no significant baseline disease biomarkers; omitted-row counts are reported in diagnostics.",
   "Response ratios quantify recovery relative to exact read implantation on each profiler's native abundance scale and are not cellular-abundance estimates."),
   file.path(outdir, "captions.md"))
 manifest <- data.frame(field = c("status", "expected_cohorts", "created_at"),

@@ -12,6 +12,8 @@ for (cohort in cohorts) {
   d <- data.frame(cohort=cohort,analysis_population="independent",profiler="kraken2_bracken",
     contrast="CRC_vs_Control",q_threshold=.05,spike_fraction_target=.01,
     overall_baseline_retention=.85,median_jaccard=.8)
+  d <- rbind(d, transform(d, contrast="Adenoma_vs_Control",
+    overall_baseline_retention=NA_real_, median_jaccard=NA_real_))
   l <- data.frame(analysis_scope="pooled_primary",cohort=cohort,analysis_population="independent",
     profiler="kraken2_bracken",target_label="Bfrag",q_threshold=.05,dose_percent_nominal=1,
     median_response_ratio=1.05,off_target_enriched_calls=2)
@@ -27,6 +29,7 @@ status <- system2("Rscript",c(script,"--artificial-reports",paste(artificial,col
   "--report-status","DEVELOPMENT_ONLY","--outdir",out))
 stopifnot(status==0,file.exists(file.path(out,"SUCCESS")),file.exists(file.path(out,"DEVELOPMENT_ONLY.txt")),
   file.exists(file.path(out,"figures","artificial_target_recall.pdf")),
+  file.exists(file.path(out,"figure_source","disease_biomarker_retention_defined_q005.tsv")),
   file.exists(file.path(out,"tables","three_cohort_disease_biomarkers.tsv")),
   file.exists(file.path(out,"provenance","publication_report.sha256")))
 message("[PASS] three-cohort publication-report fixture")
