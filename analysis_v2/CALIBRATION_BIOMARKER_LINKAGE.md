@@ -13,9 +13,9 @@ ratio `R = recovered_spike_signal / implanted_target_fraction`. `R = 1` is
 read-proportional response on a profiler's native abundance scale. It is not
 cellular-abundance accuracy. Exact achieved fractions are retained, while joins
 and summaries use the frozen nominal grid (`0.01%, 0.05%, 0.1%, 0.5%, 1%, 5%`).
-The historical 10% community dose remains in the source evidence but is
-excluded from this six-dose linkage and recorded in
-`diagnostics/excluded_dose_rows.tsv`; any other off-grid dose is rejected.
+Independent and community target fractions are validated against their separate
+six- and seven-level grids. Total community mixture dose is not substituted for
+the target-specific fraction used by calibration and biomarker models.
 
 For descriptive presentation, context-level median `R` is labelled
 `under_response` below 0.8, `read_proportional_band` from 0.8 through 1.2, and

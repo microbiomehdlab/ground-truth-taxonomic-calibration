@@ -43,15 +43,17 @@ for (field in c("spike_fraction_target", "q_threshold", "target_called", "target
 if (!nrow(endpoints) || !nrow(metrics) || anyNA(endpoints[c("spike_fraction_target", "response_ratio")]) ||
     anyNA(metrics[c("spike_fraction_target", "q_threshold", "target_called")])) stop("Invalid linkage inputs.")
 
-nominal <- c(.0001, .0005, .001, .005, .01, .05)
-legacy_community_dose <- .1
-map_dose <- function(x, source_table) {
-  mapped <- vapply(x, function(d) nominal[which.min(abs(nominal-d))], numeric(1))
+independent_doses <- c(.0001,.0005,.001,.005,.01,.05)
+community_doses <- c(.00001,.00005,.0001,.0005,.001,.005,.01)
+map_dose <- function(x, population, source_table) {
+  if(any(!population %in% c("independent","community"))) stop("Unknown analysis population in dose mapping.")
+  mapped <- vapply(seq_along(x),function(i) {
+    grid <- if(population[i]=="community") community_doses else independent_doses
+    grid[which.min(abs(grid-x[i]))]
+  },numeric(1))
   included <- abs(x-mapped) <= pmax(1e-10, mapped*.001)
-  known_legacy <- abs(x-legacy_community_dose) <= legacy_community_dose*.001
-  unexpected <- !included & !known_legacy
-  if (any(unexpected)) stop("Dose is neither on the frozen nominal grid nor the auditable legacy 10% community dose: ",
-                            paste(sort(unique(signif(x[unexpected],10))),collapse=", "))
+  if(any(!included)) stop("Target dose does not match its population-specific frozen grid: ",
+                          paste(sort(unique(signif(x[!included],10))),collapse=", "))
   excluded <- x[!included]
   audit <- if(length(excluded)) {
     counts <- table(format(excluded,digits=17,scientific=FALSE,trim=TRUE))
@@ -62,16 +64,18 @@ map_dose <- function(x, source_table) {
                     exclusion_reason=character(),stringsAsFactors=FALSE)
   list(mapped=mapped,included=included,audit=audit)
 }
-endpoint_doses <- map_dose(endpoints$spike_fraction_target,"paired_endpoints")
-metric_doses <- map_dose(metrics$spike_fraction_target,"biomarker_propagation_metrics")
+endpoint_doses <- map_dose(endpoints$spike_fraction_target,endpoints$analysis_population,"paired_endpoints")
+metric_doses <- map_dose(metrics$spike_fraction_target,metrics$analysis_population,"biomarker_propagation_metrics")
 excluded_dose_audit <- rbind(endpoint_doses$audit,metric_doses$audit)
 endpoints <- endpoints[endpoint_doses$included,,drop=FALSE]
 metrics <- metrics[metric_doses$included,,drop=FALSE]
 endpoints$dose_fraction_nominal <- endpoint_doses$mapped[endpoint_doses$included]
 metrics$dose_fraction_nominal <- metric_doses$mapped[metric_doses$included]
 if (!nrow(endpoints) || !nrow(metrics)) stop("No rows remain on the frozen six-dose reporting grid.")
-endpoints$dose_rank <- match(endpoints$dose_fraction_nominal, nominal)
-metrics$dose_rank <- match(metrics$dose_fraction_nominal, nominal)
+endpoints$dose_rank <- vapply(seq_len(nrow(endpoints)),function(i)
+  match(endpoints$dose_fraction_nominal[i],if(endpoints$analysis_population[i]=="community") community_doses else independent_doses),integer(1))
+metrics$dose_rank <- vapply(seq_len(nrow(metrics)),function(i)
+  match(metrics$dose_fraction_nominal[i],if(metrics$analysis_population[i]=="community") community_doses else independent_doses),integer(1))
 write.table(excluded_dose_audit,file.path(outdir,"diagnostics","excluded_dose_rows.tsv"),
             sep="\t",quote=FALSE,row.names=FALSE,na="NA")
 

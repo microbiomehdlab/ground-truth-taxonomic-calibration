@@ -61,19 +61,22 @@ if (!nrow(metrics) || anyNA(metrics[c("spike_fraction_target", "q_threshold", "t
 # Achieved fractions differ slightly because paired-read counts are integers and
 # library sizes differ. Aggregate only on the frozen experimental dose grid,
 # while preserving the exact achieved fraction in the detailed evidence table.
-nominal_doses <- c(0.0001, 0.0005, 0.001, 0.005, 0.01, 0.05)
-legacy_community_dose <- 0.1
-map_frozen_dose <- function(x, source_table) {
-  nearest <- vapply(x, function(dose) nominal_doses[which.min(abs(nominal_doses-dose))], numeric(1))
+independent_doses <- c(0.0001, 0.0005, 0.001, 0.005, 0.01, 0.05)
+community_doses <- c(0.00001, 0.00005, 0.0001, 0.0005, 0.001, 0.005, 0.01)
+map_frozen_dose <- function(x, population, source_table) {
+  if (any(!population %in% c("independent","community"))) stop("Unknown analysis population in dose mapping.")
+  nearest <- vapply(seq_along(x), function(i) {
+    grid <- if(population[i]=="community") community_doses else independent_doses
+    grid[which.min(abs(grid-x[i]))]
+  }, numeric(1))
   included <- abs(x-nearest) <= pmax(1e-10, nearest*.001)
-  known_legacy <- abs(x-legacy_community_dose) <= legacy_community_dose*.001
-  unexpected <- !included & !known_legacy
-  if (any(unexpected))
-    stop("An achieved fraction is neither on the frozen six-dose grid nor the auditable legacy 10% community dose: ",
-         paste(sort(unique(signif(x[unexpected], 10))), collapse=", "))
+  if (any(!included))
+    stop("An achieved target fraction does not match its population-specific frozen grid: ",
+         paste(sort(unique(signif(x[!included], 10))), collapse=", "))
   list(mapped=nearest, included=included, source=source_table)
 }
-metric_doses <- map_frozen_dose(metrics$spike_fraction_target, "biomarker_propagation_metrics")
+metric_doses <- map_frozen_dose(metrics$spike_fraction_target,metrics$analysis_population,
+                                "biomarker_propagation_metrics")
 excluded_metric_doses <- metrics$spike_fraction_target[!metric_doses$included]
 excluded_dose_audit <- if (length(excluded_metric_doses)) {
   counts <- table(format(excluded_metric_doses, digits=17, scientific=FALSE, trim=TRUE))
@@ -87,7 +90,8 @@ nearest_nominal <- metric_doses$mapped[metric_doses$included]
 if (!nrow(metrics)) stop("No rows remain on the frozen six-dose reporting grid.")
 metrics$dose_fraction_nominal <- nearest_nominal
 metrics$dose_percent_nominal <- 100 * nearest_nominal
-metrics$dose_rank <- match(nearest_nominal, nominal_doses)
+metrics$dose_rank <- vapply(seq_len(nrow(metrics)),function(i)
+  match(nearest_nominal[i],if(metrics$analysis_population[i]=="community") community_doses else independent_doses),integer(1))
 
 context_key <- c("analysis_scope", "cohort", "study", "analysis_population", "target_label", "assembly_arm",
                  "profiler", "contrast", "q_threshold")
@@ -181,7 +185,8 @@ if (!length(setdiff(call_required,names(calls)))) {
   calls$spike_fraction_target <- as.numeric(calls$spike_fraction_target)
   calls$q_value <- as.numeric(calls$q_value); calls$effect <- as.numeric(calls$effect)
   positive_calls <- calls$spike_fraction_target > 0
-  call_doses <- map_frozen_dose(calls$spike_fraction_target[positive_calls], "paired_da_results")
+  call_doses <- map_frozen_dose(calls$spike_fraction_target[positive_calls],calls$analysis_population[positive_calls],
+                                "paired_da_results")
   calls <- calls[positive_calls,,drop=FALSE]
   calls <- calls[call_doses$included,,drop=FALSE]
   calls$dose_fraction_nominal <- call_doses$mapped[call_doses$included]

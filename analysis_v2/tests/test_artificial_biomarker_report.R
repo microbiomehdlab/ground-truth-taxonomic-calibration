@@ -7,7 +7,7 @@ writeLines("status\tPASS", file.path(run, "SUCCESS")); writeLines("status\tPASS"
 writeLines("status\tPASS", file.path(run, "evaluation", "SUCCESS")); writeLines("status\tDEVELOPMENT_ONLY", file.path(run, "DEVELOPMENT_ONLY.txt"))
 metrics <- expand.grid(target_label=c("Pana", "Pint"), assembly_arm=c("original", "clean"),
   profiler=c("kraken2_bracken", "metaphlan4"), condition=c("Control", "CRC"),
-  spike_fraction_target=c(.0001, .001, .01, .1), q_threshold=c(.05, .1), stringsAsFactors=FALSE)
+  spike_fraction_target=c(.0001, .001, .01), q_threshold=c(.05, .1), stringsAsFactors=FALSE)
 metrics$cohort <- "yachida"; metrics$study <- "Study"; metrics$analysis_population <- "independent"
 metrics$contrast <- paste0("spiked_vs_matched_baseline__background_", metrics$condition)
 metrics$target_alias <- ifelse(metrics$target_label == "Pana", "Peptostreptococcus anaerobius", "Prevotella intermedia")
@@ -18,6 +18,10 @@ metrics$f1 <- ifelse(metrics$target_called == 1, 2/3, 0); metrics$target_effect 
 metrics$target_q_value <- ifelse(metrics$target_called == 1, .01, .5)
 metrics$target_effect_change_from_baseline <- metrics$target_effect
 metrics$baseline_reference_kind <- "structural_null"; metrics$biomarker_set_jaccard_vs_baseline <- NA
+community <- metrics
+community$analysis_population <- "community"
+community$spike_fraction_target <- community$spike_fraction_target/10
+metrics <- rbind(metrics,community)
 write.table(metrics, file.path(run, "evaluation", "biomarker_propagation_metrics.tsv"), sep="\t", quote=FALSE, row.names=FALSE, na="NA")
 calls <- data.frame(feature="target", effect=1, p_value=.01, q_value=.02, include=1)
 write.table(calls, file.path(run, "models", "paired_da_results.tsv"), sep="\t", quote=FALSE, row.names=FALSE)
@@ -36,19 +40,17 @@ result <- system2("Rscript", c(script, "--paired-run", pooled, "--secondary-pair
 status <- attr(result, "status"); if (is.null(status)) status <- 0L
 if (status != 0L) stop(paste(result, collapse="\n"))
 minimum <- read.delim(file.path(out, "tables", "minimum_detectable_dose.tsv"))
-stopifnot(file.exists(file.path(out, "SUCCESS")), nrow(minimum) == 48,
-          all(abs(minimum$minimum_detected_nominal_fraction - .001) < 1e-12),
-          all(abs(minimum$minimum_sustained_detected_nominal_fraction - .001) < 1e-12),
+expected_minimum <- ifelse(minimum$analysis_population=="community",.0001,.001)
+stopifnot(file.exists(file.path(out, "SUCCESS")), nrow(minimum) == 96,
+          all(abs(minimum$minimum_detected_nominal_fraction-expected_minimum)<1e-12),
+          all(abs(minimum$minimum_sustained_detected_nominal_fraction-expected_minimum)<1e-12),
           identical(sort(unique(minimum$analysis_scope)),c("phenotype_stratified_secondary","pooled_primary")),
-          all(abs(minimum$achieved_fraction_at_first_detection - .001) < 1e-12),
+          all(abs(minimum$achieved_fraction_at_first_detection-expected_minimum)<1e-12),
           file.exists(file.path(out, "figures", "artificial_target_recall.pdf")),
           file.exists(file.path(out, "figures", "off_target_discovery_burden.png")),
           file.exists(file.path(out, "provenance", "report.sha256")))
 summary <- read.delim(file.path(out, "tables", "artificial_biomarker_summary.tsv"))
 excluded <- read.delim(file.path(out,"diagnostics","excluded_dose_rows.tsv"))
-stopifnot(nrow(summary) == 48, all(summary$contexts %in% c(2,4)),
-          length(unique(summary$dose_fraction_nominal)) == 3,
-          nrow(excluded)==1, abs(excluded$spike_fraction_target-.1)<1e-12,
-          excluded$excluded_rows==48,
-          excluded$exclusion_reason=="outside_frozen_six_dose_reporting_grid")
+stopifnot(nrow(summary) == 96, all(summary$contexts %in% c(2,4)),
+          length(unique(summary$dose_fraction_nominal)) == 4,nrow(excluded)==0)
 cat("[PASS] artificial-biomarker report fixture\n")
