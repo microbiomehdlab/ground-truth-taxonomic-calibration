@@ -62,12 +62,29 @@ if (!nrow(metrics) || anyNA(metrics[c("spike_fraction_target", "q_threshold", "t
 # library sizes differ. Aggregate only on the frozen experimental dose grid,
 # while preserving the exact achieved fraction in the detailed evidence table.
 nominal_doses <- c(0.0001, 0.0005, 0.001, 0.005, 0.01, 0.05)
-nearest_nominal <- vapply(metrics$spike_fraction_target, function(dose) {
-  nominal_doses[which.min(abs(nominal_doses - dose))]
-}, numeric(1))
-tolerance <- pmax(1e-10, nearest_nominal * 0.001)
-if (any(abs(metrics$spike_fraction_target - nearest_nominal) > tolerance))
-  stop("An achieved fraction does not match the frozen six-dose grid within tolerance.")
+legacy_community_dose <- 0.1
+map_frozen_dose <- function(x, source_table) {
+  nearest <- vapply(x, function(dose) nominal_doses[which.min(abs(nominal_doses-dose))], numeric(1))
+  included <- abs(x-nearest) <= pmax(1e-10, nearest*.001)
+  known_legacy <- abs(x-legacy_community_dose) <= legacy_community_dose*.001
+  unexpected <- !included & !known_legacy
+  if (any(unexpected))
+    stop("An achieved fraction is neither on the frozen six-dose grid nor the auditable legacy 10% community dose: ",
+         paste(sort(unique(signif(x[unexpected], 10))), collapse=", "))
+  list(mapped=nearest, included=included, source=source_table)
+}
+metric_doses <- map_frozen_dose(metrics$spike_fraction_target, "biomarker_propagation_metrics")
+excluded_metric_doses <- metrics$spike_fraction_target[!metric_doses$included]
+excluded_dose_audit <- if (length(excluded_metric_doses)) {
+  counts <- table(format(excluded_metric_doses, digits=17, scientific=FALSE, trim=TRUE))
+  data.frame(source_table="biomarker_propagation_metrics",
+    spike_fraction_target=as.numeric(names(counts)), excluded_rows=as.integer(counts),
+    exclusion_reason="outside_frozen_six_dose_reporting_grid", stringsAsFactors=FALSE)
+} else data.frame(source_table=character(), spike_fraction_target=numeric(), excluded_rows=integer(),
+                  exclusion_reason=character(), stringsAsFactors=FALSE)
+metrics <- metrics[metric_doses$included,,drop=FALSE]
+nearest_nominal <- metric_doses$mapped[metric_doses$included]
+if (!nrow(metrics)) stop("No rows remain on the frozen six-dose reporting grid.")
 metrics$dose_fraction_nominal <- nearest_nominal
 metrics$dose_percent_nominal <- 100 * nearest_nominal
 metrics$dose_rank <- match(nearest_nominal, nominal_doses)
@@ -76,6 +93,8 @@ context_key <- c("analysis_scope", "cohort", "study", "analysis_population", "ta
                  "profiler", "contrast", "q_threshold")
 metrics <- metrics[do.call(order, metrics[c(context_key, "dose_rank")]), ]
 write.table(metrics, file.path(outdir, "figure_source", "artificial_biomarker_metrics.tsv"),
+            sep = "\t", quote = FALSE, row.names = FALSE, na = "NA")
+write.table(excluded_dose_audit, file.path(outdir, "diagnostics", "excluded_dose_rows.tsv"),
             sep = "\t", quote = FALSE, row.names = FALSE, na = "NA")
 
 contexts <- split(metrics, interaction(metrics[context_key], drop = TRUE, lex.order = TRUE))
@@ -161,7 +180,11 @@ call_required <- c("cohort","study","analysis_population","target_label","assemb
 if (!length(setdiff(call_required,names(calls)))) {
   calls$spike_fraction_target <- as.numeric(calls$spike_fraction_target)
   calls$q_value <- as.numeric(calls$q_value); calls$effect <- as.numeric(calls$effect)
-  calls$dose_fraction_nominal <- map <- vapply(calls$spike_fraction_target, function(d) nominal_doses[which.min(abs(nominal_doses-d))], numeric(1))
+  positive_calls <- calls$spike_fraction_target > 0
+  call_doses <- map_frozen_dose(calls$spike_fraction_target[positive_calls], "paired_da_results")
+  calls <- calls[positive_calls,,drop=FALSE]
+  calls <- calls[call_doses$included,,drop=FALSE]
+  calls$dose_fraction_nominal <- call_doses$mapped[call_doses$included]
   alias_key <- unique(metrics[c("analysis_scope","cohort","study","analysis_population","target_label","assembly_arm","profiler","contrast","target_alias")])
   calls <- merge(calls,alias_key,by=c("analysis_scope","cohort","study","analysis_population","target_label","assembly_arm","profiler","contrast"),all.x=TRUE)
   ledger <- do.call(rbind,lapply(sort(unique(metrics$q_threshold)),function(q) {

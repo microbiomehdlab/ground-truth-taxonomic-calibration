@@ -138,6 +138,9 @@ diagnostics, provenance, and checksums.
 - Exact achieved fractions are retained as evidence, but aggregation uses the
   six frozen nominal dose levels so integer read allocation cannot fragment a
   single experimental dose into several summary groups.
+- Historical community inputs also contain a 10% dose. It remains in canonical
+  and model evidence but is excluded at the six-dose reporting boundary, with
+  its exact value and row count recorded in each report's dose-exclusion audit.
 - This analysis complements rather than replaces disease-versus-control
   propagation, and its effects describe sequencing evidence rather than cells.
 

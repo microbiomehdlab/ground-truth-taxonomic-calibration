@@ -21,6 +21,9 @@ tables and graphics use the frozen nominal grid (`0.01%, 0.05%, 0.1%, 0.5%,
 1%, 5%`) so integer read-allocation differences cannot split one experimental
 dose into multiple groups. The minimum-dose table records both the nominal dose
 and its exact achieved fraction.
+Historical community data include an additional 10% dose. Those rows remain in
+the source analysis but are excluded from this six-dose report and recorded in
+`diagnostics/excluded_dose_rows.tsv`. Any other off-grid dose remains fatal.
 
 Run with:
 

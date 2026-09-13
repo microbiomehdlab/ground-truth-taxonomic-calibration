@@ -3,7 +3,7 @@ args<-commandArgs(trailingOnly=FALSE); file_arg<-grep("^--file=",args,value=TRUE
 repo<-normalizePath(file.path(dirname(sub("^--file=","",file_arg)),"../.."))
 root<-tempfile("linkage."); dir.create(root); out<-file.path(root,"out")
 conditions<-c("Control","CRC"); targets<-c("Pana","Pint"); profilers<-c("kraken2_bracken","metaphlan4")
-doses<-c(.0001,.001,.01); samples<-paste0("S",1:3)
+doses<-c(.0001,.001,.01,.1); samples<-paste0("S",1:3)
 e<-expand.grid(condition=conditions,target_label=targets,profiler=profilers,spike_fraction_target=doses,
  sample_id=samples,stringsAsFactors=FALSE)
 e$cohort<-"yachida";e$study<-"Study";e$analysis_population<-"independent";e$assembly_arm<-"original"
@@ -19,7 +19,10 @@ script<-file.path(repo,"analysis_v2/scripts/link_calibration_to_biomarkers.R")
 result<-system2("Rscript",c(script,"--endpoints",endpoints,"--biomarker-metrics",metrics,"--outdir",out,"--analysis-status","DEVELOPMENT_ONLY"),stdout=TRUE,stderr=TRUE)
 status<-attr(result,"status");if(is.null(status))status<-0L;if(status!=0L)stop(paste(result,collapse="\n"))
 linked<-read.delim(file.path(out,"figure_source","calibration_biomarker_linkage.tsv"))
-stopifnot(nrow(linked)==nrow(m),all(linked$biological_samples==3),
+excluded<-read.delim(file.path(out,"diagnostics","excluded_dose_rows.tsv"))
+stopifnot(nrow(linked)==sum(m$spike_fraction_target<.1),all(linked$biological_samples==3),
+ nrow(excluded)==2,all(abs(excluded$spike_fraction_target-.1)<1e-12),
+ identical(sort(excluded$source_table),c("biomarker_propagation_metrics","paired_endpoints")),
  file.exists(file.path(out,"tables","calibration_biomarker_associations.tsv")),
  file.exists(file.path(out,"figures","calibration_vs_target_effect.pdf")),
  file.exists(file.path(out,"provenance","linkage.sha256")),file.exists(file.path(out,"SUCCESS")))
