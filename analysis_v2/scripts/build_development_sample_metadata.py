@@ -26,6 +26,7 @@ def main():
     parser.add_argument("--canonical", required=True, type=Path)
     parser.add_argument("--feng-manifest", required=True, type=Path)
     parser.add_argument("--zeller-manifest", required=True, type=Path)
+    parser.add_argument("--yachida-manifest", type=Path)
     parser.add_argument("--output", required=True, type=Path)
     args = parser.parse_args()
 
@@ -49,6 +50,27 @@ def main():
                 raise SystemExit(f"[ERROR] duplicate metadata key: {key}")
             records[key] = {field: row[field] for field in required}
             records[key]["cohort"] = cohort
+
+    if args.yachida_manifest:
+        rows = read_tsv(args.yachida_manifest)
+        if not rows or "sample_id" not in rows[0]:
+            raise SystemExit(f"[ERROR] incomplete metadata manifest: {args.yachida_manifest}")
+        for row in rows:
+            key = ("yachida", row["sample_id"])
+            if key in records:
+                raise SystemExit(f"[ERROR] duplicate metadata key: {key}")
+            record = {
+                "sample_id": row["sample_id"],
+                "condition": row.get("condition") or row.get("Target_Condition") or "",
+                "study": row.get("study") or row.get("Study") or "",
+                "age": row.get("age") or row.get("Age") or "",
+                "sex": row.get("sex") or row.get("Gender") or row.get("Sex") or "",
+                "bmi": row.get("bmi") or row.get("BMI") or "",
+                "cohort": "yachida",
+            }
+            if not record["condition"] or not record["study"]:
+                raise SystemExit(f"[ERROR] incomplete Yachida metadata for {key}")
+            records[key] = record
 
     missing = sorted(wanted - set(records))
     if missing:

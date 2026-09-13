@@ -8,8 +8,11 @@ case "$PIPELINE_STAGE" in
  setup)
   mkdir -p "$OUTDIR"/{metadata,models,reports,provenance}
   printf 'status\tDEVELOPMENT_ONLY\nuse_for_manuscript\tNO\n' > "$OUTDIR/DEVELOPMENT_ONLY.txt"
-  python3 analysis_v2/scripts/build_development_sample_metadata.py --canonical "$canonical" \
-    --feng-manifest datasets/fengq/manifests/production_manifest.tsv --zeller-manifest datasets/zellerg/manifests/production_manifest.tsv --output "$metadata"
+  metadata_args=(--canonical "$canonical" \
+    --feng-manifest datasets/fengq/manifests/production_manifest.tsv \
+    --zeller-manifest datasets/zellerg/manifests/production_manifest.tsv --output "$metadata")
+  [[ -z "${YACHIDA_MANIFEST:-}" ]] || metadata_args+=(--yachida-manifest "$YACHIDA_MANIFEST")
+  python3 analysis_v2/scripts/build_development_sample_metadata.py "${metadata_args[@]}"
   python3 analysis_v2/scripts/build_biomarker_abundance_input.py --canonical "$canonical" --aliases "$aliases" --sample-metadata "$metadata" --outdir "$OUTDIR/common_input"
   python3 analysis_v2/scripts/shard_biomarker_model_input.py --profile-manifest "$OUTDIR/common_input/biomarker_profile_manifest.tsv" \
     --abundance-long "$OUTDIR/common_input/biomarker_abundance_long.tsv" --outdir "$inputs"
@@ -49,6 +52,6 @@ case "$PIPELINE_STAGE" in
   req=(models/artificial_pooled models/artificial_stratified models/disease reports/artificial reports/disease reports/calibration_linkage)
   successes=(); for d in "${req[@]}"; do test -s "$OUTDIR/$d/SUCCESS" || { echo "[ERROR] missing $d/SUCCESS" >&2; exit 1; }; successes+=("$OUTDIR/$d/SUCCESS"); done
   sha256sum "$canonical" "$DEV_INPUT_ROOT/endpoints/paired_endpoints.tsv" "$metadata" "${successes[@]}" > "$OUTDIR/provenance/development_run.sha256"
-  printf 'analysis\tlegacy_feng_zeller_biomarker_mapreduce\nstatus\tDEVELOPMENT_ONLY\ncompletion\tPASS\n' > "$OUTDIR/SUCCESS" ;;
+  printf 'analysis\tmixed_cohort_biomarker_mapreduce\nstatus\tDEVELOPMENT_ONLY\ncompletion\tPASS\n' > "$OUTDIR/SUCCESS" ;;
  *) echo "[ERROR] unknown stage $PIPELINE_STAGE" >&2; exit 2;;
 esac

@@ -50,6 +50,9 @@ interfaces, when the sealed strict-production cohorts become available.
 `run_legacy_biomarker_development.sbatch` runs the complete artificial-marker,
 disease-marker, reporting, and calibration-linkage stack on that temporary
 input while preserving the development-only boundary.
+The sealed Yachida profiles can be added to that temporary input for a complete
+three-cohort engineering run; see `THREE_COHORT_DEVELOPMENT.md`. The mixed run
+remains `DEVELOPMENT_ONLY` and refits all downstream models.
 
 Planned implementation order:
 
