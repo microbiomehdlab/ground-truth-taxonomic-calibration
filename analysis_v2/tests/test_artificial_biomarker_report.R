@@ -20,7 +20,7 @@ metrics$target_effect_change_from_baseline <- metrics$target_effect
 metrics$baseline_reference_kind <- "structural_null"; metrics$biomarker_set_jaccard_vs_baseline <- NA
 community <- metrics
 community$analysis_population <- "community"
-community$spike_fraction_target <- community$spike_fraction_target/10
+community$spike_fraction_target <- community$spike_fraction_target/10*.972
 metrics <- rbind(metrics,community)
 write.table(metrics, file.path(run, "evaluation", "biomarker_propagation_metrics.tsv"), sep="\t", quote=FALSE, row.names=FALSE, na="NA")
 calls <- data.frame(feature="target", effect=1, p_value=.01, q_value=.02, include=1)
@@ -45,7 +45,7 @@ stopifnot(file.exists(file.path(out, "SUCCESS")), nrow(minimum) == 96,
           all(abs(minimum$minimum_detected_nominal_fraction-expected_minimum)<1e-12),
           all(abs(minimum$minimum_sustained_detected_nominal_fraction-expected_minimum)<1e-12),
           identical(sort(unique(minimum$analysis_scope)),c("phenotype_stratified_secondary","pooled_primary")),
-          all(abs(minimum$achieved_fraction_at_first_detection-expected_minimum)<1e-12),
+          all(abs(minimum$achieved_fraction_at_first_detection/expected_minimum-1)<.05),
           file.exists(file.path(out, "figures", "artificial_target_recall.pdf")),
           file.exists(file.path(out, "figures", "off_target_discovery_burden.png")),
           file.exists(file.path(out, "provenance", "report.sha256")))

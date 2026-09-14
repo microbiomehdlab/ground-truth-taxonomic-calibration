@@ -45,13 +45,17 @@ if (!nrow(endpoints) || !nrow(metrics) || anyNA(endpoints[c("spike_fraction_targ
 
 independent_doses <- c(.0001,.0005,.001,.005,.01,.05)
 community_doses <- c(.00001,.00005,.0001,.0005,.001,.005,.01)
+dose_relative_tolerance <- .05
 map_dose <- function(x, population, source_table) {
   if(any(!population %in% c("independent","community"))) stop("Unknown analysis population in dose mapping.")
   mapped <- vapply(seq_along(x),function(i) {
     grid <- if(population[i]=="community") community_doses else independent_doses
     grid[which.min(abs(grid-x[i]))]
   },numeric(1))
-  included <- abs(x-mapped) <= pmax(1e-10, mapped*.001)
+  # Read-count rounding causes several-percent relative deviations at the
+  # smallest doses. This tolerance remains well below half the distance to any
+  # adjacent population-specific dose and therefore preserves unique mapping.
+  included <- abs(x-mapped) <= pmax(1e-10, mapped*dose_relative_tolerance)
   if(any(!included)) stop("Target dose does not match its population-specific frozen grid: ",
                           paste(sort(unique(signif(x[!included],10))),collapse=", "))
   excluded <- x[!included]

@@ -9,7 +9,7 @@ e<-expand.grid(condition=conditions,target_label=targets,profiler=profilers,spik
 e$cohort<-"yachida";e$study<-"Study";e$analysis_population<-"independent";e$assembly_arm<-"original"
 e$response_ratio<-ifelse(e$profiler=="metaphlan4",2,.9);e$recovered_spike_signal<-e$response_ratio*e$spike_fraction_target
 e$signed_reference_error<-(e$response_ratio-1)*e$spike_fraction_target;e$absolute_reference_error<-abs(e$signed_reference_error)
-community<-e;community$analysis_population<-"community";community$spike_fraction_target<-community$spike_fraction_target/10
+community<-e;community$analysis_population<-"community";community$spike_fraction_target<-community$spike_fraction_target/10*.972
 e<-rbind(e,community)
 endpoints<-file.path(root,"endpoints.tsv");write.table(e,endpoints,sep="\t",quote=FALSE,row.names=FALSE)
 m<-unique(e[c("cohort","study","analysis_population","condition","target_label","assembly_arm","profiler","spike_fraction_target")])

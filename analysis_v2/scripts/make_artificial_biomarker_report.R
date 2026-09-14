@@ -63,13 +63,17 @@ if (!nrow(metrics) || anyNA(metrics[c("spike_fraction_target", "q_threshold", "t
 # while preserving the exact achieved fraction in the detailed evidence table.
 independent_doses <- c(0.0001, 0.0005, 0.001, 0.005, 0.01, 0.05)
 community_doses <- c(0.00001, 0.00005, 0.0001, 0.0005, 0.001, 0.005, 0.01)
+dose_relative_tolerance <- 0.05
 map_frozen_dose <- function(x, population, source_table) {
   if (any(!population %in% c("independent","community"))) stop("Unknown analysis population in dose mapping.")
   nearest <- vapply(seq_along(x), function(i) {
     grid <- if(population[i]=="community") community_doses else independent_doses
     grid[which.min(abs(grid-x[i]))]
   }, numeric(1))
-  included <- abs(x-nearest) <= pmax(1e-10, nearest*.001)
+  # Achieved read fractions are integer-valued ratios, so the relative error is
+  # largest at the lowest doses. Five percent is far smaller than the spacing
+  # between adjacent frozen doses and cannot map a value to the wrong level.
+  included <- abs(x-nearest) <= pmax(1e-10, nearest*dose_relative_tolerance)
   if (any(!included))
     stop("An achieved target fraction does not match its population-specific frozen grid: ",
          paste(sort(unique(signif(x[!included], 10))), collapse=", "))
