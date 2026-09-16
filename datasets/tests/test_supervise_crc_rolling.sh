@@ -17,6 +17,9 @@ cat > "$tmp/bin/squeue" <<'EOF'
 #!/usr/bin/env bash
 case "$*" in
   *"-t R,CF,CG"*) printf '100_1\n100_2\n' ;;
+  *"-j 100,200,300 -t PD"*)
+    [[ "${MOCK_READY_PENDING:-0}" == 1 ]] && printf '100_3|ArrayTaskThrottle\n'
+    ;;
   *"-j 200 -t PD"*)
     printf '200|1|Dependency\n200|2|DependencyNeverSatisfied\n200|3|Dependency\n'
     ;;
@@ -43,6 +46,14 @@ chmod +x "$tmp/bin/"*
 
 export PATH="$tmp/bin:$PATH"
 export SCONTROL_CALLS="$tmp/scontrol.calls"
+
+# A ready task held only by an array throttle reserves the last global slot.
+export MOCK_READY_PENDING=1
+bash "$DATASETS_DIR/supervise_crc_rolling.sh" \
+  --ledger "$tmp/jobs.tsv" --download-concurrent 3 \
+  --state-dir "$tmp/reservation-state" --once
+test ! -s "$SCONTROL_CALLS"
+unset MOCK_READY_PENDING
 
 bash "$DATASETS_DIR/supervise_crc_rolling.sh" \
   --ledger "$tmp/jobs.tsv" --download-concurrent 3 \

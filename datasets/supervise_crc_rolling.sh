@@ -111,6 +111,14 @@ running_task_ids() {
   squeue -h -r -j "$all_download_jobs" -t R,CF,CG -o '%i' 2>/dev/null || true
 }
 
+ready_pending_task_ids() {
+  # Pending tasks whose dependency has already cleared may start at any moment
+  # (including tasks held only by ArrayTaskThrottle), so reserve capacity for
+  # them before admitting work from another generation.
+  squeue -h -r -j "$all_download_jobs" -t PD -o '%i|%r' 2>/dev/null |
+    awk -F'|' '$2 !~ /^Dependency/ {print $1}' || true
+}
+
 count_admitted_releases() {
   local task state count=0
   for task in "${!released_tasks[@]}"; do
@@ -123,21 +131,31 @@ count_admitted_releases() {
 run_pass() {
   local -A running=()
   local task state download_job previous_compute reason array_job array_task
-  local unmanaged_running=0 admitted slots released_now=0
+  local unmanaged_active=0 admitted slots released_now=0
 
   while IFS= read -r task; do
     [[ -n "$task" ]] && running["$task"]=1
   done < <(running_task_ids)
 
   for task in "${!running[@]}"; do
-    [[ -v "released_tasks[$task]" ]] || unmanaged_running=$((unmanaged_running + 1))
+    [[ -v "released_tasks[$task]" ]] || unmanaged_active=$((unmanaged_active + 1))
   done
+  while IFS= read -r task; do
+    [[ -z "$task" || -v "released_tasks[$task]" || -v "running[$task]" ]] && continue
+    unmanaged_active=$((unmanaged_active + 1))
+  done < <(ready_pending_task_ids)
+  # A large throttled array can expose more pending tasks than the global
+  # limit. Capping here is sufficient because any value >= limit leaves zero
+  # admission slots.
+  if (( unmanaged_active > limit )); then
+    unmanaged_active=$limit
+  fi
   admitted="$(count_admitted_releases)"
-  slots=$((limit - unmanaged_running - admitted))
+  slots=$((limit - unmanaged_active - admitted))
   (( slots < 0 )) && slots=0
 
-  printf '[%s] running_unmanaged=%d admitted_releases=%d limit=%d slots=%d\n' \
-    "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$unmanaged_running" "$admitted" "$limit" "$slots" | tee -a "$event_log"
+  printf '[%s] active_unmanaged=%d admitted_releases=%d limit=%d slots=%d\n' \
+    "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$unmanaged_active" "$admitted" "$limit" "$slots" | tee -a "$event_log"
   (( slots > 0 )) || return 0
 
   for ((index=1; index<${#download_jobs[@]} && slots>0; index++)); do
