@@ -68,3 +68,20 @@ kill "$(cat "$supervisor_dir/pid")"
 
 Restarting with the same ledger and state directory is idempotent: previously
 released tasks remain accounted for and will not be released again.
+
+## Global sample-slot mode
+
+`supervise_crc_global_slots.sh` implements a different policy for cohorts where
+compute utilisation is the priority. It maintains a global pool of samples in
+flight rather than requiring the preceding compute in the same numbered lane to
+finish before admitting the next download.
+
+An admitted sample occupies one slot while downloading, scheduler-ready for
+compute, or computing. A successful compute completion frees the slot. With
+`--inflight-limit 42 --download-concurrent 8`, occupancy 42 admits nothing and
+occupancy 41 admits one download (provided a download slot is also free).
+
+Only download dependencies are cleared. Compute dependencies remain attached
+to their corresponding downloads. Retry arrays outside the rolling ledger must
+be declared with `--external-pipeline DOWNLOAD_JOB:COMPUTE_JOB` so they count
+toward both global occupancy and the download cap.
