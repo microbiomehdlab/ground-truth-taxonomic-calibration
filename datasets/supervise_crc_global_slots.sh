@@ -17,8 +17,9 @@ Options:
   --dry-run                Print releases without changing Slurm
 
 An in-flight sample is counted once while downloading, scheduler-ready for
-compute, or computing. A completed compute frees its slot. Only download
-dependencies are cleared; compute dependencies are never edited.
+compute, or computing. A completed download whose compute remains dependency-
+blocked does not occupy a runnable lane. A completed compute frees its slot.
+Only download dependencies are cleared; compute dependencies are never edited.
 EOF
 }
 
@@ -93,7 +94,7 @@ all_compute_jobs="$(IFS=,; echo "${compute_jobs[*]}")"
 normalise_state() { sed -e 's/+.*//' -e 's/[[:space:]]*$//' <<< "$1"; }
 is_nonterminal() {
   case "$1" in
-    ""|PENDING|RUNNING|CONFIGURING|COMPLETING|REQUEUED|RESIZING|SUSPENDED) return 0 ;;
+    PENDING|RUNNING|CONFIGURING|COMPLETING|REQUEUED|RESIZING|SUSPENDED) return 0 ;;
     *) return 1 ;;
   esac
 }
@@ -145,9 +146,7 @@ run_pass() {
       state="${dstate[${djob}_${task}]:-}"
       q="${dqueue[${djob}_${task}]:-}"
       reason="${q#*|}"
-      if [[ "$state" == COMPLETED ]] && is_nonterminal "${cstate[${cjob}_${task}]:-}" ]]; then
-        occupied["$key"]=1
-      elif [[ -n "$q" && "$reason" != Dependency* ]]; then
+      if [[ -n "$q" && "$reason" != Dependency* ]]; then
         occupied["$key"]=1
       elif [[ -v "admitted[$key]" ]] && is_nonterminal "$state"; then
         occupied["$key"]=1

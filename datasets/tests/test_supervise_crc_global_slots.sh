@@ -71,6 +71,17 @@ bash "$DATASETS_DIR/supervise_crc_global_slots.sh" --ledger "$tmp/jobs.tsv" \
   --inflight-limit 5 --download-concurrent 2 --state-dir "$tmp/state" --once
 grep -Fx 'update JobId=200_2 Dependency=' "$SCONTROL_CALLS"
 
+# A completed download whose compute remains dependency-blocked does not occupy
+# a runnable sample slot. Future/dependency-held work must not masquerade as an
+# active lane.
+rm -rf "$tmp/dependency-held-state"
+: > "$SCONTROL_CALLS"
+bash "$DATASETS_DIR/supervise_crc_global_slots.sh" --ledger "$tmp/jobs.tsv" \
+  --inflight-limit 4 --download-concurrent 4 \
+  --state-dir "$tmp/dependency-held-state" --once
+test "$(wc -l < "$SCONTROL_CALLS")" -eq 1
+grep -Fx 'update JobId=200_1 Dependency=' "$SCONTROL_CALLS"
+
 # A retry pipeline occupies one sample slot and one download slot. With three
 # original computes, the 4-slot pool is full and admits nothing.
 : > "$SCONTROL_CALLS"
