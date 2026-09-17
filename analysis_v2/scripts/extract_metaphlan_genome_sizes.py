@@ -37,7 +37,12 @@ def sha256(path: Path) -> str:
 
 
 def load_database(path: Path) -> object:
-    opener = bz2.open if path.suffix == ".bz2" else open
+    # MetaPhlAn database pickles may be BZip2-compressed while retaining a
+    # plain `.pkl` suffix. Detect compression from the file signature rather
+    # than the filename (matching the established project database reader).
+    with path.open("rb") as raw:
+        magic = raw.read(3)
+    opener = bz2.open if magic == b"BZh" else open
     with opener(path, "rb") as handle:
         return pickle.load(handle)
 

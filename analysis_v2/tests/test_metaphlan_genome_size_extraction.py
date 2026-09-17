@@ -72,7 +72,9 @@ def main() -> None:
         assert read(out2)[0]["genome_size_bp"] == "2000000"
 
         # --- 3. bz2-compressed database is read transparently ---------------
-        db3 = root / "comp.pkl.bz2"
+        # Production MetaPhlAn databases retain a .pkl suffix even when the
+        # payload is BZip2-compressed, so compression must be magic-detected.
+        db3 = root / "comp.pkl"
         write_db(db3, {"taxonomy": {A: ("2", 2_000_000)}}, compress=True)
         out3 = root / "o3"
         assert run(db3, out3).returncode == 0
