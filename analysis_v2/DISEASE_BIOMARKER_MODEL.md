@@ -30,10 +30,43 @@ fits and their correction are reused rather than recalculated. The baseline call
 set is an observed disease contrast.
 Disease propagation is therefore summarized by retained, lost, and gained
 biomarkers, baseline retention, Jaccard stability, direction flips, and effect
-changes. Because targets are implanted across phenotype groups, target
-significance is a spurious-association diagnostic and is never called recall.
+changes. Because implantation is condition-balanced, it should not create a new
+target contrast under an ideal read-proportional response. The target may
+nevertheless already be disease-associated at baseline. Post-spike target
+significance alone is therefore neither recall nor a spurious-association
+label; baseline-to-dose effect change and ideal-reference residuals are
+reported separately.
+The evaluator also reports target-excluded bystander retention, Jaccard, loss,
+gain, feature-normalized induced-call rate, direction changes, and continuous
+effect changes. These are the primary native
+signature robustness summaries: directly implanting a taxon can mechanically
+attenuate that taxon's pre-existing phenotype contrast, so it must not be mixed
+with collateral changes in unimplanted taxa. Direct-target behavior remains a
+separate mechanistic diagnostic.
+
+`disease_biomarker_transition_ledger.tsv` is the sparse taxon-level audit for
+the union of baseline and perturbed disease calls (plus the implanted target).
+It records target/bystander role, retained/lost/gained/sign-flipped state,
+baseline and perturbed effects and q-values, and the continuous effect change.
+This ledger, rather than aggregate disappearance counts alone, is the input for
+transition and distortion figures.
+`run_disease_biomarker_robustness_figures.sh` creates the corresponding
+target-excluded robustness package and refuses to label development inputs as
+definitive.
 Jaccard stability and baseline retention are undefined when no baseline or
 union call set exists; empty sets are not presented as perfect stability.
+
+Baseline call sets are population-specific. The independent experiment uses its
+frozen subset, whereas the community experiment uses the eligible cohort panel.
+“Baseline” means unspiked within that population, not one cohort-wide
+denominator; differences between their baseline counts are not caused by the
+spike and must not be interpreted as such.
+
+A lost native disease call is described as perturbation-sensitive, not as a
+false positive. Significance-state transitions alone do not test whether two
+correlated coefficients differ. The prospective calibration-aware extension,
+including the ideal read-proportional counterfactual and held-out filtering
+validation, is defined in `CALIBRATION_AWARE_ROBUSTNESS.md`.
 
 Profiler-native outputs remain distinct practical estimands. The model does not
 claim that Bracken and MetaPhlAn measure identical cellular abundance. It tests

@@ -6,7 +6,7 @@ import hashlib
 from pathlib import Path
 
 REQUIRED = {
-    "policy_version": "1", "native_detection_rule": "abundance_fraction_gt_0",
+    "policy_version": "2", "native_detection_rule": "abundance_fraction_gt_0",
     "quantitative_primary_population": "unconditional", "quantitative_nondetection_value": "0",
     "paired_endpoint_pseudocount": "none", "paired_endpoint_transform": "none",
     "negative_baseline_adjusted_response": "retain",
@@ -17,6 +17,17 @@ REQUIRED = {
     "disease_biomarker_primary_q": "0.05", "disease_biomarker_sensitivity_q": "0.10",
     "species_closed_renormalization_role": "sensitivity_only",
     "primary_profiler_scale": "profiler_native_fraction",
+    "native_robustness_primary_scope": "target_excluded_bystanders",
+    "native_fragility_interpretation": "perturbation_sensitive_not_false_positive",
+    "ideal_reference_model_role": "primary_continuous_distortion",
+    "ideal_reference_direct_target_role": "secondary_mechanistic",
+    "ideal_reference_global_claim_rule": "not_implemented_requires_hierarchical_multiplicity",
+    "perturbation_reliability_score_role": "exploratory_robustness_annotation",
+    "perturbation_reliability_automatic_removal": "none",
+    "abundance_calibration_validation": "leave_one_cohort_out",
+    "abundance_calibration_direct_target_policy": "protected",
+    "abundance_calibration_negative_correction": "zero",
+    "abundance_calibration_biomarker_refit": "required_complete_model_and_bh",
 }
 
 def main():
@@ -36,7 +47,8 @@ def main():
         if policy.get(field) != expected:
             raise SystemExit(f"[ERROR] frozen policy mismatch: {field}")
     for field in ("detection_multiplicity_family", "artificial_biomarker_multiplicity_family",
-                  "disease_biomarker_multiplicity_family", "cross_cohort_multiplicity_family"):
+                  "disease_biomarker_multiplicity_family", "cross_cohort_multiplicity_family",
+                  "ideal_reference_multiplicity_family"):
         if not policy.get(field):
             raise SystemExit(f"[ERROR] empty analysis-policy field: {field}")
     args.outdir.mkdir(parents=True, exist_ok=True)

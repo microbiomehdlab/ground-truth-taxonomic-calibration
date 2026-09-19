@@ -1,12 +1,18 @@
 # Effective community genome size for the MetaPhlAn profiler-scale reference
 
-**Status: PROVISIONAL.** The estimator, fail-closed policy, and tests are
-implemented and fixture-tested. The production MetaPhlAn database was **not**
-available in the environment where this was written, so the authoritative
-genome-size mapping has not been extracted and the sealed Yachida coverage
-audit has not been run. The coverage thresholds below are therefore a stated
-starting policy, not a frozen decision. This becomes `DECIDED` only after the
-cluster steps in "Required cluster execution" succeed.
+**Status: DECIDED for G_eff derivation (17 September 2026).** The estimator,
+fail-closed policy, fixtures, exact production-database extraction, and sealed
+Yachida audit all passed. The vJan25 database supplied 58,216 usable terminal
+SGB genome lengths; all 201 Yachida baselines contained SGB rows and achieved
+exact-lineage mapping coverage of 1.0, with zero exclusions and zero unmapped
+features. The broader MetaPhlAn correction remains incomplete until all
+downstream consumers and runners use the profiler-scale reference.
+
+Audit bundle: `work/yachida_geff_audit_20260917T144215Z` on the authoritative
+cluster checkout. Database SHA-256:
+`e7d23a73a7959b4f41af0bbe403f4b5bbb7c1879528d376d146ee5294515df9a`.
+Observed sample-specific `G_eff` range: 2,630,057.998--4,844,354.509 bp;
+median 3,477,488.241 bp.
 
 ## Estimand
 
@@ -253,11 +259,13 @@ and none of these may be selected by comparing recovery performance.
 - `G_eff,i` is estimated from a compositional profile, so it inherits any
   compositional bias already present in the baseline.
 
-## Required cluster execution
+## Validated cluster execution and reproduction
 
-These require the production database and sealed profiles. Until they succeed
-this policy stays **PROVISIONAL** and no definitive MetaPhlAn quantitative claim
-is licensed. All outputs are `DEVELOPMENT_ONLY`.
+André ran this audit successfully on 17 September 2026. The commands remain the
+reproduction runbook. The resulting derivation policy is **DECIDED**, while all
+outputs remain `DEVELOPMENT_ONLY` until downstream endpoint consumers and
+runners are migrated and validated. Agents must not run these cluster commands;
+only the user may do so.
 
 ```bash
 cd /mnt/nfs/microbiomehd/crc-lab/projects/ground-truth-taxonomic-calibration

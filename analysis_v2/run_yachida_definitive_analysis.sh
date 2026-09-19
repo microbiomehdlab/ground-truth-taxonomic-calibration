@@ -2,6 +2,7 @@
 # Definitive downstream orchestrator. It never creates or repairs upstream evidence.
 set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd -P)"; cd "$ROOT"
+source "$ROOT/analysis_v2/lib/metaphlan_reference.sh"
 : "${YACHIDA_ENV:?Set YACHIDA_ENV to the frozen strict-production environment}"
 : "${ANALYSIS_SIF:?Set ANALYSIS_SIF to the frozen downstream image}"
 : "${ASSEMBLY_SENSITIVITY_ROOT:?Set ASSEMBLY_SENSITIVITY_ROOT to the sealed 30-sample experiment}"
@@ -48,7 +49,7 @@ while IFS= read -r profile; do
   esac
 done < <(awk -F '\t' 'NR>1 && $22==1 {print $20}' "$CANONICAL_INPUT" | sort -u)
 python3 analysis_v2/scripts/audit_profiler_semantics.py "${audit_args[@]}"
-python3 analysis_v2/scripts/derive_paired_endpoints.py --input "$CANONICAL_INPUT" --outdir "$RUN_ROOT/endpoints"
+derive_endpoints_with_references "$CANONICAL_INPUT" "$RUN_ROOT/endpoints"
 
 ORIGINAL_ROOT="${YACHIDA_ORIGINAL_ROOT:-$(dirname "$PERSISTENT_RESULTS_ROOT")}" \
 SENSITIVITY_ROOT="$ASSEMBLY_SENSITIVITY_ROOT" BASELINE_ROOT="${YACHIDA_BASELINE_ROOT:-$(dirname "$PERSISTENT_RESULTS_ROOT")}" \
@@ -62,7 +63,8 @@ for population in independent community; do
     --cohort yachida --population "$population" --assembly-arm original
   apptainer exec --cleanenv --pwd "$ROOT" "$ANALYSIS_SIF" Rscript analysis_v2/scripts/fit_continuous_dose_response.R \
     --input "$RUN_ROOT/endpoints/paired_endpoints.tsv" --outdir "$RUN_ROOT/models/continuous_$population" \
-    --cohort yachida --population "$population" --assembly-arm original
+    --cohort yachida --population "$population" --assembly-arm original \
+    --reference-scale profiler_scale
 done
 
 common=(CANONICAL_INPUT="$CANONICAL_INPUT" CANONICAL_VALIDATION_SUCCESS="$CANONICAL_SUCCESS" ANALYSIS_SIF="$ANALYSIS_SIF" ANALYSIS_STATUS=DEFINITIVE)

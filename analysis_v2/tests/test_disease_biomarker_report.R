@@ -11,6 +11,9 @@ metrics$cohort <- "yachida"; metrics$study <- "Study"; metrics$analysis_populati
 metrics$target_label <- "Pana"; metrics$assembly_arm <- "clean"; metrics$target_alias <- "Target species"
 metrics$baseline_biomarkers <- 2; metrics$dose_biomarkers <- 2; metrics$retained_biomarkers <- 1
 metrics$lost_biomarkers <- 1; metrics$gained_biomarkers <- 1; metrics$baseline_retention_rate <- .5
+metrics$baseline_bystander_biomarkers <- 2; metrics$dose_bystander_biomarkers <- 2
+metrics$retained_bystanders <- 1; metrics$lost_bystanders <- 1; metrics$gained_bystanders <- 1
+metrics$bystander_retention_rate <- .5; metrics$bystander_jaccard <- .5
 metrics$dose_overlap_fraction <- .5; metrics$direction_flips_among_retained <- 0
 metrics$median_abs_effect_change_baseline_biomarkers <- .1; metrics$max_abs_effect_change_baseline_biomarkers <- .2
 metrics$target_significant <- 1; metrics$target_effect <- .4
@@ -27,5 +30,7 @@ status <- attr(result, "status"); if (is.null(status)) status <- 0L
 if (status != 0L) stop(paste(result, collapse="\n"))
 stopifnot(file.exists(file.path(out, "SUCCESS")), file.exists(file.path(out, "figures", "baseline_biomarker_retention.pdf")),
           file.exists(file.path(out, "figures", "biomarker_set_stability.png")),
-          nrow(read.delim(file.path(out, "tables", "disease_biomarker_summary.tsv"))) == 16)
+          nrow(read.delim(file.path(out, "tables", "disease_biomarker_summary.tsv"))) == 16,
+          "overall_bystander_retention" %in%
+            names(read.delim(file.path(out, "tables", "disease_biomarker_summary.tsv"))))
 cat("[PASS] disease-biomarker report fixture\n")

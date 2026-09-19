@@ -61,6 +61,7 @@ sha256sum "$CANONICAL_INPUT" "$SAMPLE_METADATA" "$ANALYSIS_SIF" "$ALIASES" "$SPI
   "$OUTDIR/input/biomarker_abundance_long.tsv" \
   "$OUTDIR/models/primary_disease_da_results.tsv" \
   "$OUTDIR/evaluation/disease_biomarker_propagation_metrics.tsv" \
+  "$OUTDIR/evaluation/disease_biomarker_transition_ledger.tsv" \
   > "$OUTDIR/provenance/run_inputs_and_primary_outputs.sha256"
 sed -i 's/^status\tIN_PROGRESS$/status\tPASS/' "$OUTDIR/provenance/run_manifest.tsv"
 printf 'analysis\tnative_disease_biomarker_propagation\nanalysis_status\t%s\nstatus\tPASS\n' \

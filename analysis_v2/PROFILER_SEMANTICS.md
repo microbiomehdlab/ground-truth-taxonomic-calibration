@@ -72,3 +72,31 @@ reads and deduplicates included `source_profile` paths directly, avoiding shell
 argument-length limits and repeated auditing of baseline files represented by
 many target rows. Explicit `--bracken` and `--metaphlan` arguments remain
 available for small targeted audits.
+
+## Quantitative reference scale (17 September 2026)
+
+The denominator decisions above govern *native units*. They are now joined by an
+explicit decision about the *expected value* those units are compared against.
+
+Bracken `fraction_total_reads` is a fraction of input reads, so the implanted
+read fraction `f` may be added directly. MetaPhlAn `relative_abundance` is a
+marker-based, genome-equivalent-like composition over detected clades, so adding
+`f` compares two different estimands. The audited correction rescales `f` by
+`G_eff,i / G_t` and renormalises the composition; see
+`METAPHLAN_EFFECTIVE_GENOME_SIZE.md` and `ENDPOINTS.md`.
+
+This does not make the two profilers a common estimand. It removes a known unit
+mismatch from the expected value; residual mappability, marker-selection,
+copy-number, strain-divergence and database-representation effects remain.
+
+Detection endpoints are unaffected: detection is `abundance > 0` on native
+output and does not reference an expected value. A regression test asserts
+`observed_detected` and `baseline_detected` are identical under both references.
+
+A primary table correctly carries `read_proportional` Bracken rows alongside
+`genome_equivalent` MetaPhlAn rows. Reference validation is performed within
+profiler, never globally across profilers.
+
+Every quantity derived from the expected value moves with it, including the
+bounded errors. Consumers validate only scale-independent identities and never
+reconstruct the retained baseline as `(1 - F)o`, which holds for Bracken alone.

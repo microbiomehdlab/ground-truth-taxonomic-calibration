@@ -29,11 +29,16 @@ models <- read.delim(required[4], check.names = FALSE, stringsAsFactors = FALSE)
 metric_required <- c("cohort", "analysis_population", "target_label", "assembly_arm", "profiler",
   "contrast", "spike_fraction_target", "q_threshold", "baseline_biomarkers", "dose_biomarkers",
   "retained_biomarkers", "lost_biomarkers", "gained_biomarkers", "baseline_retention_rate",
-  "target_effect_change_from_baseline", "biomarker_set_jaccard_vs_baseline")
+  "target_effect_change_from_baseline", "biomarker_set_jaccard_vs_baseline",
+  "baseline_bystander_biomarkers", "dose_bystander_biomarkers", "retained_bystanders",
+  "lost_bystanders", "gained_bystanders", "bystander_retention_rate", "bystander_jaccard")
 if (length(setdiff(metric_required, names(metrics)))) stop("Propagation metrics lack report columns.")
 for (field in c("spike_fraction_target", "q_threshold", "baseline_biomarkers", "dose_biomarkers",
                 "retained_biomarkers", "lost_biomarkers", "gained_biomarkers", "baseline_retention_rate",
-                "target_effect_change_from_baseline", "biomarker_set_jaccard_vs_baseline"))
+                "target_effect_change_from_baseline", "biomarker_set_jaccard_vs_baseline",
+                "baseline_bystander_biomarkers", "dose_bystander_biomarkers", "retained_bystanders",
+                "lost_bystanders", "gained_bystanders", "bystander_retention_rate",
+                "bystander_jaccard"))
   metrics[[field]] <- as.numeric(metrics[[field]])
 if (!nrow(metrics) || anyNA(metrics[c("spike_fraction_target", "q_threshold")]))
   stop("Invalid propagation metrics.")
@@ -51,14 +56,21 @@ summary_groups <- split(metrics, interaction(metrics[summary_key], drop = TRUE, 
 safe_mean <- function(x) if (all(is.na(x))) NA_real_ else mean(x, na.rm = TRUE)
 summaries <- do.call(rbind, lapply(summary_groups, function(x) data.frame(
   x[1, summary_key, drop = FALSE], contexts = nrow(x),
-  context_sum_baseline_biomarkers = sum(x$baseline_biomarkers),
-  context_sum_dose_biomarkers = sum(x$dose_biomarkers),
-  context_sum_retained = sum(x$retained_biomarkers),
-  mean_baseline_retention = safe_mean(x$baseline_retention_rate),
-  overall_baseline_retention = if (sum(x$baseline_biomarkers) > 0)
+  context_sum_baseline_bystanders = sum(x$baseline_bystander_biomarkers),
+  context_sum_dose_bystanders = sum(x$dose_bystander_biomarkers),
+  context_sum_retained_bystanders = sum(x$retained_bystanders),
+  mean_bystander_retention = safe_mean(x$bystander_retention_rate),
+  overall_bystander_retention = if (sum(x$baseline_bystander_biomarkers) > 0)
+    sum(x$retained_bystanders) / sum(x$baseline_bystander_biomarkers) else NA_real_,
+  context_sum_lost_bystanders = sum(x$lost_bystanders),
+  context_sum_gained_bystanders = sum(x$gained_bystanders),
+  median_bystander_jaccard = if (all(is.na(x$bystander_jaccard))) NA_real_ else
+    median(x$bystander_jaccard, na.rm = TRUE),
+  context_sum_baseline_all_taxa_secondary = sum(x$baseline_biomarkers),
+  context_sum_retained_all_taxa_secondary = sum(x$retained_biomarkers),
+  overall_retention_all_taxa_secondary = if (sum(x$baseline_biomarkers) > 0)
     sum(x$retained_biomarkers) / sum(x$baseline_biomarkers) else NA_real_,
-  context_sum_lost = sum(x$lost_biomarkers), context_sum_gained = sum(x$gained_biomarkers),
-  median_jaccard = if (all(is.na(x$biomarker_set_jaccard_vs_baseline))) NA_real_ else
+  median_jaccard_all_taxa_secondary = if (all(is.na(x$biomarker_set_jaccard_vs_baseline))) NA_real_ else
     median(x$biomarker_set_jaccard_vs_baseline, na.rm = TRUE),
   median_target_effect_change = median(x$target_effect_change_from_baseline))))
 summaries <- summaries[do.call(order, summaries[summary_key]), ]
@@ -76,16 +88,16 @@ metrics$profiler_display <- unname(labels[metrics$profiler])
 metrics$dose_percent <- 100 * metrics$spike_fraction_target
 primary <- metrics[abs(metrics$q_threshold - .05) < 1e-12, ]
 theme_report <- theme_bw(base_size = 10) + theme(legend.position = "bottom", panel.grid.minor = element_blank())
-p1 <- ggplot(primary, aes(dose_percent, baseline_retention_rate, color = profiler_display, group = profiler_display)) +
+p1 <- ggplot(primary, aes(dose_percent, bystander_retention_rate, color = profiler_display, group = profiler_display)) +
   stat_summary(fun = mean, geom = "line", na.rm = TRUE) + stat_summary(fun = mean, geom = "point", na.rm = TRUE) +
   facet_grid(contrast ~ assembly_arm) + scale_y_continuous(limits = c(0, 1), breaks = seq(0, 1, .25)) +
-  labs(x = "Implanted target fraction (%)", y = "Baseline disease biomarkers retained", color = "Profiler") + theme_report
-p2 <- ggplot(primary, aes(dose_percent, biomarker_set_jaccard_vs_baseline,
+  labs(x = "Implanted target fraction (%)", y = "Baseline bystander CRC-associated taxa retained", color = "Profiler") + theme_report
+p2 <- ggplot(primary, aes(dose_percent, bystander_jaccard,
                           color = profiler_display, group = profiler_display)) +
   stat_summary(fun = median, geom = "line", na.rm = TRUE) +
   stat_summary(fun = median, geom = "point", na.rm = TRUE) + facet_grid(contrast ~ assembly_arm) +
   scale_y_continuous(limits = c(0, 1), breaks = seq(0, 1, .25)) +
-  labs(x = "Implanted target fraction (%)", y = "Biomarker-set Jaccard vs baseline", color = "Profiler") + theme_report
+  labs(x = "Implanted target fraction (%)", y = "Bystander call-set Jaccard vs baseline", color = "Profiler") + theme_report
 p3 <- ggplot(primary, aes(dose_percent, target_effect_change_from_baseline,
                           color = profiler_display, group = interaction(profiler_display, target_label))) +
   geom_hline(yintercept = 0, linetype = 2, color = "grey50") + geom_line(alpha = .55) + geom_point(size = 1) +
@@ -100,18 +112,18 @@ for (item in list(list("baseline_biomarker_retention", p1), list("biomarker_set_
 }
 
 diagnostics <- data.frame(metric = c("source_rows", "summary_rows", "model_rows", "cohorts", "targets",
-  "profilers", "contrasts", "q_thresholds", "missing_jaccard", "report_status"),
+  "profilers", "contrasts", "q_thresholds", "missing_bystander_jaccard", "report_status"),
   value = c(nrow(metrics), nrow(summaries), nrow(models), length(unique(metrics$cohort)),
     length(unique(metrics$target_label)), length(unique(metrics$profiler)), length(unique(metrics$contrast)),
-    length(unique(metrics$q_threshold)), sum(is.na(metrics$biomarker_set_jaccard_vs_baseline)), report_status))
+    length(unique(metrics$q_threshold)), sum(is.na(metrics$bystander_jaccard)), report_status))
 write.table(diagnostics, file.path(outdir, "diagnostics", "report_diagnostics.tsv"),
             sep = "\t", quote = FALSE, row.names = FALSE)
 captions <- c(
   "# Draft figure captions", "",
   "These captions inherit the analysis status recorded in `provenance/report_manifest.tsv`.", "",
-  "## Baseline disease-biomarker retention", "Proportion of significant baseline disease biomarkers that remained significant after controlled read implantation at BH q <= 0.05. Contexts without baseline biomarkers are undefined and omitted from the summary.", "",
-  "## Biomarker-set stability", "Median Jaccard similarity between each perturbed disease-biomarker set and its matched observed baseline call set at BH q <= 0.05. Empty-versus-empty call sets are undefined rather than treated as perfect stability.", "",
-  "## Target effect change", "Change from baseline in the target species disease-contrast coefficient after controlled read implantation. Because targets are implanted across phenotype groups, target significance is a spurious-association diagnostic rather than recall. Lines connect dose levels within profiler and target; they are descriptive, not independent replicates.")
+  "## Baseline bystander call retention", "Proportion of significant baseline CRC-associated taxa that remained significant after controlled read implantation at BH q <= 0.05, excluding the directly implanted taxon. Contexts without baseline bystander calls are undefined and omitted.", "",
+  "## Bystander call-set stability", "Median Jaccard similarity between each perturbed bystander call set and its matched unspiked baseline call set at BH q <= 0.05. Empty-versus-empty sets are undefined rather than treated as perfect stability.", "",
+  "## Target effect change", "Change from baseline in the implanted species disease-contrast coefficient. Condition-balanced implantation should not create a new target contrast under the read-proportional reference, but the target can already be disease-associated at baseline. Post-spike significance alone is therefore neither recall nor a false-association label. Lines are descriptive; formal interpretation uses baseline-to-dose change and the counterfactual-residual model.")
 writeLines(captions, file.path(outdir, "captions.md"))
 manifest <- data.frame(field = c("status", "source_analysis", "source_analysis_status", "created_at"),
   value = c(report_status, normalizePath(run_root), if (source_development) "DEVELOPMENT_ONLY" else "DEFINITIVE",

@@ -5,11 +5,15 @@ tables, figure-source data, figures, diagnostics, draft captions, provenance,
 and checksums. Figures are views of preserved TSV sources; they are not the sole
 record of any result.
 
-`run_disease_biomarker_report.sh` currently implements the disease-biomarker
-module. It produces baseline-marker retention, biomarker-set stability, and target disease-
-effect-change displays at the primary q <= 0.05 threshold, while preserving
+`run_disease_biomarker_report.sh` currently implements the native disease-call
+module. Its primary retention and Jaccard displays exclude the directly
+implanted taxon; all-taxon summaries are explicitly secondary. It also reports
+target disease-effect change at the primary q <= 0.05 threshold, while preserving
 both prespecified thresholds in source tables. It also exports a model-covariate
 audit, which makes invariant-covariate omission visible.
+`run_disease_biomarker_robustness_figures.sh` adds implanted-species stress-test
+trajectories, a retention atlas, and both normalized and absolute induced-call
+burden from the target-excluded transition ledger.
 
 `run_artificial_biomarker_report.sh` reports direct recovery of the implanted
 target. `run_calibration_biomarker_linkage.sh` links those calls to quantitative
@@ -35,7 +39,7 @@ sealed complete cohort analyses without changing code or graphical definitions.
 `run_three_cohort_publication_report.sh` is the final overview layer. It
 combines sealed cohort reports without refitting models, preserves cohort and
 independent/community facets, and exports artificial-target recall, native
-disease-marker retention, quantitative response, and off-target burden panels
+target-excluded disease-call retention, quantitative response, and off-target burden panels
 with their complete source TSVs. Definitive mode requires exactly three
 non-development cohort packages plus sealed cross-cohort synthesis and Yachida
 assembly-sensitivity reports. `MANUSCRIPT_RESULTS_CHECKLIST.tsv` maps each

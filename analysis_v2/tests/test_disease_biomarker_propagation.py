@@ -15,4 +15,13 @@ with tempfile.TemporaryDirectory() as tmp:
     data=list(csv.DictReader((out/"disease_biomarker_propagation_metrics.tsv").open(),delimiter="\t")); q05=[x for x in data if abs(float(x["q_threshold"])-.05)<1e-9][0]
     assert (q05["baseline_biomarkers"],q05["retained_biomarkers"],q05["lost_biomarkers"],q05["gained_biomarkers"]) == ("2","1","1","2")
     assert abs(float(q05["biomarker_set_jaccard_vs_baseline"])-.25)<1e-12 and q05["target_significant"]=="1"
+    assert (q05["baseline_bystander_biomarkers"],q05["retained_bystanders"],q05["lost_bystanders"],q05["gained_bystanders"]) == ("2","1","1","1")
+    assert abs(float(q05["bystander_induced_call_rate"])-1)<1e-12
+    assert q05["target_baseline_significant"]=="0" and q05["bystander_direction_flips_among_retained"]=="0"
+    ledger=list(csv.DictReader((out/"disease_biomarker_transition_ledger.tsv").open(),delimiter="\t"))
+    q05_ledger=[x for x in ledger if abs(float(x["q_threshold"])-.05)<1e-9]
+    assert len(q05_ledger)==4
+    assert {(x["feature"],x["feature_role"],x["transition"]) for x in q05_ledger} == {
+      ("Target","implanted_target","gained"),("Retained","bystander","retained"),
+      ("Lost","bystander","lost"),("Gained","bystander","gained")}
 print("[PASS] disease-biomarker propagation fixture")

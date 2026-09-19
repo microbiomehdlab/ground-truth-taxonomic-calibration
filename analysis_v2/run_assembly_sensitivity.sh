@@ -3,6 +3,7 @@ set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd -P)"
 cd "$ROOT"
+source "$ROOT/analysis_v2/lib/metaphlan_reference.sh"
 : "${SENSITIVITY_ROOT:?Set SENSITIVITY_ROOT to the sealed clean-arm run root}"
 : "${ORIGINAL_ROOT:?Set ORIGINAL_ROOT to the sealed strict original-arm run root}"
 : "${BASELINE_ROOT:=$ORIGINAL_ROOT}"
@@ -59,8 +60,7 @@ while IFS= read -r profile; do
 done < <(awk -F '\t' 'NR > 1 {print $20}' "$OUTDIR/canonical/canonical_input.tsv" | sort -u)
 python3 analysis_v2/scripts/audit_profiler_semantics.py "${audit_args[@]}"
 
-python3 analysis_v2/scripts/derive_paired_endpoints.py \
-  --input "$OUTDIR/canonical/canonical_input.tsv" --outdir "$OUTDIR/endpoints"
+derive_endpoints_with_references "$OUTDIR/canonical/canonical_input.tsv" "$OUTDIR/endpoints"
 
 apptainer exec --cleanenv --pwd "$ROOT" "$ANALYSIS_SIF" \
   Rscript analysis_v2/tests/test_assembly_sensitivity_sample_level.R

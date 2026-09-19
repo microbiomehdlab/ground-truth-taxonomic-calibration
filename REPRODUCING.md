@@ -136,3 +136,18 @@ but a fully frozen paper reproduction is not yet claimed until all three final
 cohorts are complete, all batches are audited, the remaining sensitivity checks
 are resolved, and the paired statistical-analysis specification and downstream
 figures are finalized.
+
+As of the dated operational snapshot in `WORK_HANDOFF.md`, Yachida is complete
+and production-sealed; Zeller strict production is still completing; and Feng
+strict-production completion has not been verified. The existing three-cohort
+downstream package therefore combines sealed Yachida with historical Feng and
+Zeller profiles and must remain `DEVELOPMENT_ONLY`.
+
+For CRC rolling production, do not infer missing samples from the absence of an
+array in `squeue`: finished array elements disappear from the live queue, and
+dependency-blocked elements may be compacted. Establish state from the frozen
+manifest, the rolling `jobs.tsv`, `sacct`, persistent `.staged`/`.verified`
+markers, and retained-output receipts. If a later generation is unnecessarily
+idle, the bounded operator procedure in `datasets/CRC_ROLLING_PRODUCTION.md`
+may release eligible **download tasks only**. Compute jobs must remain gated on
+successful download and staging.

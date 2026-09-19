@@ -1,0 +1,5 @@
+profiler	source_feature	canonical_feature	rationale
+kraken2_bracken	Bacteroides fragilis_A	Bacteroides fragilis	GTDB split label treated as the implanted B. fragilis species group
+kraken2_bracken	Clostridium_Q symbiosum	Clostridium symbiosum	Profiler target alias mapped to the canonical implanted species name
+kraken2_bracken	Allisonella pneumosintes	Dialister pneumosintes	Profiler target alias mapped to the canonical implanted species name
+kraken2_bracken	Hungatella_A hathewayi_A	Hungatella hathewayi	Profiler target alias mapped to the canonical implanted species name

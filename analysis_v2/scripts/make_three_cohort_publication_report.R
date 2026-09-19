@@ -42,7 +42,7 @@ linkage <- read_many(linkage_paths, "figure_source/calibration_biomarker_linkage
 needed_artificial <- c("cohort", "analysis_population", "profiler", "q_threshold",
   "dose_percent_nominal", "target_recall", "mean_precision", "context_sum_off_target_calls")
 needed_disease <- c("cohort", "analysis_population", "profiler", "contrast", "q_threshold",
-  "spike_fraction_target", "overall_baseline_retention", "median_jaccard")
+  "spike_fraction_target", "overall_bystander_retention", "median_bystander_jaccard")
 needed_linkage <- c("cohort", "analysis_population", "profiler", "q_threshold",
   "dose_percent_nominal", "median_response_ratio", "off_target_enriched_calls")
 if (length(setdiff(needed_artificial, names(artificial)))) stop("Artificial summary schema mismatch.")
@@ -82,7 +82,7 @@ write_tsv(primary_linkage, file.path(outdir, "figure_source", "calibration_linka
 # exclude them explicitly from the retention plot rather than allowing ggplot
 # to discard them with an opaque warning.
 disease_retention <- primary_disease[
-  is.finite(as.numeric(primary_disease$overall_baseline_retention)), , drop = FALSE]
+  is.finite(as.numeric(primary_disease$overall_bystander_retention)), , drop = FALSE]
 write_tsv(disease_retention,
           file.path(outdir, "figure_source", "disease_biomarker_retention_defined_q005.tsv"))
 
@@ -93,10 +93,10 @@ p1 <- ggplot(primary_artificial, aes(as.numeric(dose_percent_nominal), as.numeri
   facet_grid(analysis_population ~ cohort) + scale_y_continuous(limits = c(0, 1)) +
   labs(x = "Implanted target fraction (%)", y = "Artificial-target recall", color = "Profiler") + theme_publication
 p2 <- ggplot(disease_retention, aes(100 * as.numeric(spike_fraction_target),
-  as.numeric(overall_baseline_retention), color = profiler_display,
+  as.numeric(overall_bystander_retention), color = profiler_display,
   group = interaction(profiler_display, contrast))) + geom_line(alpha = .6) + geom_point() +
   facet_grid(analysis_population ~ cohort) + scale_y_continuous(limits = c(0, 1)) +
-  labs(x = "Implanted target fraction (%)", y = "Baseline disease biomarkers retained", color = "Profiler") + theme_publication
+  labs(x = "Implanted target fraction (%)", y = "Baseline bystander CRC-associated taxa retained", color = "Profiler") + theme_publication
 p3 <- ggplot(primary_linkage, aes(as.numeric(dose_percent_nominal), as.numeric(median_response_ratio),
   color = profiler_display, group = interaction(profiler_display, target_label))) +
   geom_hline(yintercept = 1, linetype = 2, color = "grey50") + geom_line(alpha = .55) + geom_point() +
@@ -133,8 +133,8 @@ diagnostics <- data.frame(metric = c("cohorts", "artificial_rows", "disease_rows
 write_tsv(diagnostics, file.path(outdir, "diagnostics", "publication_report_diagnostics.tsv"))
 writeLines(c("# Draft overview captions", "",
   "All panels preserve cohort-specific estimates and separate independent from community spike experiments.",
-  "Artificial-target panels compare spiked profiles with matched unspiked profiles; disease-marker panels measure stability of native phenotype associations after the same controlled perturbation.",
-  "Disease-biomarker retention is undefined and omitted when a context has no significant baseline disease biomarkers; omitted-row counts are reported in diagnostics.",
+  "Artificial-target panels compare spiked profiles with matched unspiked profiles; native panels measure target-excluded stability of CRC-associated taxa after the same controlled perturbation.",
+  "Bystander retention is undefined and omitted when a context has no significant baseline bystander calls; omitted-row counts are reported in diagnostics.",
   "Response ratios quantify recovery relative to exact read implantation on each profiler's native abundance scale and are not cellular-abundance estimates."),
   file.path(outdir, "captions.md"))
 manifest <- data.frame(field = c("status", "expected_cohorts", "created_at"),

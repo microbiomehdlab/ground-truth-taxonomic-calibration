@@ -204,6 +204,11 @@ sealed final cohort inputs. Disease propagation uses the dedicated
 baseline disease biomarkers, Jaccard stability, direction flips, and effect
 changes are the endpoints. Target significance is a spurious-association
 diagnostic, not recall, because implantation is performed across phenotypes.
+This sentence is superseded by the 2026-09-14 clarification in
+`METHODS_DECISION_LOG.md`: a target can already be disease-associated at
+baseline, so post-spike significance alone is neither recall nor a
+spurious-association label. Target baseline-to-dose change and ideal-reference
+residuals are interpreted separately.
 
 ## 7. Cross-cohort inference
 

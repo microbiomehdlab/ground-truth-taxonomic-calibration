@@ -20,6 +20,12 @@ For a clean end-to-end route through the repository, start with
 machine-specific configuration, validation gates, generated evidence, and
 legacy compatibility entry points.
 
+For the current working state—including the scientific changes from the
+preprint, live upstream qualification, transferred output directories, known
+taxon-identity caveats, and exact downstream regeneration commands—read
+[`WORK_HANDOFF.md`](WORK_HANDOFF.md). Its dated scheduler/job information is an
+operational snapshot and must be rechecked on the cluster.
+
 ## Workflow
 
 ```text

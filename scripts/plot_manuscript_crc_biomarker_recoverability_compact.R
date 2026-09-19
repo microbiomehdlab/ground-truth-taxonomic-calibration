@@ -302,7 +302,9 @@ pA <- ggplot(panelA_heatmap, aes(x = cohort_background, y = spike_label, fill = 
     order = 1,
     ncol = 1,
     byrow = TRUE,
-    override.aes = list(colour = NA)
+    override.aes = list(colour = NA),
+    keywidth = unit(18, "pt"),
+    keyheight = unit(18, "pt")
   )) +
   labs(
     title = "A. Minimum spike fraction required for biomarker recovery",
@@ -319,8 +321,13 @@ pA <- ggplot(panelA_heatmap, aes(x = cohort_background, y = spike_label, fill = 
     panel.grid = element_blank(),
     panel.spacing.x = unit(1.0, "lines"),
     legend.position = "right",
-    legend.key.height = unit(15, "pt"),
-    plot.margin = margin(7, 8, 7, 8)
+    legend.key.height = unit(18, "pt"),
+    legend.key.width = unit(18, "pt"),
+    legend.text = element_text(size = 10.5, margin = margin(l = 4)),
+    legend.title = element_text(size = 11, margin = margin(b = 6)),
+    legend.spacing.y = unit(5, "pt"),
+    legend.box.margin = margin(0, 0, 0, 10),
+    plot.margin = margin(7, 24, 7, 8)
   )
 
 # ----------------------------

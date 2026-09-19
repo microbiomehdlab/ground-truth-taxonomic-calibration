@@ -129,6 +129,27 @@ dose, precision, off-target burden, and paired target effects.
 `run_calibration_biomarker_linkage.sh` then connect those calls to the paired
 read-perturbation response ratio, making over- or under-response visible without
 equating profiler-native percentages with cellular abundance.
+`CALIBRATION_AWARE_ROBUSTNESS.md` defines the prospective correction to the
+preprint's post-hoc artefact exclusion: leakage-safe held-out filtering,
+target-excluded native robustness, and an ideal read-proportional
+difference-in-differences estimand. It explicitly separates ground-truth
+artificial false discoveries from native disease-call fragility.
+`IDEAL_COUNTERFACTUAL_DID.md`, `scripts/fit_ideal_counterfactual_did.R`, and
+`run_ideal_counterfactual_did.sh` implement that paired measurement-distortion
+test from the sealed disease abundance inputs and exact implanted fractions.
+The corrected disease evaluator also writes a taxon-level transition ledger.
+`run_disease_biomarker_robustness_figures.sh` converts that ledger and its
+target-excluded summaries into retention trajectories, a stress-test atlas,
+feature-normalized induced-call rates, and descriptive effect-change panels,
+while inheriting development or definitive status fail-closed.
+`run_perturbation_reliability_analysis.sh` combines call persistence, effect
+fidelity, direction stability, and optional artificial off-target resistance
+into a continuous robustness annotation. External directional replication is
+reported separately; the module never automatically deletes taxa.
+`run_cross_cohort_abundance_calibration.sh` implements the stricter three-way
+experiment: unspiked reference versus spiked uncorrected versus spiked
+cross-cohort calibrated profiles, followed by complete disease-model and BH
+refitting in the held-out cohort.
 
 `METHODS_DECISION_LOG.md` is the dated, tracked record of decisions and
 development-only findings needed when drafting the manuscript. Update it when

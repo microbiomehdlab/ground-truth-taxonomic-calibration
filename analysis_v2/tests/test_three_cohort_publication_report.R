@@ -11,9 +11,9 @@ for (cohort in cohorts) {
     target_recall=.8,mean_precision=.7,context_sum_off_target_calls=2)
   d <- data.frame(cohort=cohort,analysis_population="independent",profiler="kraken2_bracken",
     contrast="CRC_vs_Control",q_threshold=.05,spike_fraction_target=.01,
-    overall_baseline_retention=.85,median_jaccard=.8)
+    overall_bystander_retention=.85,median_bystander_jaccard=.8)
   d <- rbind(d, transform(d, contrast="Adenoma_vs_Control",
-    overall_baseline_retention=NA_real_, median_jaccard=NA_real_))
+    overall_bystander_retention=NA_real_, median_bystander_jaccard=NA_real_))
   l <- data.frame(analysis_scope="pooled_primary",cohort=cohort,analysis_population="independent",
     profiler="kraken2_bracken",target_label="Bfrag",q_threshold=.05,dose_percent_nominal=1,
     median_response_ratio=1.05,off_target_enriched_calls=2)

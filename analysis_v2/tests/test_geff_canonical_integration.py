@@ -287,6 +287,93 @@ def main() -> None:
         assert ledger_rows and ledger_rows[0]["reason"] == "qc_fail"
         assert ledger_rows[0]["sample_id"] == "S1" and ledger_rows[0]["line"]
 
+        # --- Step 7: end-to-end through the response input and recovery -----
+        # canonical -> baseline selection -> G_eff -> paired endpoints (above)
+        # -> perturbation-response input -> target-recovery summary.
+        import duckdb
+        RESP = SCRIPTS / "build_perturbation_response_input.py"
+        RECOV = SCRIPTS / "summarize_target_recovery.py"
+
+        resp_manifest = root / "resp_manifest.tsv"
+        resp_endpoints = root / "resp_endpoints.tsv"
+        resp_abundance = root / "resp_abundance.tsv"
+        m_fields = ["cohort", "study", "analysis_population", "sample_id", "condition",
+                    "target_label", "assembly_arm", "profiler", "profile_id",
+                    "baseline_profile_id", "spike_fraction_target", "dose_level",
+                    "source_profile", "target_feature"]
+        e_fields = ["cohort", "study", "analysis_population", "sample_id", "condition",
+                    "target_label", "assembly_arm", "profiler", "profile_id",
+                    "baseline_profile_id", "spike_fraction_total", "spike_fraction_target",
+                    "source_baseline_profile", "source_profile"]
+        m_rows, e_rows = [], []
+        for label, feature, frac in (("Fnuc", "Fusobacterium nucleatum", 0.006),
+                                     ("Dpne", "Dialister pneumosintes", 0.004)):
+            common = dict(cohort="yachida", study="S", analysis_population="community",
+                          sample_id="S1", condition="Control", target_label=label,
+                          assembly_arm="original", profiler="metaphlan4",
+                          profile_id="S1_mix", baseline_profile_id="S1",
+                          spike_fraction_target=frac, source_profile="/p/mix")
+            m_rows.append({**common, "dose_level": "dose_06", "target_feature": feature})
+            e_rows.append({**common, "spike_fraction_total": 0.01,
+                           "source_baseline_profile": "/p/base"})
+        def dump(path, fields, rows):
+            with path.open("w", newline="") as handle:
+                w = csv.DictWriter(handle, fieldnames=fields, delimiter="\t",
+                                   lineterminator="\n")
+                w.writeheader(); w.writerows(rows)
+        dump(resp_manifest, m_fields, m_rows)
+        dump(resp_endpoints, e_fields, e_rows)
+        dump(resp_abundance, ["profiler", "source_profile", "feature", "abundance_fraction"],
+             [{"profiler": "metaphlan4", "source_profile": "/p/base",
+               "feature": "Bystander", "abundance_fraction": 0.10},
+              {"profiler": "metaphlan4", "source_profile": "/p/mix",
+               "feature": "Bystander", "abundance_fraction": 0.09},
+              {"profiler": "metaphlan4", "source_profile": "/p/mix",
+               "feature": "Fusobacterium nucleatum", "abundance_fraction": 0.01},
+              {"profiler": "metaphlan4", "source_profile": "/p/mix",
+               "feature": "Dialister pneumosintes", "abundance_fraction": 0.01}])
+
+        tg = root / "tg.tsv"
+        dump(tg, ["target_label", "genome_size_bp"],
+             [{"target_label": "Fnuc", "genome_size_bp": 2180101},
+              {"target_label": "Dpne", "genome_size_bp": 1247407}])
+
+        resp_out = root / "response_input"
+        result = run(RESP, "--profile-manifest", resp_manifest,
+                     "--endpoints", resp_endpoints, "--abundance", resp_abundance,
+                     "--outdir", resp_out, "--threads", 1, "--memory-limit", "1GB",
+                     "--expected-community-targets", 2,
+                     "--metaphlan-reference", "genome_equivalent",
+                     "--target-genome-sizes", tg,
+                     "--effective-genome-sizes", geff_dir / "effective_genome_size.tsv")
+        assert result.returncode == 0, result.stdout + result.stderr
+        assert (resp_out / "SUCCESS").is_file()
+
+        con = duckdb.connect()
+        got = con.execute(
+            "SELECT feature, reference_type, expected_abundance_fraction, "
+            "expected_abundance_profiler_scale, effective_community_genome_size_bp "
+            "FROM read_parquet(?) ORDER BY feature",
+            [str(resp_out / "paired_feature_responses.parquet")]).fetchall()
+        assert got, "response rows produced"
+        assert all(row[1] == "genome_equivalent" for row in got)
+        # The sample-wide G_eff computed in step 2 reached the response input.
+        assert all(abs(row[4] - 3_000_000) < 1e-6 for row in got)
+        # Non-implanted feature is renormalised, so it differs from plain dilution.
+        bystander = [r for r in got if r[0] == "Bystander"][0]
+        assert abs(bystander[2] - bystander[3]) > 1e-12, \
+            "non-implanted MetaPhlAn expectation must differ from the read reference"
+
+        recov_out = root / "recovery"
+        result = run(RECOV, "--responses", resp_out / "paired_feature_responses.parquet",
+                     "--outdir", recov_out, "--reference-scale", "profiler_scale")
+        assert result.returncode == 0, result.stdout + result.stderr
+        with (recov_out / "target_recovery_observations.tsv").open(newline="") as handle:
+            recov = list(csv.DictReader(handle, delimiter="\t"))
+        assert recov, "recovery observations produced"
+        assert all(r["reference_type"] == "genome_equivalent" for r in recov)
+        assert all(r["reference_scale"] == "profiler_scale" for r in recov)
+
     print("[PASS] G_eff canonical integration tests")
 
 

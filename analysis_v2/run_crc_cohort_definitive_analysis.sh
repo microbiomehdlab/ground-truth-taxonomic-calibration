@@ -2,6 +2,7 @@
 # Definitive Feng/Zeller downstream orchestration; never repairs upstream data.
 set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd -P)"; cd "$ROOT"
+source "$ROOT/analysis_v2/lib/metaphlan_reference.sh"
 : "${COHORT:?Set COHORT to feng or zeller}"
 : "${CRC_ENV:?Set CRC_ENV to the frozen cohort environment}"
 : "${ANALYSIS_SIF:?Set ANALYSIS_SIF to the frozen downstream image}"
@@ -41,14 +42,15 @@ while IFS= read -r profile; do case "$profile" in
   *) echo "[ERROR] Unexpected native profile: $profile" >&2; exit 1;; esac
 done < <(awk -F '\t' 'NR>1 && $22==1 {print $20}' "$CANONICAL_INPUT" | sort -u)
 python3 analysis_v2/scripts/audit_profiler_semantics.py "${audit_args[@]}"
-python3 analysis_v2/scripts/derive_paired_endpoints.py --input "$CANONICAL_INPUT" --outdir "$RUN_ROOT/endpoints"
+derive_endpoints_with_references "$CANONICAL_INPUT" "$RUN_ROOT/endpoints"
 for population in independent community; do
   apptainer exec --cleanenv --pwd "$ROOT" "$ANALYSIS_SIF" Rscript analysis_v2/scripts/fit_detection_dose_response.R \
     --input "$CANONICAL_INPUT" --outdir "$RUN_ROOT/models/detection_$population" \
     --cohort "$COHORT" --population "$population" --assembly-arm original
   apptainer exec --cleanenv --pwd "$ROOT" "$ANALYSIS_SIF" Rscript analysis_v2/scripts/fit_continuous_dose_response.R \
     --input "$RUN_ROOT/endpoints/paired_endpoints.tsv" --outdir "$RUN_ROOT/models/continuous_$population" \
-    --cohort "$COHORT" --population "$population" --assembly-arm original
+    --cohort "$COHORT" --population "$population" --assembly-arm original \
+    --reference-scale profiler_scale
 done
 common=(CANONICAL_INPUT="$CANONICAL_INPUT" CANONICAL_VALIDATION_SUCCESS="$CANONICAL_SUCCESS" ANALYSIS_SIF="$ANALYSIS_SIF" ANALYSIS_STATUS=DEFINITIVE)
 env "${common[@]}" OUTDIR="$RUN_ROOT/models/artificial_pooled" bash analysis_v2/run_pooled_paired_biomarker_propagation.sh

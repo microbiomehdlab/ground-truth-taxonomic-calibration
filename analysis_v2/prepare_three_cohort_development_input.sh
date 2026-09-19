@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd -P)"; cd "$ROOT"
+source "$ROOT/analysis_v2/lib/metaphlan_reference.sh"
 : "${LEGACY_INPUT_ROOT:?Set the validated legacy Feng/Zeller input root}"
 : "${YACHIDA_ENV:?Set the strict-production Yachida environment}"
 : "${YACHIDA_MANIFEST:?Set the complete Yachida manifest}"
@@ -18,8 +19,7 @@ python3 analysis_v2/scripts/build_crc_cohort_canonical_input.py \
 python3 analysis_v2/scripts/combine_canonical_development_inputs.py \
   --input "$LEGACY_INPUT_ROOT/canonical_input.tsv" \
   --input "$OUTDIR/yachida/canonical_input.tsv" --outdir "$OUTDIR/combined"
-python3 analysis_v2/scripts/derive_paired_endpoints.py \
-  --input "$OUTDIR/combined/canonical_input.tsv" --outdir "$OUTDIR/combined/endpoints"
+derive_endpoints_with_references "$OUTDIR/combined/canonical_input.tsv" "$OUTDIR/combined/endpoints"
 cp "$OUTDIR/combined/DEVELOPMENT_ONLY.txt" "$OUTDIR/DEVELOPMENT_ONLY.txt"
 printf 'combined_input\t%s\nyachida_seal\t%s\n' \
   "$OUTDIR/combined/canonical_input.tsv" "$YACHIDA_STATE_DIR/production_seal/SUCCESS" > "$OUTDIR/SUCCESS"
