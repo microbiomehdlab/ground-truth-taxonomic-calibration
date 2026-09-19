@@ -367,6 +367,24 @@ This checks the upstream container and databases, spike panel and FASTQs,
 analysis inputs, complete taxon-alias mapping, R helpers, R packages, R
 version, and MaAsLin2 version.
 
+### Analysis-v2 profiler-scale container
+
+The profiler-scale perturbation workflow has additional frozen dependencies
+(`python-duckdb`, `r-sandwich`, and `r-arrow`) that are absent from both the
+original manuscript image and `ground_truth_analysis_v1.sif`. Build a distinct
+image; never overwrite a historical image:
+
+```bash
+SIF=/mnt/beegfs/apptainer/images/ground_truth_analysis_v2.sif \
+BUILD_TMPDIR=/tmp \
+bash build_ground_truth_analysis_v2_container.sh
+```
+
+The builder fails on an existing target and writes the SIF checksum, source
+checksums, explicit Conda package manifest, Apptainer metadata and R session
+information next to the new image. The authoritative execution sequence is in
+`analysis_v2/CLUSTER_HANDOFF_GEFF_PROPAGATION.md`.
+
 ## 11. Run all statistical analyses and regenerate Figures 2–7
 
 Submit one clean sequential Slurm job:

@@ -935,3 +935,21 @@ passes. `test_continuous_model.R` **skips** — it prints
 target genome sizes, real G_eff coverage, execution of both R model stages, and
 definitive execution and sealing. Project decision documents must be updated
 whenever a methodological or execution decision changes.
+
+## 2026-09-20 — Frozen environment required for profiler-scale propagation
+
+- **Decision:** use a new `ground_truth_analysis_v2.sif`; never mutate or
+  overwrite the historical v1 or original-manuscript image.
+- **Reason:** direct cluster checks established that both historical images lack
+  Python DuckDB; the original manuscript image also lacks R `sandwich` and
+  `arrow`. Bare login-node Python therefore cannot validate or execute the new
+  response-table workflow.
+- **Implementation:** versioned Apptainer definition and Conda environment;
+  pinned Python 3.11, DuckDB 1.0.0, R 4.3.3, MaAsLin2 1.18.0, sandwich 3.1.1,
+  arrow 17.0.0, mgcv and the prior manuscript dependencies. Build-time and
+  post-install verification fail closed. The builder records the image SHA-256,
+  source-file hashes, explicit Conda manifest, image inspection and R session
+  information.
+- **Status:** `OPEN` until André builds the image on the cluster and all four
+  containerized regression tests pass. No profiler-scale propagation is
+  authorized before then.

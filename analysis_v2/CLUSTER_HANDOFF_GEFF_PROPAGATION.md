@@ -1,12 +1,15 @@
 # Cluster handoff — genome-equivalent propagation
 
-**Status: CODEX VERIFIED — ready for André's DEVELOPMENT_ONLY execution.**
+**Status: CODE VERIFIED; BLOCKED until the analysis-v2 image passes the image
+and regression gates below.**
 
 **Release gate (19 September 2026).** All three local gates now pass: (1) the
 numerical profiler-scale tests, (2) the full Python suite, and (3) Codex
-re-verification. This authorizes only André's controlled `DEVELOPMENT_ONLY`
-execution below. It does not make any result definitive or authorize an agent
-to operate the cluster.
+re-verification. This authorizes only the container build and André's
+controlled `DEVELOPMENT_ONLY` execution below. It does not make any result
+definitive or authorize an agent to operate the cluster. The historical
+`ground_truth_analysis_v1.sif` and original manuscript image do not contain
+the newly required DuckDB/R dependency set and must not be used or overwritten.
 
 These are commands **André must execute personally** after approval. No agent
 runs them. Prepared locally and never executed; no cluster resource was
@@ -39,7 +42,34 @@ export TARGET_GENOME_SIZES="work/target_genome_sizes_${STAMP}/target_genome_size
 
 Lengths are measured from the FASTAs; nothing is substituted from memory.
 
-## Step 0b — local regression that must pass before anything is run
+## Step 0b — build and verify the frozen analysis-v2 image
+
+Build a new image without modifying either historical image:
+
+```bash
+cd /mnt/nfs/microbiomehd/crc-lab/projects/ground-truth-taxonomic-calibration
+export ANALYSIS_SIF=/mnt/beegfs/apptainer/images/ground_truth_analysis_v2.sif
+
+test ! -e "$ANALYSIS_SIF" || {
+  echo "FAIL: refusing to overwrite existing image: $ANALYSIS_SIF"
+  exit 1
+}
+
+SIF="$ANALYSIS_SIF" BUILD_TMPDIR=/tmp \
+  bash build_ground_truth_analysis_v2_container.sh
+
+test -s "$ANALYSIS_SIF"
+test -s "${ANALYSIS_SIF}.sha256"
+(cd "$(dirname "$ANALYSIS_SIF")" && sha256sum -c "$(basename "$ANALYSIS_SIF").sha256")
+apptainer test "$ANALYSIS_SIF"
+```
+
+The build records the image checksum, definition/input checksums, an explicit
+Conda package manifest, Apptainer inspection output and R session information
+beside the image. If the pinned environment cannot solve or any verification
+fails, stop; do not install packages interactively into a login environment.
+
+## Step 0c — containerized regression that must pass before anything is run
 
 Two analyzer defects have been fixed and must both be re-confirmed in the
 repository checkout before any stage:
@@ -57,12 +87,22 @@ repository checkout before any stage:
 profiler-scale numbers, not just a zero return code:
 
 ```bash
-python3 analysis_v2/tests/test_builder_analyzer_profiler_scale.py
-python3 analysis_v2/tests/test_combined_profiler_reference.py
-python3 analysis_v2/tests/test_runner_reference_interfaces.py
+: "${ANALYSIS_SIF:?Set ANALYSIS_SIF to the verified analysis-v2 image}"
+
+for test_file in \
+  analysis_v2/tests/test_builder_analyzer_profiler_scale.py \
+  analysis_v2/tests/test_combined_profiler_reference.py \
+  analysis_v2/tests/test_runner_reference_interfaces.py \
+  analysis_v2/tests/test_continuous_model_reference_contract.py
+do
+  echo "===== $test_file ====="
+  apptainer exec --cleanenv --bind "$PWD:$PWD" --pwd "$PWD" \
+    "$ANALYSIS_SIF" python3 "$test_file" || exit 1
+done
 ```
 
-All three must pass. If any fails, stop: the analyzer stage is not ready.
+All four must pass. If any fails or skips because a dependency is absent, stop:
+the analyzer/model stage is not ready.
 
 ## Step 1 — locate a prior endpoint table (read-only)
 

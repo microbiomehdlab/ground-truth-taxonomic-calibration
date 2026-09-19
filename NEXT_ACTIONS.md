@@ -3,6 +3,16 @@
 **Purpose:** operational starting point for the next agent.
 **Last updated:** 19 September 2026.
 
+## Immediate infrastructure gate (20 September 2026)
+
+The profiler-scale code is locally verified, but neither historical cluster
+image contains the complete new dependency set. Build and verify
+`ground_truth_analysis_v2.sif` using
+`build_ground_truth_analysis_v2_container.sh`, then run all four containerized
+regressions in `analysis_v2/CLUSTER_HANDOFF_GEFF_PROPAGATION.md`. Do not resume
+the `DEVELOPMENT_ONLY` propagation until every image and regression gate passes.
+Do not overwrite the historical v1 or original-manuscript images.
+
 Read `CLAUDE.md` or `CODEX.md` first; they are the same file. Record every
 substantive decision in `analysis_v2/METHODS_DECISION_LOG.md` and update the
 shared context in the same session.
