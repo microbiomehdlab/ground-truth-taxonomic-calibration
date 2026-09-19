@@ -41,30 +41,47 @@ def mgcv_available() -> bool:
 
 def write_fixture(path: Path, *, metaphlan_reference="genome_equivalent",
                   bracken_reference="read_proportional", mixed=False):
-    """Two profilers; MetaPhlAn implanted signals differ per sample via G_eff."""
+    """Crossed, non-degenerate model fixture with sample-specific G_eff.
+
+    The earlier 3-sample/2-target fixture had perfectly proportional responses.
+    That drove both random-effect variances to the boundary and correctly failed
+    the production Hessian gate inside the pinned mgcv runtime.  This fixture
+    retains exact reference-scale invariants while providing enough crossed
+    sample/target variation to exercise an identifiable mixed model.
+    """
     rows = []
-    doses = [0.001, 0.005, 0.01]
-    for sample_index, sample in enumerate(("S1", "S2", "S3"), start=1):
-        for target in ("Fnuc", "Dpne"):
+    doses = [0.001, 0.003, 0.006, 0.01]
+    samples = tuple(f"S{i}" for i in range(1, 9))
+    targets = ("Fnuc", "Dpne", "Bfrag", "Csym", "Pmic", "Pana")
+    for sample_index, sample in enumerate(samples, start=1):
+        sample_effect = (sample_index - 4.5) * 0.000015
+        for target_index, target in enumerate(targets, start=1):
+            target_effect = (target_index - 3.5) * 0.000012
             for dose in doses:
+                curvature = 0.015 * dose * dose / 0.01
                 # Bracken: profiler scale equals the read scale exactly.
+                bracken_recovered = (dose * 0.98 + sample_effect +
+                                      target_effect + curvature)
                 rows.append({
-                    "cohort": "yachida", "sample_id": f"K{sample}",
+                    "cohort": "yachida", "sample_id": sample,
                     "condition": "CRC" if sample_index % 2 else "Control",
                     "analysis_population": "community",
                     "profiler": "kraken2_bracken", "target_label": target,
                     "assembly_arm": "original", "spike_fraction_target": dose,
                     "nominal_target_fraction": dose,
-                    "recovered_spike_signal": dose * 0.98,
+                    "recovered_spike_signal": bracken_recovered,
                     "reference_type": bracken_reference,
                     "implanted_signal_profiler_scale": dose,
-                    "recovered_spike_signal_profiler_scale": dose * 0.98,
+                    "recovered_spike_signal_profiler_scale": bracken_recovered,
                 })
                 # MetaPhlAn: sample-specific G_eff makes the implanted signal
                 # differ from the read fraction and differ between samples.
                 scale = 1.0 + 0.10 * sample_index
+                implanted = dose * scale
+                metaphlan_recovered = (implanted * 0.97 + 1.15 * sample_effect +
+                                        0.85 * target_effect - curvature)
                 rows.append({
-                    "cohort": "yachida", "sample_id": f"M{sample}",
+                    "cohort": "yachida", "sample_id": sample,
                     "condition": "CRC" if sample_index % 2 else "Control",
                     "analysis_population": "community",
                     "profiler": "metaphlan4", "target_label": target,
@@ -73,8 +90,8 @@ def write_fixture(path: Path, *, metaphlan_reference="genome_equivalent",
                     "recovered_spike_signal": dose * 0.98,
                     "reference_type": (bracken_reference if mixed and target == "Dpne"
                                        else metaphlan_reference),
-                    "implanted_signal_profiler_scale": dose * scale,
-                    "recovered_spike_signal_profiler_scale": dose * scale * 0.97,
+                    "implanted_signal_profiler_scale": implanted,
+                    "recovered_spike_signal_profiler_scale": metaphlan_recovered,
                 })
     with path.open("w", newline="", encoding="utf-8") as handle:
         writer = csv.DictWriter(handle, fieldnames=FIELDS, delimiter="\t",
