@@ -7,7 +7,7 @@
 
 The profiler-scale code is locally verified, but neither historical cluster
 image contains the complete new dependency set. Build and verify
-`ground_truth_analysis_v2.sif` using
+`ground_truth_analysis_v2_1.sif` using
 `build_ground_truth_analysis_v2_container.sh`, then run all four containerized
 regressions in `analysis_v2/CLUSTER_HANDOFF_GEFF_PROPAGATION.md`. Do not resume
 the `DEVELOPMENT_ONLY` propagation until every image and regression gate passes.

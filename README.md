@@ -370,12 +370,12 @@ version, and MaAsLin2 version.
 ### Analysis-v2 profiler-scale container
 
 The profiler-scale perturbation workflow has additional frozen dependencies
-(`python-duckdb`, `r-sandwich`, and `r-arrow`) that are absent from both the
+(`python-duckdb`, `pyarrow`, `r-sandwich`, and `r-arrow`) that are absent from both the
 original manuscript image and `ground_truth_analysis_v1.sif`. Build a distinct
 image; never overwrite a historical image:
 
 ```bash
-SIF=/mnt/beegfs/apptainer/images/ground_truth_analysis_v2.sif \
+SIF=/mnt/beegfs/apptainer/images/ground_truth_analysis_v2_1.sif \
 BUILD_TMPDIR=/tmp \
 bash build_ground_truth_analysis_v2_container.sh
 ```

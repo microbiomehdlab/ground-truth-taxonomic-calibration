@@ -938,18 +938,26 @@ whenever a methodological or execution decision changes.
 
 ## 2026-09-20 — Frozen environment required for profiler-scale propagation
 
-- **Decision:** use a new `ground_truth_analysis_v2.sif`; never mutate or
+- **Decision:** use a new `ground_truth_analysis_v2_1.sif`; never mutate or
   overwrite the historical v1 or original-manuscript image.
 - **Reason:** direct cluster checks established that both historical images lack
   Python DuckDB; the original manuscript image also lacks R `sandwich` and
   `arrow`. Bare login-node Python therefore cannot validate or execute the new
   response-table workflow.
 - **Implementation:** versioned Apptainer definition and Conda environment;
-  pinned Python 3.11, DuckDB 1.0.0, R 4.3.3, MaAsLin2 1.18.0, sandwich 3.1.1,
-  arrow 17.0.0, mgcv and the prior manuscript dependencies. Build-time and
+  pinned Python 3.11, DuckDB 1.0.0, PyArrow 17.0.0, R 4.3.3, MaAsLin2 1.18.0,
+  sandwich 3.1.1, arrow 17.0.0, mgcv and the prior manuscript dependencies. Build-time and
   post-install verification fail closed. The builder records the image SHA-256,
   source-file hashes, explicit Conda manifest, image inspection and R session
   information.
 - **Status:** `OPEN` until André builds the image on the cluster and all four
   containerized regression tests pass. No profiler-scale propagation is
   authorized before then.
+
+**Patch-level correction.** The first v2 image candidate passed its original
+verifier but failed immediately when the real analyzer imported
+`pyarrow.parquet`. R `arrow` and Python `pyarrow` are separate packages; only
+the former had been declared. The incomplete image is retained as historical
+evidence and is not patched or reused. Version 2.1 adds pinned PyArrow 17.0.0,
+imports both `pyarrow` and `pyarrow.parquet` in the build verifier, and must be
+built at a new path before rerunning the gates.

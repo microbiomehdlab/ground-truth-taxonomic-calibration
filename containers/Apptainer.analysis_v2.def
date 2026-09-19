@@ -4,7 +4,7 @@ From: continuumio/miniconda3:24.7.1-0
 %labels
     Author Andre-Salgado
     Project ground-truth-taxonomic-calibration
-    Version 2
+    Version 2.1
     Description Frozen Python and R environment for profiler-scale perturbation analysis
 
 %files

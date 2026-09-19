@@ -6,6 +6,7 @@ channels:
 dependencies:
   - python=3.11
   - python-duckdb=1.0.0
+  - pyarrow=17.0.0
   - pandas
   - r-base=4.3.3
   - bioconductor-maaslin2=1.18.0

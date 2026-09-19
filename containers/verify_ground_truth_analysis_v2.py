@@ -5,10 +5,13 @@ import sys
 
 import duckdb
 import pandas
+import pyarrow
+import pyarrow.parquet
 
 
 EXPECTED_PYTHON = (3, 11)
 EXPECTED_DUCKDB = "1.0.0"
+EXPECTED_PYARROW = "17.0.0"
 
 if sys.version_info[:2] != EXPECTED_PYTHON:
     raise SystemExit(
@@ -19,8 +22,13 @@ if duckdb.__version__ != EXPECTED_DUCKDB:
     raise SystemExit(
         f"Expected DuckDB {EXPECTED_DUCKDB}; found {duckdb.__version__}"
     )
+if pyarrow.__version__ != EXPECTED_PYARROW:
+    raise SystemExit(
+        f"Expected PyArrow {EXPECTED_PYARROW}; found {pyarrow.__version__}"
+    )
 
 print("Python environment verification: PASSED")
 print("Python version:", sys.version.split()[0])
 print("DuckDB version:", duckdb.__version__)
+print("PyArrow version:", pyarrow.__version__)
 print("pandas version:", pandas.__version__)

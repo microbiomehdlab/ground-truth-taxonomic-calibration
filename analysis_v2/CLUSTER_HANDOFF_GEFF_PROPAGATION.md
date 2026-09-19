@@ -48,7 +48,7 @@ Build a new image without modifying either historical image:
 
 ```bash
 cd /mnt/nfs/microbiomehd/crc-lab/projects/ground-truth-taxonomic-calibration
-export ANALYSIS_SIF=/mnt/beegfs/apptainer/images/ground_truth_analysis_v2.sif
+export ANALYSIS_SIF=/mnt/beegfs/apptainer/images/ground_truth_analysis_v2_1.sif
 
 test ! -e "$ANALYSIS_SIF" || {
   echo "FAIL: refusing to overwrite existing image: $ANALYSIS_SIF"
@@ -121,6 +121,13 @@ set -euo pipefail
 : "${PRIOR_ENDPOINTS:?Set PRIOR_ENDPOINTS to the validated pre-migration endpoint directory}"
 : "${ABUNDANCE_LONG:?Set ABUNDANCE_LONG to the validated native long-abundance TSV}"
 : "${TARGET_GENOME_SIZES:?Set TARGET_GENOME_SIZES to the newly generated and validated target-genome-size table}"
+: "${ANALYSIS_SIF:?Set ANALYSIS_SIF to the verified analysis-v2.1 image}"
+test -s "$ANALYSIS_SIF" || { echo "FAIL missing image: $ANALYSIS_SIF"; exit 1; }
+
+analysis_python() {
+  apptainer exec --cleanenv --bind "$PWD:$PWD" --pwd "$PWD" \
+    "$ANALYSIS_SIF" python3 "$@"
+}
 
 STAMP="$(date -u +%Y%m%dT%H%M%SZ)"
 CANONICAL="work/analysis_v2_three_cohort_input_dev_20260913_180614/yachida/canonical_input.tsv"
@@ -200,7 +207,7 @@ fi
 echo "[PASS] Bracken endpoints unchanged"
 
 # ---------- stage 3: perturbation-response input --------------------------
-python3 analysis_v2/scripts/build_perturbation_response_input.py \
+analysis_python analysis_v2/scripts/build_perturbation_response_input.py \
   --profile-manifest "$CANONICAL" \
   --endpoints "$PRIMARY/paired_endpoints.tsv" \
   --abundance "$ABUNDANCE_LONG" \
@@ -212,18 +219,18 @@ test -s "$RUN_ROOT/response_input/SUCCESS" || { echo "FAIL response input"; exit
 RESPONSES="$RUN_ROOT/response_input/paired_feature_responses.parquet"
 
 # ---------- stage 4: downstream on the primary scale ----------------------
-python3 analysis_v2/scripts/summarize_target_recovery.py \
+analysis_python analysis_v2/scripts/summarize_target_recovery.py \
   --responses "$RESPONSES" --outdir "$RUN_ROOT/target_recovery" \
   --reference-scale profiler_scale
 test -s "$RUN_ROOT/target_recovery/SUCCESS" || { echo "FAIL target recovery"; exit 1; }
 
-python3 analysis_v2/scripts/analyze_perturbation_response.py \
+analysis_python analysis_v2/scripts/analyze_perturbation_response.py \
   --responses "$RESPONSES" --outdir "$RUN_ROOT/response_analysis" \
   --reference-scale profiler_scale
 test -s "$RUN_ROOT/response_analysis/SUCCESS" || { echo "FAIL response analysis"; exit 1; }
 
 # ---------- stage 5: MetaPhlAn read-reference sensitivity -----------------
-python3 analysis_v2/scripts/summarize_target_recovery.py \
+analysis_python analysis_v2/scripts/summarize_target_recovery.py \
   --responses "$RESPONSES" \
   --outdir "$RUN_ROOT/target_recovery_read_sensitivity" \
   --reference-scale read_proportional
