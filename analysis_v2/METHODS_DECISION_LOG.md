@@ -4,7 +4,45 @@ This tracked log records decisions that affect manuscript methods or
 interpretation. Generated run directories preserve the corresponding inputs,
 diagnostics, provenance, and checksums.
 
-## 2026-09-20 — MetaPhlAn genome-size residual audit (implemented; result unknown)
+## 2026-09-21 — Yachida residual-genome-size audit completed and verified
+
+**Result.** André resumed the sealed Yachida `DEVELOPMENT_ONLY` propagation at
+`work/geff_propagation_dev_20260920T003139Z`. The runner reused every upstream
+stage, quarantined the obsolete comparison intact, regenerated only the paired
+reference comparison, and ran the residual-genome-size audit. It exited with
+status 0, and every entry in the regenerated `run_checksums.sha256` verified.
+
+The prespecified target-level regressions gave:
+
+| Scope | Read-proportional sensitivity slope (95% target-bootstrap interval) | Genome-equivalent primary slope (95% target-bootstrap interval) |
+|---|---:|---:|
+| Independent | -0.9713 (-1.0669, -0.9181) | 0.0132 (-0.0754, 0.0612) |
+| Community | -0.9995 (-1.1094, -0.9256) | 0.0068 (-0.0928, 0.0647) |
+| Pooled | -0.9962 (-1.1019, -0.9247) | 0.0080 (-0.0903, 0.0642) |
+
+All six fits used the ten implanted taxa as the statistical and bootstrap unit;
+all 10,000 bootstrap replicates were valid. Read-reference fits had
+`R² = 0.992–0.994`, whereas corrected fits had `R² = 0.008–0.037`. The
+validation table records exactly one cohort (`yachida`), 15,870 MetaPhlAn and
+15,870 Bracken observations, `bracken_identical = PASS`, measured spike-FASTA
+genome sizes, no fitted genome-size constant, and no pseudocount. Paired
+eligibility excluded 1,856 MetaPhlAn observations (11.7%) because at least one
+arm had a nonpositive ratio; the per-arm reason counts overlap and must not be
+summed.
+
+**Interpretation.** Within Yachida, the near -1 genome-size relationship under
+the read-proportional reference is almost completely removed by the
+genome-equivalent reference. This strongly supports abundance-scale mismatch as
+the dominant explanation for the earlier genome-size trend. It does not prove
+that all residual taxon- or context-specific MetaPhlAn error is absent.
+
+**Boundary.** This supersedes the earlier status statements below that the real
+Yachida slope was unknown. It does not supersede their methods or provenance
+decisions. The result remains Yachida-only and `DEVELOPMENT_ONLY`; it is not
+licensed as a final abstract, Results, or publication-figure claim until Feng
+and Zeller replication and the definitive three-cohort seal are complete.
+
+## 2026-09-20 — MetaPhlAn genome-size residual audit implementation record
 
 **Question.** Under the read-proportional reference the implanted signal is a
 read fraction, so a marker-length-normalised profiler should under-report large
@@ -77,8 +115,8 @@ signal `q_it / D_i` should remove that dependence, giving a slope near **0**.
   target label; fewer than ten targets in a regression; and a bootstrap with
   fewer than 95% valid replicates.
 
-**Status: the real Yachida result is NOT yet known.** The audit is implemented
-and tested locally against a deterministic synthetic fixture only
+**Status at the time of this entry:** the real Yachida result had not yet been
+run. The audit was implemented and tested locally against a deterministic synthetic fixture only
 (`analysis_v2/tests/test_metaphlan_genome_size_residual_audit.py`, 51 tests,
 including mutation checks proving that swapping the arms or regressing
 observation rows breaks named assertions). Nothing was executed on the cluster;
@@ -141,11 +179,10 @@ physical observation from both arms; missing or blank values are structural
 failures; no pseudocounts; an entirely unusable target or scope fails; exclusion
 counts and reasons are still reported.
 
-Tests: `test_metaphlan_genome_size_residual_audit.py` 80 tests and
+Tests at that implementation stage: `test_metaphlan_genome_size_residual_audit.py` 80 tests and
 `test_target_recovery_reference_comparison.py` 9 tests, all passing, with
-mutation checks confirming each of the four gates is load-bearing. **The real
-Yachida slope remains unknown** until André executes the development pipeline on
-the cluster.
+mutation checks confirming each of the four gates is load-bearing. The later
+21 September entry records André's completed, checksum-verified execution.
 
 **2026-09-20 addendum 2 — stage reuse is schema-gated.** The completed Yachida
 development run holds a `reference_comparison` produced before the explicit
@@ -183,8 +220,8 @@ against the estimand derived from `reference_scale` and
 the upstream provenance is untrustworthy, so it fails closed.
 
 No scientific decision changed: estimand, target-level aggregation, paired
-exclusion, bootstrap, seed and output names are untouched, and the real Yachida
-slope is still unknown.
+exclusion, bootstrap, seed and output names were untouched. At this point in
+the chronology the execution was still pending; see the 21 September result.
 
 ## 2026-09-19 — Codex verification and exactly-one-driver release gate
 

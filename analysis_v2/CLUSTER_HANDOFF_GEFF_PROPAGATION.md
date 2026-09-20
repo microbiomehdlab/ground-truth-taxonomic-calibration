@@ -1,7 +1,15 @@
 # Cluster handoff — genome-equivalent propagation
 
-**Status: CODE AND ANALYSIS-v2.1 IMAGE VERIFIED — ready for André's controlled
-`DEVELOPMENT_ONLY` execution.**
+**Status: YACHIDA `DEVELOPMENT_ONLY` EXECUTION AND RESIDUAL AUDIT COMPLETE;
+CHECKSUMS VERIFIED 21 SEPTEMBER 2026.**
+
+The completed root is
+`work/geff_propagation_dev_20260920T003139Z`. Read-reference residual-genome-size
+slopes were -0.9713, -0.9995 and -0.9962 (independent, community, pooled);
+genome-equivalent slopes were 0.0132, 0.0068 and 0.0080. This remains
+Yachida-only development evidence pending Feng/Zeller replication and the
+definitive three-cohort seal. Commands below are retained for reproducibility,
+not as an instruction to rerun the completed Yachida upstream analysis.
 
 **Release gate (19 September 2026).** All three local gates now pass: (1) the
 numerical profiler-scale tests, (2) the full Python suite, and (3) Codex
@@ -11,10 +19,11 @@ definitive or authorize an agent to operate the cluster. The historical
 `ground_truth_analysis_v1.sif` and original manuscript image do not contain
 the newly required DuckDB/R dependency set and must not be used or overwritten.
 
-These are commands **André must execute personally** after approval. No agent
-runs them. Prepared locally and never executed; no cluster resource was
-accessed. All outputs are `DEVELOPMENT_ONLY`; sealed audit directories are
-read-only inputs. No fitted 3.10 Mb value appears anywhere.
+These are commands **only André may execute** if reproduction is required. No
+agent runs them. The recorded execution was performed by André and its pasted
+outputs were reviewed locally; agents did not access cluster resources. All
+outputs are `DEVELOPMENT_ONLY`; sealed audit directories are read-only inputs.
+No fitted 3.10 Mb value appears anywhere.
 
 ## One user-supplied data variable
 

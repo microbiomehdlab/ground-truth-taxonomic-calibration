@@ -1,18 +1,17 @@
 # Next actions and execution order
 
 **Purpose:** operational starting point for the next agent.
-**Last updated:** 20 September 2026.
+**Last updated:** 21 September 2026.
 
-## Immediate infrastructure gate (20 September 2026)
+## Immediate result and next gate (21 September 2026)
 
-The profiler-scale code and frozen `ground_truth_analysis_v2_1.sif` passed all
-four containerized regression files, including all 12 continuous-model
-contract tests. The next action is André's controlled `DEVELOPMENT_ONLY`
-propagation in `analysis_v2/CLUSTER_HANDOFF_GEFF_PROPAGATION.md`. The run now
-builds its complete abundance input from the checksum-locked canonical table
-and compares Bracken between same-run reference arms; no recursive NFS search
-or manually selected historical input is allowed. Its maintained entry point is
-`analysis_v2/run_geff_propagation_development.sh`.
+The controlled Yachida `DEVELOPMENT_ONLY` propagation and residual-genome-size
+audit completed successfully in
+`work/geff_propagation_dev_20260920T003139Z`; every entry in
+`run_checksums.sha256` verified. The next scientific gate is replication in
+Feng and Zeller followed by the definitive three-cohort rebuild. Do not rerun
+Yachida upstream profiling and do not treat the Yachida-only estimates as final
+manuscript evidence.
 
 ### New: MetaPhlAn genome-size residual audit (20 September 2026)
 
@@ -68,14 +67,17 @@ genome-equivalent scale?
   `metaphlan_genome_size_residual_audit`. The two target-recovery arms are
   inputs and are never regenerated or deleted, so **resuming that run will
   rebuild only the comparison and the audit.**
-- **The real Yachida slope is still not known locally.** Only synthetic fixtures
-  have been run (80 tests in
-  `analysis_v2/tests/test_metaphlan_genome_size_residual_audit.py` plus 9 in
-  `test_target_recovery_reference_comparison.py`). Cluster execution remains
-  André-only.
+- **The real Yachida audit passed on 21 September 2026.** Across independent,
+  community and pooled scopes, read-reference slopes were -0.9713, -0.9995 and
+  -0.9962 (all bootstrap intervals excluded zero), whereas genome-equivalent
+  slopes were 0.0132, 0.0068 and 0.0080 (all intervals included zero). All
+  10,000 target-bootstrap replicates were valid in every fit. The audit used 10
+  implanted taxa, proved the Yachida-only cohort scope, preserved Bracken
+  identity, and used measured spike-FASTA lengths without a fitted genome-size
+  constant or pseudocount.
 - Status stays `DEVELOPMENT_ONLY` until Feng and Zeller replicate the finding
-  and the three-cohort run validates it. Do not quote a slope until André
-  returns the real `metaphlan_genome_size_regression.tsv`.
+  and the three-cohort run validates it. The Yachida slopes may be quoted only
+  with that explicit limitation.
 
 Read `CLAUDE.md` or `CODEX.md` first; they are the same file. Record every
 substantive decision in `analysis_v2/METHODS_DECISION_LOG.md` and update the
@@ -83,11 +85,11 @@ shared context in the same session.
 
 ## Immediate assignment
 
-The profiler-scale implementation and maintained runners are migrated and
-Codex-verified. The next task is to prepare a scoped commit and push, then have
-André personally perform the controlled `DEVELOPMENT_ONLY` execution in
-`analysis_v2/CLUSTER_HANDOFF_GEFF_PROPAGATION.md`. Do not rerun upstream
-profiling or regenerate poster figures.
+The profiler-scale implementation, Yachida propagation, paired reference
+comparison, and residual-genome-size audit are complete and checksum-verified.
+Next: finish the remaining methodological gates—the real continuous model and
+DiD, the Figure 6 implanted-taxon exclusion/counting correction, and
+Feng/Zeller replication—before freezing publication figures or final Results.
 
 **Progress, 17 September 2026.** The `G_j` source and `G_eff,i` derivation are
 decided and validated against the production MetaPhlAn vJan25 database and all

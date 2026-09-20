@@ -1,6 +1,6 @@
 # Project handoff: controlled taxonomic perturbation and CRC biomarkers
 
-Last updated: 2026-09-20. Read this first when resuming the project.
+Last updated: 2026-09-21. Read this first when resuming the project.
 
 ## Status note, 20 September 2026 — profiler-scale Yachida propagation complete
 
@@ -35,10 +35,14 @@ v2.1 container has DuckDB 1.0.0, PyArrow 17.0.0, and R `mgcv`, `sandwich`, and
 `arrow`. The real continuous model and DiD remain outstanding. Figure 6 remains
 blocked by the known implanted-taxon exclusion/counting defect.
 
-Current code work in review implements a target-level residual-genome-size
-audit (expected descriptive slope approximately -1 before scale matching and 0
-after). Do not run or interpret it until Codex verifies the implementation and
-the code is committed. Cluster execution remains André-only.
+The target-level residual-genome-size audit is now implemented, Codex-verified,
+committed, executed by André, and checksum-verified. Read-reference slopes were
+-0.9713 (independent), -0.9995 (community), and -0.9962 (pooled), with
+target-bootstrap intervals excluding zero. Genome-equivalent slopes were
+0.0132, 0.0068, and 0.0080, with every interval including zero. This provides
+strong Yachida evidence that scale mismatch explains the genome-size trend.
+It remains `DEVELOPMENT_ONLY`; Feng/Zeller replication and the definitive
+three-cohort rebuild are required before final manuscript claims.
 
 ## Status note, 18 September 2026
 

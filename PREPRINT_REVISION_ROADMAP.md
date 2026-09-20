@@ -2,7 +2,7 @@
 
 **Working manuscript:** *Ground-truth in silico spike-ins reveal limits of microbiome biomarker recovery in colorectal cancer*
 **Target level:** Nature Communications or a journal with comparable expectations
-**Document status:** strategic revision plan, updated 20 September 2026
+**Document status:** strategic revision plan, updated 21 September 2026
 **Source manuscript reviewed:** bioRxiv version 1, DOI 10.64898/2026.08.02.742082
 **Important evidence warning:** unless explicitly stated otherwise, current three-cohort downstream results are `DEVELOPMENT_ONLY`. They combine definitive Yachida output with historical Feng and Zeller output. Final estimates and figures must be regenerated from sealed strict-production outputs for all three cohorts.
 
@@ -24,11 +24,20 @@ apparent error, but meaningful taxon- and context-dependent residual error
 remains. These are Yachida-only `DEVELOPMENT_ONLY` results and require
 Feng/Zeller replication before final prose or figures are frozen.
 
+The checksum-verified Yachida residual-genome-size audit independently supports
+that interpretation. The slope of target-level median
+`log2(observed/expected)` against `log2(target genome size)` was approximately
+-1 under the read-proportional sensitivity (-0.971 independent, -0.999
+community, -0.996 pooled), but approximately 0 under the genome-equivalent
+primary reference (0.013, 0.0068, 0.0080). Read-reference bootstrap intervals
+excluded zero and all corrected intervals included zero. This is compelling
+Yachida-only validation of the scale correction, not yet a three-cohort claim.
+
 Paper drafting may proceed for the Introduction, experimental design, frozen
 methods, and manuscript structure. Final Results, abstract claims, Discussion,
-and publication figures remain blocked on the residual-genome-size audit,
-stratified sensitivity review, real model execution, Figure 6 correction, and
-the definitive three-cohort rebuild.
+and publication figures remain blocked on cross-cohort replication, stratified
+sensitivity review, real model execution, Figure 6 correction, and the
+definitive three-cohort rebuild.
 
 ## 1. Executive recommendation
 
