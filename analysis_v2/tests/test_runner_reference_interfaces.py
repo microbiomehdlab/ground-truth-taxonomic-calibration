@@ -17,6 +17,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[2]
 V2 = ROOT / "analysis_v2"
 DID_RUNNER = V2 / "run_ideal_counterfactual_did.sh"
+GEFF_RUNNER = V2 / "run_geff_propagation_development.sh"
 
 # Maintained runners that invoke the continuous model on a primary endpoint set.
 CONTINUOUS_CALLERS = ["run_yachida_definitive_analysis.sh",
@@ -63,9 +64,25 @@ class StaticInterfaceTest(unittest.TestCase):
             text = path.read_text()
             if "--reference-scale" not in text:
                 continue
+            # The G-eff development runner deliberately produces a separately
+            # named read-reference sensitivity output after its profiler-scale
+            # primary output. This is explicit, not a silent primary default.
+            if path == GEFF_RUNNER:
+                self.assertIn("target_recovery_read_sensitivity", text)
+                continue
             self.assertNotIn("--reference-scale read_proportional\n",
                              text.replace('"$REFERENCE_SCALE"', ""),
                              f"{path.name} hard-codes the sensitivity scale")
+
+    def test_geff_runner_uses_generated_feature_manifest(self):
+        text = GEFF_RUNNER.read_text()
+        self.assertIn(
+            'PROFILE_MANIFEST="$RUN_ROOT/native_abundance/biomarker_profile_manifest.tsv"',
+            text,
+        )
+        self.assertIn('--profile-manifest "$PROFILE_MANIFEST"', text)
+        self.assertNotIn('--profile-manifest "$CANONICAL"', text)
+        self.assertIn('RESUME_RUN_ROOT', text)
 
 
 class DidRunnerContractTest(unittest.TestCase):

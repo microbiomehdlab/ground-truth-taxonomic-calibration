@@ -24,7 +24,14 @@ GEFF_SENSITIVITY="$AUDIT_ROOT/geff_sensitivity_cov90/effective_genome_size.tsv"
 GEFF_SENSITIVITY_SUCCESS="$AUDIT_ROOT/geff_sensitivity_cov90/SUCCESS"
 CANONICAL_SHA256="251d0ed2df12d49cad12907d66e1273e29c9416de5a2223ca613756b0c4434cd"
 DB_SHA256="e7d23a73a7959b4f41af0bbe403f4b5bbb7c1879528d376d146ee5294515df9a"
-RUN_ROOT="work/geff_propagation_dev_${STAMP}"
+if [[ -n "${RESUME_RUN_ROOT:-}" ]]; then
+  RUN_ROOT="$RESUME_RUN_ROOT"
+  test -s "$RUN_ROOT/DEVELOPMENT_ONLY.txt" \
+    || { echo "FAIL resume root is not DEVELOPMENT_ONLY: $RUN_ROOT"; exit 1; }
+  echo "[INFO] Resuming development run: $RUN_ROOT"
+else
+  RUN_ROOT="work/geff_propagation_dev_${STAMP}"
+fi
 
 # ---------- preflight: every check is a hard gate -------------------------
 for f in "$CANONICAL" "$GEFF_PRIMARY" "$GEFF_PRIMARY_SUCCESS" \
@@ -32,7 +39,9 @@ for f in "$CANONICAL" "$GEFF_PRIMARY" "$GEFF_PRIMARY_SUCCESS" \
          "$TARGET_GENOME_SIZES" "$ALIASES"; do
   test -s "$f" || { echo "FAIL missing or empty: $f"; exit 1; }
 done
-test ! -e "$RUN_ROOT" || { echo "FAIL run root exists"; exit 1; }
+if [[ -z "${RESUME_RUN_ROOT:-}" ]]; then
+  test ! -e "$RUN_ROOT" || { echo "FAIL run root exists"; exit 1; }
+fi
 
 actual="$(sha256sum "$CANONICAL" | cut -d' ' -f1)"
 [ "$actual" = "$CANONICAL_SHA256" ] || { echo "FAIL canonical checksum: $actual"; exit 1; }
@@ -54,29 +63,46 @@ awk -F '\t' '
         if (n != 10) { print "FAIL target count " n; exit 1 } }' "$TARGET_GENOME_SIZES" \
   || exit 1
 
-mkdir -p "$RUN_ROOT"; echo DEVELOPMENT_ONLY > "$RUN_ROOT/DEVELOPMENT_ONLY.txt"
+mkdir -p "$RUN_ROOT"
+if [[ -z "${RESUME_RUN_ROOT:-}" ]]; then
+  echo DEVELOPMENT_ONLY > "$RUN_ROOT/DEVELOPMENT_ONLY.txt"
+fi
 export EFFECTIVE_GENOME_SIZES="$GEFF_PRIMARY"
 
 # ---------- stage 0: deterministic complete native-abundance input --------
 analysis_python analysis_v2/tests/test_biomarker_abundance_input.py
-analysis_python analysis_v2/scripts/build_biomarker_abundance_input.py \
-  --canonical "$CANONICAL" --aliases "$ALIASES" \
-  --outdir "$RUN_ROOT/native_abundance"
+if [[ -s "$RUN_ROOT/native_abundance/SUCCESS" ]]; then
+  echo "[REUSE] validated native abundance: $RUN_ROOT/native_abundance"
+else
+  test ! -e "$RUN_ROOT/native_abundance" \
+    || { echo "FAIL incomplete native abundance directory"; exit 1; }
+  analysis_python analysis_v2/scripts/build_biomarker_abundance_input.py \
+    --canonical "$CANONICAL" --aliases "$ALIASES" \
+    --outdir "$RUN_ROOT/native_abundance"
+fi
 test -s "$RUN_ROOT/native_abundance/SUCCESS" \
   || { echo "FAIL native abundance build"; exit 1; }
 ABUNDANCE_LONG="$RUN_ROOT/native_abundance/biomarker_abundance_long.tsv"
+PROFILE_MANIFEST="$RUN_ROOT/native_abundance/biomarker_profile_manifest.tsv"
 test -s "$ABUNDANCE_LONG" || { echo "FAIL empty abundance table"; exit 1; }
+test -s "$PROFILE_MANIFEST" || { echo "FAIL empty profile manifest"; exit 1; }
 head -1 "$ABUNDANCE_LONG" | grep -q $'profiler\tsource_profile\tfeature\tabundance_fraction' \
   || { echo "FAIL ABUNDANCE_LONG schema"; exit 1; }
+head -1 "$PROFILE_MANIFEST" | grep -q 'target_feature' \
+  || { echo "FAIL profile manifest lacks target_feature"; exit 1; }
 
 # ---------- stage 1: paired endpoints, primary + sensitivity --------------
-bash -c '
-  set -euo pipefail
-  ROOT="$PWD"; source analysis_v2/lib/metaphlan_reference.sh
-  derive_endpoints_with_references "'"$CANONICAL"'" "'"$RUN_ROOT"'/endpoints"
-'
 PRIMARY="$RUN_ROOT/endpoints"
 SENS="$RUN_ROOT/endpoints_read_reference_sensitivity"
+if [[ -s "$PRIMARY/SUCCESS" && -s "$SENS/SUCCESS" ]]; then
+  echo "[REUSE] paired endpoint arms: $PRIMARY and $SENS"
+else
+  bash -c '
+    set -euo pipefail
+    ROOT="$PWD"; source analysis_v2/lib/metaphlan_reference.sh
+    derive_endpoints_with_references "'"$CANONICAL"'" "'"$RUN_ROOT"'/endpoints"
+  '
+fi
 for d in "$PRIMARY" "$SENS"; do
   test -s "$d/SUCCESS" || { echo "FAIL no SUCCESS in $d"; exit 1; }
 done
@@ -98,33 +124,55 @@ fi
 echo "[PASS] Bracken identical between profiler-scale primary and read-reference sensitivity"
 
 # ---------- stage 3: perturbation-response input --------------------------
-analysis_python analysis_v2/scripts/build_perturbation_response_input.py \
-  --profile-manifest "$CANONICAL" \
-  --endpoints "$PRIMARY/paired_endpoints.tsv" \
-  --abundance "$ABUNDANCE_LONG" \
-  --outdir "$RUN_ROOT/response_input" \
-  --metaphlan-reference genome_equivalent \
-  --target-genome-sizes "$TARGET_GENOME_SIZES" \
-  --effective-genome-sizes "$GEFF_PRIMARY"
+if [[ -e "$RUN_ROOT/response_input" && ! -s "$RUN_ROOT/response_input/SUCCESS" ]]; then
+  mkdir -p "$RUN_ROOT/failed_attempts"
+  mv "$RUN_ROOT/response_input" \
+    "$RUN_ROOT/failed_attempts/response_input_${STAMP}"
+  echo "[QUARANTINE] incomplete response input moved under failed_attempts"
+fi
+if [[ -s "$RUN_ROOT/response_input/SUCCESS" ]]; then
+  echo "[REUSE] response input: $RUN_ROOT/response_input"
+else
+  analysis_python analysis_v2/scripts/build_perturbation_response_input.py \
+    --profile-manifest "$PROFILE_MANIFEST" \
+    --endpoints "$PRIMARY/paired_endpoints.tsv" \
+    --abundance "$ABUNDANCE_LONG" \
+    --outdir "$RUN_ROOT/response_input" \
+    --metaphlan-reference genome_equivalent \
+    --target-genome-sizes "$TARGET_GENOME_SIZES" \
+    --effective-genome-sizes "$GEFF_PRIMARY"
+fi
 test -s "$RUN_ROOT/response_input/SUCCESS" || { echo "FAIL response input"; exit 1; }
 RESPONSES="$RUN_ROOT/response_input/paired_feature_responses.parquet"
 
 # ---------- stage 4: downstream on the primary scale ----------------------
-analysis_python analysis_v2/scripts/summarize_target_recovery.py \
-  --responses "$RESPONSES" --outdir "$RUN_ROOT/target_recovery" \
-  --reference-scale profiler_scale
+if [[ ! -s "$RUN_ROOT/target_recovery/SUCCESS" ]]; then
+  test ! -e "$RUN_ROOT/target_recovery" \
+    || { echo "FAIL incomplete target recovery directory"; exit 1; }
+  analysis_python analysis_v2/scripts/summarize_target_recovery.py \
+    --responses "$RESPONSES" --outdir "$RUN_ROOT/target_recovery" \
+    --reference-scale profiler_scale
+fi
 test -s "$RUN_ROOT/target_recovery/SUCCESS" || { echo "FAIL target recovery"; exit 1; }
 
-analysis_python analysis_v2/scripts/analyze_perturbation_response.py \
-  --responses "$RESPONSES" --outdir "$RUN_ROOT/response_analysis" \
-  --reference-scale profiler_scale
+if [[ ! -s "$RUN_ROOT/response_analysis/SUCCESS" ]]; then
+  test ! -e "$RUN_ROOT/response_analysis" \
+    || { echo "FAIL incomplete response analysis directory"; exit 1; }
+  analysis_python analysis_v2/scripts/analyze_perturbation_response.py \
+    --responses "$RESPONSES" --outdir "$RUN_ROOT/response_analysis" \
+    --reference-scale profiler_scale
+fi
 test -s "$RUN_ROOT/response_analysis/SUCCESS" || { echo "FAIL response analysis"; exit 1; }
 
 # ---------- stage 5: MetaPhlAn read-reference sensitivity -----------------
-analysis_python analysis_v2/scripts/summarize_target_recovery.py \
-  --responses "$RESPONSES" \
-  --outdir "$RUN_ROOT/target_recovery_read_sensitivity" \
-  --reference-scale read_proportional
+if [[ ! -s "$RUN_ROOT/target_recovery_read_sensitivity/SUCCESS" ]]; then
+  test ! -e "$RUN_ROOT/target_recovery_read_sensitivity" \
+    || { echo "FAIL incomplete sensitivity directory"; exit 1; }
+  analysis_python analysis_v2/scripts/summarize_target_recovery.py \
+    --responses "$RESPONSES" \
+    --outdir "$RUN_ROOT/target_recovery_read_sensitivity" \
+    --reference-scale read_proportional
+fi
 test -s "$RUN_ROOT/target_recovery_read_sensitivity/SUCCESS" \
   || { echo "FAIL sensitivity"; exit 1; }
 

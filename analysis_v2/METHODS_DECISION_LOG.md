@@ -979,3 +979,13 @@ built at a new path before rerunning the gates.
   rather than guaranteed complete inputs. Same-run derivation removes all
   three ambiguities.
 - **Status:** `DECIDED`; encoded in the cluster handoff.
+
+**Interface correction after first controlled execution.** The response builder
+requires the generated `biomarker_profile_manifest.tsv`, whose schema includes
+`target_feature`; the raw canonical table intentionally does not contain that
+derived field. The first development attempt correctly stopped at DuckDB bind
+time after completing abundance expansion, both endpoint arms and the Bracken
+check. The maintained runner now passes the generated manifest, asserts its
+schema, and supports `RESUME_RUN_ROOT`. Completed abundance/endpoints are reused,
+while an incomplete response-input directory is moved under `failed_attempts/`
+before retry. No completed artifact is deleted or recomputed during this resume.

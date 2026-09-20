@@ -182,9 +182,13 @@ analysis_python analysis_v2/scripts/build_biomarker_abundance_input.py \
 test -s "$RUN_ROOT/native_abundance/SUCCESS" \
   || { echo "FAIL native abundance build"; exit 1; }
 ABUNDANCE_LONG="$RUN_ROOT/native_abundance/biomarker_abundance_long.tsv"
+PROFILE_MANIFEST="$RUN_ROOT/native_abundance/biomarker_profile_manifest.tsv"
 test -s "$ABUNDANCE_LONG" || { echo "FAIL empty abundance table"; exit 1; }
+test -s "$PROFILE_MANIFEST" || { echo "FAIL empty profile manifest"; exit 1; }
 head -1 "$ABUNDANCE_LONG" | grep -q $'profiler\tsource_profile\tfeature\tabundance_fraction' \
   || { echo "FAIL ABUNDANCE_LONG schema"; exit 1; }
+head -1 "$PROFILE_MANIFEST" | grep -q 'target_feature' \
+  || { echo "FAIL profile manifest lacks target_feature"; exit 1; }
 
 # ---------- stage 1: paired endpoints, primary + sensitivity --------------
 bash -c '
@@ -216,7 +220,7 @@ echo "[PASS] Bracken identical between profiler-scale primary and read-reference
 
 # ---------- stage 3: perturbation-response input --------------------------
 analysis_python analysis_v2/scripts/build_perturbation_response_input.py \
-  --profile-manifest "$CANONICAL" \
+  --profile-manifest "$PROFILE_MANIFEST" \
   --endpoints "$PRIMARY/paired_endpoints.tsv" \
   --abundance "$ABUNDANCE_LONG" \
   --outdir "$RUN_ROOT/response_input" \
@@ -297,7 +301,7 @@ test -s "$RUN_ROOT/models/continuous_community/SUCCESS" || { echo "FAIL continuo
 # built in stage 3 from THIS canonical input, cohort, population and assembly
 # arm; never an unrelated or stale table.
 env DISEASE_RUN="<sealed disease run>" \
-    PROFILE_MANIFEST="$CANONICAL" \
+    PROFILE_MANIFEST="$PROFILE_MANIFEST" \
     ABUNDANCE_LONG="$ABUNDANCE_LONG" \
     PAIRED_ENDPOINTS="$PRIMARY/paired_endpoints.tsv" \
     RESPONSE_TABLE="$RESPONSES" \
