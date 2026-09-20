@@ -183,6 +183,22 @@ fi
 test -s "$RUN_ROOT/target_recovery_read_sensitivity/SUCCESS" \
   || { echo "FAIL sensitivity"; exit 1; }
 
+# ---------- stage 6: paired primary-versus-sensitivity comparison ---------
+if [[ -e "$RUN_ROOT/reference_comparison" && ! -s "$RUN_ROOT/reference_comparison/SUCCESS" ]]; then
+  mkdir -p "$RUN_ROOT/failed_attempts"
+  mv "$RUN_ROOT/reference_comparison" \
+    "$RUN_ROOT/failed_attempts/reference_comparison_${STAMP}"
+  echo "[QUARANTINE] incomplete reference comparison moved under failed_attempts"
+fi
+if [[ ! -s "$RUN_ROOT/reference_comparison/SUCCESS" ]]; then
+  analysis_python analysis_v2/scripts/compare_target_recovery_references.py \
+    --primary "$RUN_ROOT/target_recovery/target_recovery_observations.tsv" \
+    --sensitivity "$RUN_ROOT/target_recovery_read_sensitivity/target_recovery_observations.tsv" \
+    --outdir "$RUN_ROOT/reference_comparison"
+fi
+test -s "$RUN_ROOT/reference_comparison/SUCCESS" \
+  || { echo "FAIL reference comparison"; exit 1; }
+
 # ---------- reporting ------------------------------------------------------
 for d in "$PRIMARY" "$SENS" "$RUN_ROOT/target_recovery"; do
   f="$d/paired_endpoints.tsv"; [ -f "$f" ] || f="$d/target_recovery_observations.tsv"
