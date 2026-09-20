@@ -1144,6 +1144,14 @@ def main() -> None:
     parser.add_argument("--log2-instability-threshold", type=float, default=1.0,
                         help="Absolute conditional log2 error defining instability.")
     parser.add_argument("--panel-replicates", type=int, default=50)
+    parser.add_argument(
+        "--cohort-validation",
+        choices=("require_holdout", "allow_single_cohort"),
+        default="require_holdout",
+        help=("Require cross-cohort holdout validation (default), or explicitly "
+              "allow a single-cohort development audit. In the latter case, "
+              "cross-cohort output tables are written header-only."),
+    )
     parser.add_argument("--disease-results", type=Path,
                         help="Optional primary disease DA table for replication analysis.")
     parser.add_argument("--feature-aliases", type=Path,
@@ -1260,7 +1268,8 @@ def main() -> None:
                 )
         if input_rows == 0:
             raise ValueError("input contains no data rows")
-        if len(cohorts) < 2:
+        single_cohort = len(cohorts) == 1
+        if single_cohort and args.cohort_validation == "require_holdout":
             raise ValueError("at least two cohorts are required for holdout validation")
 
         reliability: dict[tuple[str, str, str], ReliabilityAggregate] = {}
@@ -1425,7 +1434,9 @@ def main() -> None:
 
         certificate_rows: list[dict[str, object]] = []
         certificate_scores: dict[tuple[str, str, str], tuple[float | None, float | None]] = {}
-        holdout_labels: list[str | None] = [None] + sorted(cohorts)
+        holdout_labels: list[str | None] = [None]
+        if not single_cohort:
+            holdout_labels.extend(sorted(cohorts))
         for holdout in holdout_labels:
             training = sorted(cohorts if holdout is None else cohorts - {holdout})
             holdout_label = "NONE" if holdout is None else holdout
@@ -1467,7 +1478,7 @@ def main() -> None:
                     })
 
         cohort_holdout_rows = []
-        for holdout in sorted(cohorts):
+        for holdout in ([] if single_cohort else sorted(cohorts)):
             for profiler in sorted(profilers):
                 trained_features = {
                     feature for h, p, feature in certificate_scores
@@ -1501,7 +1512,7 @@ def main() -> None:
         # using only the other targets, never the held-out target itself.
         target_holdout_rows: list[dict[str, object]] = []
         all_targets = sorted(target_indices)
-        for holdout in sorted(cohorts):
+        for holdout in ([] if single_cohort else sorted(cohorts)):
             training_cohorts = sorted(cohorts - {holdout})
             for profiler in sorted(profilers):
                 for heldout_target in all_targets:
@@ -1538,7 +1549,7 @@ def main() -> None:
         panel_rows: list[dict[str, object]] = []
         randomizer = random.Random(20260915)
         panel_sizes = [size for size in (1, 2, 3, 5, 7, 10) if size <= len(all_targets)]
-        for holdout in sorted(cohorts):
+        for holdout in ([] if single_cohort else sorted(cohorts)):
             training_cohorts = sorted(cohorts - {holdout})
             for profiler in sorted(profilers):
                 feature_pool = sorted(features_by_profiler[profiler])
@@ -1627,6 +1638,9 @@ def main() -> None:
             {"metric": "input_rows", "value": input_rows},
             {"metric": "input_sha256", "value": sha256(args.input)},
             {"metric": "cohorts", "value": len(cohorts)},
+            {"metric": "cohort_holdout_status", "value": (
+                "NOT_APPLICABLE_SINGLE_COHORT" if single_cohort else "PASS"
+            )},
             {"metric": "profilers", "value": len(profilers)},
             {"metric": "features", "value": len(features)},
             {"metric": "implanted_target_rows", "value": target_rows},
@@ -1646,6 +1660,7 @@ def main() -> None:
             {"setting": "reliability_target_exclusion", "value": "all_implanted_features"},
             {"setting": "binary_rate_prior", "value": "Jeffreys_beta_0.5_0.5"},
             {"setting": "log2_instability_threshold", "value": render(args.log2_instability_threshold)},
+            {"setting": "cohort_validation", "value": args.cohort_validation},
             {"setting": "status", "value": "DEVELOPMENT_ONLY"},
         ])
         output_paths.append(settings)

@@ -155,12 +155,19 @@ if [[ ! -s "$RUN_ROOT/target_recovery/SUCCESS" ]]; then
 fi
 test -s "$RUN_ROOT/target_recovery/SUCCESS" || { echo "FAIL target recovery"; exit 1; }
 
+if [[ -e "$RUN_ROOT/response_analysis" && ! -s "$RUN_ROOT/response_analysis/SUCCESS" ]]; then
+  mkdir -p "$RUN_ROOT/failed_attempts"
+  mv "$RUN_ROOT/response_analysis" \
+    "$RUN_ROOT/failed_attempts/response_analysis_${STAMP}"
+  echo "[QUARANTINE] incomplete response analysis moved under failed_attempts"
+fi
 if [[ ! -s "$RUN_ROOT/response_analysis/SUCCESS" ]]; then
   test ! -e "$RUN_ROOT/response_analysis" \
     || { echo "FAIL incomplete response analysis directory"; exit 1; }
   analysis_python analysis_v2/scripts/analyze_perturbation_response.py \
     --responses "$RESPONSES" --outdir "$RUN_ROOT/response_analysis" \
-    --reference-scale profiler_scale
+    --reference-scale profiler_scale \
+    --cohort-validation allow_single_cohort
 fi
 test -s "$RUN_ROOT/response_analysis/SUCCESS" || { echo "FAIL response analysis"; exit 1; }
 

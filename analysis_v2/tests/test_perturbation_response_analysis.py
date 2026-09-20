@@ -208,4 +208,40 @@ with tempfile.TemporaryDirectory() as temporary:
     assert ("profiler_scale needs column" in combined
             or "requires profiler and" in combined), combined
 
+    # A one-cohort input remains an error by default, because publication-scale
+    # analysis requires genuine external holdout validation.
+    one_cohort = root / "one_cohort.tsv"
+    one_rows = [row for row in rows if row["cohort"] == "alpha"]
+    with one_cohort.open("w", newline="", encoding="utf-8") as handle:
+        writer = csv.DictWriter(handle, fieldnames=FIELDS, delimiter="\t", lineterminator="\n")
+        writer.writeheader()
+        writer.writerows(one_rows)
+    rejected = subprocess.run([
+        "python3", str(SCRIPT), "--responses", str(one_cohort),
+        "--outdir", str(root / "single_rejected"),
+        "--reference-scale", "read_proportional",
+    ], text=True, capture_output=True)
+    assert rejected.returncode != 0
+    assert "at least two cohorts" in rejected.stderr
+
+    # The explicit development-only mode preserves within-cohort analyses and
+    # writes cross-cohort products as auditable header-only tables.
+    single_output = root / "single_allowed"
+    subprocess.run([
+        "python3", str(SCRIPT), "--responses", str(one_cohort),
+        "--outdir", str(single_output),
+        "--reference-scale", "read_proportional",
+        "--cohort-validation", "allow_single_cohort",
+    ], check=True)
+    assert read_tsv(single_output / "response_operator.tsv")
+    assert read_tsv(single_output / "superposition_summary.tsv")
+    assert read_tsv(single_output / "reliability_certificates.tsv")
+    assert not read_tsv(single_output / "heldout_operator_validation.tsv")
+    assert not read_tsv(single_output / "cohort_holdout_summary.tsv")
+    assert not read_tsv(single_output / "heldout_validation.tsv")
+    assert not read_tsv(single_output / "panel_saturation.tsv")
+    validation = {row["metric"]: row["value"] for row in
+                  read_tsv(single_output / "perturbation_response_validation.tsv")}
+    assert validation["cohort_holdout_status"] == "NOT_APPLICABLE_SINGLE_COHORT"
+
 print("[PASS] perturbation-response operator and reliability fixture")
