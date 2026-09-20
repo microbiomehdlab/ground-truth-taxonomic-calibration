@@ -14,9 +14,14 @@ analysis_python() {
     "$ANALYSIS_SIF" python3 "$@"
 }
 
+# Reuse gate for completed stages. A SUCCESS marker written by older code does
+# not prove the directory still matches the schema the current consumers need.
+source analysis_v2/lib/stage_compatibility.sh
+
 STAMP="$(date -u +%Y%m%dT%H%M%SZ)"
 CANONICAL="work/analysis_v2_three_cohort_input_dev_20260913_180614/yachida/canonical_input.tsv"
 ALIASES="examples/spike_taxon_aliases.csv"
+SPIKE_PANEL="spikes/spike_panel.tsv"
 AUDIT_ROOT="work/yachida_geff_audit_20260917T144215Z"
 GEFF_PRIMARY="$AUDIT_ROOT/geff_primary_cov95/effective_genome_size.tsv"
 GEFF_PRIMARY_SUCCESS="$AUDIT_ROOT/geff_primary_cov95/SUCCESS"
@@ -36,7 +41,7 @@ fi
 # ---------- preflight: every check is a hard gate -------------------------
 for f in "$CANONICAL" "$GEFF_PRIMARY" "$GEFF_PRIMARY_SUCCESS" \
          "$GEFF_SENSITIVITY" "$GEFF_SENSITIVITY_SUCCESS" \
-         "$TARGET_GENOME_SIZES" "$ALIASES"; do
+         "$TARGET_GENOME_SIZES" "$ALIASES" "$SPIKE_PANEL"; do
   test -s "$f" || { echo "FAIL missing or empty: $f"; exit 1; }
 done
 if [[ -z "${RESUME_RUN_ROOT:-}" ]]; then
@@ -184,20 +189,43 @@ test -s "$RUN_ROOT/target_recovery_read_sensitivity/SUCCESS" \
   || { echo "FAIL sensitivity"; exit 1; }
 
 # ---------- stage 6: paired primary-versus-sensitivity comparison ---------
-if [[ -e "$RUN_ROOT/reference_comparison" && ! -s "$RUN_ROOT/reference_comparison/SUCCESS" ]]; then
-  mkdir -p "$RUN_ROOT/failed_attempts"
-  mv "$RUN_ROOT/reference_comparison" \
-    "$RUN_ROOT/failed_attempts/reference_comparison_${STAMP}"
-  echo "[QUARANTINE] incomplete reference comparison moved under failed_attempts"
-fi
-if [[ ! -s "$RUN_ROOT/reference_comparison/SUCCESS" ]]; then
+# A comparison produced before the explicit per-arm reference-provenance columns
+# existed is still marked SUCCESS but cannot feed stage 7, so it is quarantined
+# and regenerated. Both target-recovery arms are inputs here and are never
+# touched by this migration.
+COMPARISON_DIR="$RUN_ROOT/reference_comparison"
+if ! reuse_or_quarantine reference_comparison "$COMPARISON_DIR" \
+       "$RUN_ROOT" "$STAMP" "reference comparison"; then
   analysis_python analysis_v2/scripts/compare_target_recovery_references.py \
     --primary "$RUN_ROOT/target_recovery/target_recovery_observations.tsv" \
     --sensitivity "$RUN_ROOT/target_recovery_read_sensitivity/target_recovery_observations.tsv" \
-    --outdir "$RUN_ROOT/reference_comparison"
+    --outdir "$COMPARISON_DIR"
 fi
-test -s "$RUN_ROOT/reference_comparison/SUCCESS" \
+test -s "$COMPARISON_DIR/SUCCESS" \
   || { echo "FAIL reference comparison"; exit 1; }
+stage_schema_reason reference_comparison "$COMPARISON_DIR" \
+  || { echo "FAIL regenerated reference comparison is still schema-incompatible"; exit 1; }
+
+# ---------- stage 7: MetaPhlAn genome-size residual audit -----------------
+# Does the apparent genome-size-dependent MetaPhlAn recovery bias disappear on
+# the genome-equivalent scale? Expected slope against log2(G_t): about -1 for
+# the read-proportional sensitivity arm, about 0 for the primary arm. The audit
+# only measures the change; it never forces either answer. It reads the paired
+# comparison that stage 6 already wrote, so nothing upstream is recomputed.
+AUDIT_DIR="$RUN_ROOT/metaphlan_genome_size_residual_audit"
+if ! reuse_or_quarantine metaphlan_genome_size_residual_audit "$AUDIT_DIR" \
+       "$RUN_ROOT" "$STAMP" "genome-size residual audit"; then
+  analysis_python analysis_v2/scripts/audit_metaphlan_genome_size_residual.py \
+    --comparison "$COMPARISON_DIR/target_recovery_reference_comparison.tsv" \
+    --comparison-validation "$COMPARISON_DIR/reference_comparison_validation.tsv" \
+    --target-genome-sizes "$TARGET_GENOME_SIZES" \
+    --spike-panel "$SPIKE_PANEL" \
+    --feature-aliases "$ALIASES" \
+    --outdir "$AUDIT_DIR"
+fi
+test -s "$AUDIT_DIR/SUCCESS" || { echo "FAIL genome-size residual audit"; exit 1; }
+stage_schema_reason metaphlan_genome_size_residual_audit "$AUDIT_DIR" \
+  || { echo "FAIL regenerated genome-size audit is still schema-incompatible"; exit 1; }
 
 # ---------- reporting ------------------------------------------------------
 for d in "$PRIMARY" "$SENS" "$RUN_ROOT/target_recovery"; do
@@ -217,6 +245,8 @@ done
   printf 'geff_primary\t%s\n' "$GEFF_PRIMARY"
   printf 'geff_sensitivity\t%s\n' "$GEFF_SENSITIVITY"
   printf 'target_genome_sizes\t%s\n' "$(readlink -f "$TARGET_GENOME_SIZES")"
+  printf 'spike_panel\t%s\n' "$(readlink -f "$SPIKE_PANEL")"
+  printf 'genome_size_audit\t%s\n' "$(readlink -f "$AUDIT_DIR")"
   printf 'abundance_long\t%s\n' "$(readlink -f "$ABUNDANCE_LONG")"
   printf 'abundance_sha256\t%s\n' "$(sha256sum "$ABUNDANCE_LONG" | cut -d' ' -f1)"
   printf 'bracken_comparator\t%s\n' "$(readlink -f "$SENS/paired_endpoints.tsv")"

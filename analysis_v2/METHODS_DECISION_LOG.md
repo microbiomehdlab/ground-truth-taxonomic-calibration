@@ -4,6 +4,188 @@ This tracked log records decisions that affect manuscript methods or
 interpretation. Generated run directories preserve the corresponding inputs,
 diagnostics, provenance, and checksums.
 
+## 2026-09-20 — MetaPhlAn genome-size residual audit (implemented; result unknown)
+
+**Question.** Under the read-proportional reference the implanted signal is a
+read fraction, so a marker-length-normalised profiler should under-report large
+genomes in proportion to their length:
+
+    log2(observed / expected_read) ~= constant - log2(G_t)
+
+giving a slope near **-1** against log2 of the implanted target's genome size.
+Replacing the implanted read fraction with the genome-equivalent implanted
+signal `q_it / D_i` should remove that dependence, giving a slope near **0**.
+
+**DECIDED: how the audit is specified.**
+
+- New script `analysis_v2/scripts/audit_metaphlan_genome_size_residual.py`,
+  wired as resumable stage 7 of `run_geff_propagation_development.sh`, reading
+  only `reference_comparison/target_recovery_reference_comparison.tsv` — the
+  paired primary-versus-sensitivity comparison that stage 6 already produced.
+  Nothing upstream is recomputed.
+- **Arms.** Primary = genome-equivalent profiler scale (expected slope 0);
+  sensitivity = preserved read-proportional reference (expected slope -1). Both
+  expectations are recorded as `expected_slope` and compared to the fit; neither
+  is assumed, forced or rewarded.
+- **Scope.** MetaPhlAn 4 only, Yachida only, `DEVELOPMENT_ONLY`. Bracken is not
+  regressed, but the upstream `bracken_identical` = PASS proof is a required
+  input gate read from `reference_comparison_validation.tsv`; it is never
+  inferred from a filename.
+- **Statistical unit: the implanted taxon.** Each target contributes one median
+  `log2(observed/expected)` and the OLS is fitted across the ten target points.
+  Observation rows are repeated measures of the same ten taxa; regressing them
+  directly would be pseudoreplication, and no inferential standard error is
+  computed from observation rows. `independent`, `community` and `pooled` are
+  fitted separately; the pooled target median is taken over **all** eligible
+  observations of that target, never as an average of the two population medians.
+- **Uncertainty: a target-cluster percentile bootstrap.** 10,000 replicates by
+  default, fixed seed **20260920**, resampling the ten targets with replacement,
+  discarding any replicate with fewer than two distinct genome sizes, requiring
+  at least 95% valid replicates, and taking the 2.5th/97.5th percentiles with a
+  locally implemented interpolating percentile (no new SciPy dependency). A
+  fresh generator with the same seed is used per (scope, arm), so the two arms
+  see identical target resamples and their intervals are directly comparable.
+  This is **descriptive uncertainty over the ten implanted taxa only**, stated
+  in the validation output and in `DEVELOPMENT_ONLY.txt`.
+- **Genome sizes.** Exclusively the FASTA-measured `target_genome_sizes.tsv`,
+  revalidated against the same plausibility window `build_target_genome_sizes.py`
+  enforces. No genome size is ever estimated from a recovery outcome and the
+  superseded fitted 3.10 Mb constant appears nowhere
+  (`fitted_genome_size_constant_used = NONE`).
+- **Exact target mapping.** The comparison carries the *profiler* feature name
+  while the genome-size table carries the canonical spike-panel taxon name, and
+  for Fnuc those genuinely differ (`Fusobacterium nucleatum` versus
+  `Fusobacterium nucleatum subsp. nucleatum`). Mapping is therefore an exact
+  equality join through the frozen `examples/spike_taxon_aliases.csv` on
+  `(canonical taxon name, tool)`, plus exact equality on the canonical name
+  itself. The index must be injective, each label must resolve to exactly one
+  observed feature, and all ten frozen labels must be present. There is no
+  fuzzy, prefix, case-insensitive, normalised or substring fallback; tests
+  assert that each of those is rejected.
+- **Eligibility.** A ratio must be present and strictly positive and finite. No
+  pseudocount is ever added. Exclusion is **paired**: an observation is dropped
+  from both arms if either arm's ratio is unusable, because the arms are paired
+  measurements of one physical observation and a differently filtered pair would
+  make `primary_minus_sensitivity` meaningless. Exclusions are counted and
+  reported per target with reasons; a target with no eligible observation in any
+  scope fails the audit.
+- **Fail-closed on:** missing or empty inputs; a non-empty output directory; a
+  comparison lacking either profiler or either arm's columns; a blank paired
+  value; a duplicate physical observation key; a missing or non-PASS Bracken
+  gate; any mapping ambiguity; a missing, nonnumeric, nonfinite, non-positive,
+  inconsistently duplicated or implausible genome size; a missing or unexpected
+  target label; fewer than ten targets in a regression; and a bootstrap with
+  fewer than 95% valid replicates.
+
+**Status: the real Yachida result is NOT yet known.** The audit is implemented
+and tested locally against a deterministic synthetic fixture only
+(`analysis_v2/tests/test_metaphlan_genome_size_residual_audit.py`, 51 tests,
+including mutation checks proving that swapping the arms or regressing
+observation rows breaks named assertions). Nothing was executed on the cluster;
+André runs the development pipeline personally. The audit stays
+`DEVELOPMENT_ONLY` until Feng and Zeller replicate it and the three-cohort run
+validates it.
+
+**2026-09-20 addendum — four defects corrected after Codex verification.** The
+estimand, target-level aggregation, paired exclusion, bootstrap, seed, scopes
+and output names are unchanged. Corrected:
+
+1. **Selected reference provenance is now carried explicitly.** The original
+   row-level `reference_type` and the *selected estimand* are different things:
+   a MetaPhlAn row keeps `genome_equivalent` row provenance even in the
+   read-proportional arm, because that field records the source profile. The
+   comparator previously carried only `reference_type`, so the sensitivity arm
+   was mislabelled genome-equivalent, and the old synthetic fixture encoded that
+   mistake and hid it. `compare_target_recovery_references.py` now reads
+   `reference_type`, `reference_scale` and `selected_reference_type` from both
+   arms' target-recovery tables and writes
+   `{primary,sensitivity}_{row_reference_type,selected_reference_type,reference_scale,selected_estimand}`.
+   The ambiguous `{primary,sensitivity}_reference_type` names survive only as
+   backward-compatible aliases of the row type and are not read by the audit.
+   Contracts, enforced in both the comparator and the audit:
+   primary = `profiler_scale` / `profiler_scale_primary`; sensitivity =
+   `read_proportional` / `read_proportional`; MetaPhlAn source rows must be
+   `genome_equivalent` and Bracken source rows `read_proportional`; the resolved
+   estimand must be `genome_equivalent` for MetaPhlAn primary and
+   `read_proportional` for MetaPhlAn sensitivity and for Bracken in both arms.
+   Under `profiler_scale` the selected estimand is the row's own reference,
+   which is exactly why Bracken is read-proportional in both arms. In
+   `metaphlan_genome_size_target_level.tsv`, `reference_type` is now the
+   **selected estimand**, with `row_reference_type`, `selected_reference_type`
+   and `reference_scale` kept beside it so no provenance is lost.
+2. **The Yachida-only scope is proved, not asserted.** Every comparison row's
+   cohort is inspected, including Bracken rows that are never regressed. The
+   distinct cohort set must be exactly `{"yachida"}` — the canonical lower-case
+   identifier used throughout the pipeline. Blank, Feng-only, Zeller-only and
+   mixed input all fail; non-matching rows are never silently filtered.
+   `observed_cohorts`, `validated_cohort_count` and `required_cohort` are
+   recorded in the validation table.
+3. **All physical-identity components are required and nonblank.** Every field
+   of `OBSERVATION_KEY` is checked before the duplicate-key test, so two rows
+   can never collide merely because a field was empty. Errors name the line and
+   the field; blanks are never replaced by a sentinel; complete duplicate keys
+   still fail.
+4. **Absolute relative error is validated, never silently replaced.** For both
+   arms of every otherwise eligible MetaPhlAn row the supplied value must be
+   numeric, finite, non-negative and satisfy
+   `absolute_relative_error ~= abs(observed_over_expected - 1)` within
+   `abs(actual - expected) <= max(1e-12, 1e-9 * max(abs(actual), abs(expected), 1))`,
+   a window sized for 17-significant-digit TSV round-tripping. Rows already
+   paired-excluded for an unusable ratio never reach this check and are not
+   rescued by it. Missing error fields remain structural hard failures. The
+   tolerance policy is recorded in the validation metadata.
+
+**Paired exclusion is unchanged and remains the accepted policy:** a present but
+zero, negative, NaN, infinite or nonnumeric ratio in either arm excludes that
+physical observation from both arms; missing or blank values are structural
+failures; no pseudocounts; an entirely unusable target or scope fails; exclusion
+counts and reasons are still reported.
+
+Tests: `test_metaphlan_genome_size_residual_audit.py` 80 tests and
+`test_target_recovery_reference_comparison.py` 9 tests, all passing, with
+mutation checks confirming each of the four gates is load-bearing. **The real
+Yachida slope remains unknown** until André executes the development pipeline on
+the cluster.
+
+**2026-09-20 addendum 2 — stage reuse is schema-gated.** The completed Yachida
+development run holds a `reference_comparison` produced before the explicit
+per-arm reference-provenance columns existed. It still carries a valid
+`SUCCESS`, so `run_geff_propagation_development.sh` would have reused it and
+stage 7 would then have failed on the old schema. A `SUCCESS` marker is now
+treated as evidence that a stage finished, not that it matches the schema the
+current consumers need.
+
+`analysis_v2/lib/stage_compatibility.sh` (`reuse_or_quarantine`) asks
+`analysis_v2/scripts/check_stage_schema.py` whether a completed directory is
+reusable. Headers are parsed as exact tab-separated fields inside that helper —
+never an unquoted `grep` or substring test, which would accept
+`primary_reference_type` where `primary_row_reference_type` is required. A
+reusable `reference_comparison` needs nonempty `SUCCESS`,
+`target_recovery_reference_comparison.tsv` and
+`reference_comparison_validation.tsv`, the eight
+`{primary,sensitivity}_{row_reference_type,selected_reference_type,reference_scale,selected_estimand}`
+columns, and the `primary_selection`, `sensitivity_selection` and
+`selected_estimand_contract` metrics. A reusable
+`metaphlan_genome_size_residual_audit` needs its seven outputs, the
+`reference_type`, `row_reference_type`, `selected_reference_type` and
+`reference_scale` columns in the target-level table, and the
+`selected_reference_sensitivity`, `selected_reference_primary`,
+`observed_cohorts`, `absolute_relative_error_policy` and `audit_status` metrics.
+An incompatible directory is moved whole to
+`$RUN_ROOT/failed_attempts/<name>_<stamp>` with the reason printed, then
+regenerated; both stages re-assert compatibility after regenerating. The
+target-recovery arms are inputs to stage 6 and are never modified, regenerated
+or deleted by this migration.
+
+The audit additionally validates the comparator's `*_selected_estimand` columns
+against the estimand derived from `reference_scale` and
+`selected_reference_type`. The fields are redundant, but a contradiction means
+the upstream provenance is untrustworthy, so it fails closed.
+
+No scientific decision changed: estimand, target-level aggregation, paired
+exclusion, bootstrap, seed and output names are untouched, and the real Yachida
+slope is still unknown.
+
 ## 2026-09-19 — Codex verification and exactly-one-driver release gate
 
 **VERIFIED locally.** The numerical profiler-scale integration test, full

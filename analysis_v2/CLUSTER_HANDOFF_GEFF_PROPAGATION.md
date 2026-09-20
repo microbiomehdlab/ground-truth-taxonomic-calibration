@@ -116,6 +116,18 @@ below:
 bash analysis_v2/run_geff_propagation_development.sh
 ```
 
+**Resuming the existing completed run (20 September 2026).** Its
+`reference_comparison` was produced before the explicit per-arm
+reference-provenance columns existed. A bare `SUCCESS` is no longer accepted as
+proof that a stage may be reused: the runner verifies the required files, exact
+header columns and validation metrics of a completed `reference_comparison` and
+`metaphlan_genome_size_residual_audit`, quarantines an incompatible directory
+whole under `$RUN_ROOT/failed_attempts/<name>_<stamp>` with the reason printed,
+and regenerates it. Expect exactly that on resume: the old comparison is
+quarantined and rebuilt, then the audit runs. The two target-recovery arms are
+inputs and are **not** regenerated, so the 10.7-million-row response input,
+endpoints, target recovery and response analysis are all left alone.
+
 The expanded commands follow for auditability and troubleshooting.
 
 ```bash

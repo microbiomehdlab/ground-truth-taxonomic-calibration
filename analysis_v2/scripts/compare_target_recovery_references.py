@@ -28,7 +28,51 @@ NUMERIC = (
     "absolute_relative_error",
 )
 CLASS_RANK = {"Good": 0, "Average": 1, "Poor / missed": 2}
+
+# Provenance carried by summarize_target_recovery.py on every row:
+#   reference_type          -- ORIGINAL row-level scale of the source profile
+#   reference_scale         -- the --reference-scale the arm was summarised with
+#   selected_reference_type -- the label stamped for that selection
+# These are three different things. The original row type of a MetaPhlAn row
+# stays 'genome_equivalent' even in the read-proportional arm, because it
+# records where the row came from, not which estimand was selected. Carrying
+# only `reference_type` therefore mislabels the sensitivity arm.
+PROVENANCE = ("reference_type", "reference_scale", "selected_reference_type")
+
+# (reference_scale, selected_reference_type) -> selected estimand, where None
+# means "the row's own reference type". Under profiler_scale the selected
+# estimand IS the row's native reference: read-proportional for Bracken,
+# genome-equivalent for MetaPhlAn. Under read_proportional it is
+# read-proportional for both profilers.
+SELECTION_CONTRACT = {
+    ("profiler_scale", "profiler_scale_primary"): None,
+    ("read_proportional", "read_proportional"): "read_proportional",
+}
+# arm -> the (reference_scale, selected_reference_type) pair it must carry.
+ARM_SELECTION = {
+    "primary": ("profiler_scale", "profiler_scale_primary"),
+    "sensitivity": ("read_proportional", "read_proportional"),
+}
+# profiler -> required ORIGINAL row reference type, and the selected estimand
+# each arm must resolve to.
+PROFILER_ROW_REFERENCE = {
+    "kraken2_bracken": "read_proportional",
+    "metaphlan4": "genome_equivalent",
+}
+ARM_SELECTED_ESTIMAND = {
+    ("kraken2_bracken", "primary"): "read_proportional",
+    ("kraken2_bracken", "sensitivity"): "read_proportional",
+    ("metaphlan4", "primary"): "genome_equivalent",
+    ("metaphlan4", "sensitivity"): "read_proportional",
+}
 OBSERVATION_FIELDS = list(KEY) + [
+    # Explicit, unambiguous provenance for each arm.
+    "primary_row_reference_type", "sensitivity_row_reference_type",
+    "primary_selected_reference_type", "sensitivity_selected_reference_type",
+    "primary_reference_scale", "sensitivity_reference_scale",
+    "primary_selected_estimand", "sensitivity_selected_estimand",
+    # Backward-compatible aliases of the ORIGINAL row type. Ambiguous by name;
+    # new consumers must use the explicit fields above.
     "primary_reference_type", "sensitivity_reference_type",
     "primary_implanted_signal", "sensitivity_implanted_signal",
     "primary_response_signal", "sensitivity_response_signal",
@@ -77,7 +121,7 @@ def read_rows(path: Path) -> tuple[list[str], dict[tuple[str, ...], dict[str, st
     with path.open(newline="", encoding="utf-8") as handle:
         reader = csv.DictReader(handle, delimiter="\t")
         fields = reader.fieldnames or []
-        required = set(KEY) | set(NUMERIC) | {"recovery_class", "reference_type"}
+        required = set(KEY) | set(NUMERIC) | {"recovery_class"} | set(PROVENANCE)
         missing = sorted(required - set(fields))
         if missing:
             raise ValueError(f"{path} lacks columns: {', '.join(missing)}")
@@ -92,6 +136,42 @@ def read_rows(path: Path) -> tuple[list[str], dict[tuple[str, ...], dict[str, st
     if not result:
         raise ValueError(f"{path} contains no observations")
     return fields, result
+
+
+def selected_estimand(row: dict[str, str], arm: str, profiler: str,
+                      key: tuple[str, ...]) -> str:
+    """Resolve and validate one arm's selected quantitative reference.
+
+    Fails closed rather than letting an arm inherit a label that describes the
+    source row instead of the estimand the arm actually measures.
+    """
+    values = {name: (row.get(name) or "").strip() for name in PROVENANCE}
+    for name, value in values.items():
+        if not value:
+            raise ValueError(f"{arm} arm has a blank {name} for {key}")
+    pair = (values["reference_scale"], values["selected_reference_type"])
+    if pair not in SELECTION_CONTRACT:
+        raise ValueError(
+            f"{arm} arm has an unknown reference selection "
+            f"{pair} for {key}")
+    if pair != ARM_SELECTION[arm]:
+        raise ValueError(
+            f"{arm} arm must be summarised as {ARM_SELECTION[arm]}, not {pair}, "
+            f"for {key}")
+    expected_row = PROFILER_ROW_REFERENCE.get(profiler)
+    if expected_row is None:
+        raise ValueError(f"unknown profiler {profiler!r} for {key}")
+    if values["reference_type"] != expected_row:
+        raise ValueError(
+            f"{arm} arm has row reference_type {values['reference_type']!r} for "
+            f"{profiler}; the source rows must be {expected_row!r} for {key}")
+    resolved = SELECTION_CONTRACT[pair] or values["reference_type"]
+    required = ARM_SELECTED_ESTIMAND[(profiler, arm)]
+    if resolved != required:
+        raise ValueError(
+            f"{arm} arm resolves to the {resolved!r} estimand for {profiler}; "
+            f"{required!r} is required for {key}")
+    return resolved
 
 
 def number(row: dict[str, str], field: str, key: tuple[str, ...]) -> float:
@@ -190,12 +270,25 @@ def main() -> None:
             else:
                 raise ValueError(f"unknown profiler {profiler!r} for {key}")
 
+            primary_estimand = selected_estimand(left, "primary", profiler, key)
+            sensitivity_estimand = selected_estimand(
+                right, "sensitivity", profiler, key)
+
             p_class = left["recovery_class"]
             s_class = right["recovery_class"]
             p_error = number(left, "absolute_relative_error", key)
             s_error = number(right, "absolute_relative_error", key)
             row: dict[str, object] = dict(zip(KEY, key))
             row.update({
+                "primary_row_reference_type": left["reference_type"],
+                "sensitivity_row_reference_type": right["reference_type"],
+                "primary_selected_reference_type": left["selected_reference_type"],
+                "sensitivity_selected_reference_type":
+                    right["selected_reference_type"],
+                "primary_reference_scale": left["reference_scale"],
+                "sensitivity_reference_scale": right["reference_scale"],
+                "primary_selected_estimand": primary_estimand,
+                "sensitivity_selected_estimand": sensitivity_estimand,
                 "primary_reference_type": left["reference_type"],
                 "sensitivity_reference_type": right["reference_type"],
                 "primary_implanted_signal": left["implanted_signal_selected"],
@@ -251,6 +344,14 @@ def main() -> None:
             {"metric": "bracken_observations", "value": bracken_rows},
             {"metric": "metaphlan_observations", "value": metaphlan_rows},
             {"metric": "bracken_identical", "value": "PASS"},
+            {"metric": "primary_selection",
+             "value": "/".join(ARM_SELECTION["primary"])},
+            {"metric": "sensitivity_selection",
+             "value": "/".join(ARM_SELECTION["sensitivity"])},
+            {"metric": "selected_estimand_contract",
+             "value": ";".join(f"{profiler}/{arm}={estimand}" for
+                               (profiler, arm), estimand
+                               in sorted(ARM_SELECTED_ESTIMAND.items()))},
             {"metric": "comparison_status", "value": "DEVELOPMENT_ONLY"},
         ])
         checksum_path = args.outdir / "reference_comparison.sha256"

@@ -1,7 +1,7 @@
 # Next actions and execution order
 
 **Purpose:** operational starting point for the next agent.
-**Last updated:** 19 September 2026.
+**Last updated:** 20 September 2026.
 
 ## Immediate infrastructure gate (20 September 2026)
 
@@ -13,6 +13,69 @@ builds its complete abundance input from the checksum-locked canonical table
 and compares Bracken between same-run reference arms; no recursive NFS search
 or manually selected historical input is allowed. Its maintained entry point is
 `analysis_v2/run_geff_propagation_development.sh`.
+
+### New: MetaPhlAn genome-size residual audit (20 September 2026)
+
+`analysis_v2/scripts/audit_metaphlan_genome_size_residual.py` is implemented and
+wired as resumable **stage 7** of `run_geff_propagation_development.sh`, after
+the `reference_comparison/SUCCESS` gate. It answers one question: does the
+apparent MetaPhlAn genome-size-dependent recovery bias disappear on the
+genome-equivalent scale?
+
+- Expected slope of the target-level median `log2(observed/expected)` against
+  `log2(G_t)`: about **-1** before the correction (read-proportional
+  sensitivity arm) and about **0** after it (genome-equivalent primary arm).
+  Both expectations are written into the output and compared to the fit; the
+  audit never assumes or forces either.
+- The **implanted taxon is the statistical unit** — ten target-level points, not
+  millions of observation rows. The bootstrap resamples **targets**, never
+  observation rows, and is descriptive uncertainty over those ten taxa only
+  (10,000 replicates, fixed seed 20260920).
+- Genome sizes come only from the FASTA-measured `target_genome_sizes.tsv`. **No
+  fitted 3.10 Mb constant is used anywhere**, and no genome size is estimated
+  from a recovery outcome.
+- **Corrected after Codex verification (20 September 2026).** Four fail-closed
+  and provenance defects were fixed without changing the estimand, the
+  target-level aggregation, the paired exclusion, the bootstrap, the seed, the
+  scopes or the output names:
+  1. the **selected** reference is now carried explicitly. Original row
+     provenance (`reference_type`) and the selected estimand are different
+     fields, so a MetaPhlAn sensitivity row that legitimately keeps
+     `genome_equivalent` row provenance is now reported as the
+     `read_proportional` estimand. The comparator emits
+     `*_row_reference_type`, `*_selected_reference_type`, `*_reference_scale`
+     and `*_selected_estimand`; the ambiguous `*_reference_type` names remain
+     only as backward-compatible aliases and the audit does not read them;
+  2. the audit **proves** its Yachida-only scope: every row's cohort is
+     inspected and the distinct set must be exactly `{"yachida"}`. Blank,
+     Feng-only, Zeller-only and mixed input all fail, and nothing is silently
+     filtered;
+  3. **every physical-identity component must be present and nonblank** before
+     the duplicate-key check, so blanks can never collapse two distinct rows;
+  4. **absolute relative error is validated** — numeric, finite, non-negative
+     and equal to `abs(observed_over_expected - 1)` within
+     `max(1e-12, 1e-9 * max(abs(actual), abs(expected), 1))` — and never
+     recomputed and silently substituted. Paired-excluded rows are not rescued
+     by it.
+- Paired exclusion remains the accepted policy, unchanged.
+- **Resume safety (20 September 2026).** The existing completed Yachida run's
+  `reference_comparison` predates the explicit provenance columns. The runner no
+  longer trusts a bare `SUCCESS`: `analysis_v2/lib/stage_compatibility.sh` +
+  `scripts/check_stage_schema.py` verify the required files, exact
+  tab-separated header columns and validation metrics before reuse, quarantine
+  an incompatible directory under `$RUN_ROOT/failed_attempts/` and regenerate
+  it. This applies to both `reference_comparison` and
+  `metaphlan_genome_size_residual_audit`. The two target-recovery arms are
+  inputs and are never regenerated or deleted, so **resuming that run will
+  rebuild only the comparison and the audit.**
+- **The real Yachida slope is still not known locally.** Only synthetic fixtures
+  have been run (80 tests in
+  `analysis_v2/tests/test_metaphlan_genome_size_residual_audit.py` plus 9 in
+  `test_target_recovery_reference_comparison.py`). Cluster execution remains
+  André-only.
+- Status stays `DEVELOPMENT_ONLY` until Feng and Zeller replicate the finding
+  and the three-cohort run validates it. Do not quote a slope until André
+  returns the real `metaphlan_genome_size_regression.tsv`.
 
 Read `CLAUDE.md` or `CODEX.md` first; they are the same file. Record every
 substantive decision in `analysis_v2/METHODS_DECISION_LOG.md` and update the
