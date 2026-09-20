@@ -961,3 +961,21 @@ the former had been declared. The incomplete image is retained as historical
 evidence and is not patched or reused. Version 2.1 adds pinned PyArrow 17.0.0,
 imports both `pyarrow` and `pyarrow.parquet` in the build verifier, and must be
 built at a new path before rerunning the gates.
+
+## 2026-09-20 — Remove historical-input discovery from G-eff propagation
+
+- **Decision:** do not select `PRIOR_ENDPOINTS` or `ABUNDANCE_LONG` by searching
+  historical `work/` trees.
+- **Bracken invariant:** compare Bracken rows from the primary profiler-scale
+  endpoints against the read-reference sensitivity endpoints generated in the
+  same run from the same canonical input. Cohort, population, sample, target,
+  dose and quantitative fields are compared exactly.
+- **Abundance source:** deterministically rebuild the complete native abundance
+  table from the checksum-locked Yachida canonical manifest, its exact
+  `source_profile` files and the maintained alias table. Require its unit test,
+  `SUCCESS`, exact schema and SHA-256 provenance before response construction.
+- **Reason:** recursive NFS discovery is slow, historical endpoint tables may
+  have incompatible cohort scope, and MapReduce abundance files are shards
+  rather than guaranteed complete inputs. Same-run derivation removes all
+  three ambiguities.
+- **Status:** `DECIDED`; encoded in the cluster handoff.
