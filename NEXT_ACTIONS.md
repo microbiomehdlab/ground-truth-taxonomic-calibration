@@ -11,7 +11,8 @@ contract tests. The next action is André's controlled `DEVELOPMENT_ONLY`
 propagation in `analysis_v2/CLUSTER_HANDOFF_GEFF_PROPAGATION.md`. The run now
 builds its complete abundance input from the checksum-locked canonical table
 and compares Bracken between same-run reference arms; no recursive NFS search
-or manually selected historical input is allowed.
+or manually selected historical input is allowed. Its maintained entry point is
+`analysis_v2/run_geff_propagation_development.sh`.
 
 Read `CLAUDE.md` or `CODEX.md` first; they are the same file. Record every
 substantive decision in `analysis_v2/METHODS_DECISION_LOG.md` and update the
