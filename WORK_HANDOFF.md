@@ -1,6 +1,44 @@
 # Project handoff: controlled taxonomic perturbation and CRC biomarkers
 
-Last updated: 2026-09-19. Read this first when resuming the project.
+Last updated: 2026-09-20. Read this first when resuming the project.
+
+## Status note, 20 September 2026 — profiler-scale Yachida propagation complete
+
+The Yachida-only `DEVELOPMENT_ONLY` propagation completed successfully at
+`work/geff_propagation_dev_20260920T003139Z` using
+`ground_truth_analysis_v2_1.sif`. `run_checksums.sha256` validated every listed
+output. The completed bundle contains 10,753,612 feature-response rows, 67,340
+operator rows, 6,734 reliability certificates, and 31,740 direct-target
+recovery observations. The explicit one-cohort mode leaves external-validation
+tables header-only and records `NOT_APPLICABLE_SINGLE_COHORT`; it does not
+weaken the default two-cohort holdout gate.
+
+The paired reference comparison passed on 31,740 observations and proved
+Bracken identical for all 15,870 Bracken observations. For MetaPhlAn, the
+genome-equivalent primary reference versus the read-proportional sensitivity
+changed the provisional Yachida result materially:
+
+| Population | Good: sensitivity -> primary | Poor: sensitivity -> primary | Median absolute relative error: sensitivity -> primary |
+|---|---:|---:|---:|
+| Community | 5.38% -> 34.01% | 60.51% -> 20.90% | 66.49% -> 13.43% |
+| Independent | 5.83% -> 34.61% | 54.44% -> 2.44% | 57.67% -> 12.32% |
+
+These results invalidate the old primary interpretation that MetaPhlAn almost
+never achieves good recovery. They support a provisional scale-matched account:
+much of the apparent systematic failure was an estimand mismatch, while
+substantial residual taxon/context variation remains. These numbers remain
+Yachida-only development evidence.
+
+The exact FASTA-derived target-genome-size table is
+`work/target_genome_sizes_20260919T224340Z/target_genome_sizes.tsv`. The frozen
+v2.1 container has DuckDB 1.0.0, PyArrow 17.0.0, and R `mgcv`, `sandwich`, and
+`arrow`. The real continuous model and DiD remain outstanding. Figure 6 remains
+blocked by the known implanted-taxon exclusion/counting defect.
+
+Current code work in review implements a target-level residual-genome-size
+audit (expected descriptive slope approximately -1 before scale matching and 0
+after). Do not run or interpret it until Codex verifies the implementation and
+the code is committed. Cluster execution remains André-only.
 
 ## Status note, 18 September 2026
 

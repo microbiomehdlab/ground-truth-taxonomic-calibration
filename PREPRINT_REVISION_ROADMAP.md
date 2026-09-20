@@ -2,9 +2,33 @@
 
 **Working manuscript:** *Ground-truth in silico spike-ins reveal limits of microbiome biomarker recovery in colorectal cancer*
 **Target level:** Nature Communications or a journal with comparable expectations
-**Document status:** strategic revision plan, 17 September 2026
+**Document status:** strategic revision plan, updated 20 September 2026
 **Source manuscript reviewed:** bioRxiv version 1, DOI 10.64898/2026.08.02.742082
 **Important evidence warning:** unless explicitly stated otherwise, current three-cohort downstream results are `DEVELOPMENT_ONLY`. They combine definitive Yachida output with historical Feng and Zeller output. Final estimates and figures must be regenerated from sealed strict-production outputs for all three cohorts.
+
+### Evidence update: profiler-scale correction
+
+The sealed Yachida development propagation established that the abundance-scale
+choice materially affects MetaPhlAn recovery. Relative to the preserved
+read-proportional sensitivity, the genome-equivalent primary analysis increased
+good recovery from 5.38% to 34.01% for community perturbations and from 5.83%
+to 34.61% for independent perturbations. Median absolute relative error fell
+from 66.49% to 13.43% and from 57.67% to 12.32%, respectively. Bracken was
+identical in all 15,870 paired Bracken observations.
+
+Accordingly, the preprint-level claim that essentially no MetaPhlAn targets
+recover well must not be retained as a primary conclusion. The revised paper
+should state, provisionally, that aligning ground truth with the profiler's
+genome-equivalent-like abundance scale removes a large systematic component of
+apparent error, but meaningful taxon- and context-dependent residual error
+remains. These are Yachida-only `DEVELOPMENT_ONLY` results and require
+Feng/Zeller replication before final prose or figures are frozen.
+
+Paper drafting may proceed for the Introduction, experimental design, frozen
+methods, and manuscript structure. Final Results, abstract claims, Discussion,
+and publication figures remain blocked on the residual-genome-size audit,
+stratified sensitivity review, real model execution, Figure 6 correction, and
+the definitive three-cohort rebuild.
 
 ## 1. Executive recommendation
 
