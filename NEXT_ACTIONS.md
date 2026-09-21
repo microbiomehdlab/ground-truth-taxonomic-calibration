@@ -3,6 +3,13 @@
 **Purpose:** operational starting point for the next agent.
 **Last updated:** 21 September 2026.
 
+**Time-sensitive draft baseline figure:** `build_three_cohort_baseline_figure_input.py`
+and `plot_three_cohort_baseline_discordance.R` now derive the four-taxon
+prevalence/Wilson-interval and positive-only abundance panels directly from the
+sealed three-cohort map-reduce `common_input` tables. They do not re-profile or
+refit models. The Python/R fixture passed locally; the real three-cohort plot
+has not yet been executed or reviewed and remains `DEVELOPMENT_ONLY`.
+
 **Figure 6 in flight:** the sealed three-cohort development disease-model table
 was located at `work/analysis_v2_three_cohort_mapreduce_dev_20260913_193010/models/disease/models/primary_disease_da_results.tsv` (932 MB; all three cohorts and both profilers). Before evaluating it, the community-dose axis was corrected: `spike_fraction_target` is the median per-member dose, while `spike_fraction_total` records the ten-member sum. Pull the corrected commit on the cluster before evaluation; use a compute allocation because the existing input is large. No real corrected Figure 6 result has been reviewed.
 
