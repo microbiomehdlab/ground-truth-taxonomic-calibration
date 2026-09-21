@@ -144,9 +144,9 @@ summarize_targets <- function(data, field) {
   }))
 }
 
-# Individual target trajectories remain visible; the thick line and ribbon are
-# the target-level median and IQR, so correlated doses are not mistaken for
-# independent biological samples.
+# Independent target trajectories remain visible; each community dose is one
+# joint-mixture trajectory. Thick lines and ribbons summarize eligible stress
+# tests without treating panel-member duplicates as independent observations.
 retention_summary <- summarize_targets(metrics, "retention")
 denominator_groups <- split(
   metrics,
@@ -207,8 +207,8 @@ p_retention <- ggplot(
     x = "Implanted target fraction (%)",
     y = "Baseline bystander CRC-associated taxa retained",
     title = "Native CRC-associated call sets show context-specific fragility",
-    subtitle = "Thin lines are implanted-species stress tests; thick lines and IQR ribbons summarize implanted species",
-    caption = "The directly implanted taxon is excluded. IQR is not a confidence interval; loss denotes perturbation sensitivity, not proof of a false positive."
+    subtitle = "Independent thin lines are single-taxon stress tests; each community dose is one physical ten-member mixture",
+    caption = "All implanted taxa are excluded before non-implanted metrics. IQR is not a confidence interval; loss denotes perturbation sensitivity, not proof of a false positive."
   ) + theme_paper
 save_plot(p_retention, "bystander_biomarker_retention")
 
@@ -231,7 +231,7 @@ p_induced <- ggplot(
     x = "Implanted target fraction (%)",
     y = "Perturbation-induced significant bystander call rate",
     title = "Perturbation-induced bystander call rates across contexts",
-    subtitle = "Gained non-target calls / eligible non-baseline features; target-level median and IQR",
+    subtitle = "Gained non-target calls / eligible non-baseline features; stress-test median and IQR",
     caption = "Panels use separate y scales. A low feature-normalized rate can still represent multiple calls; absolute counts are reported separately."
   ) + theme_paper
 save_plot(p_induced, "bystander_induced_call_rate")
@@ -251,12 +251,13 @@ p_gained <- ggplot(
     x = "Implanted target fraction (%)",
     y = "Gained significant bystander calls",
     title = "Absolute perturbation-induced call burden complements normalized rates",
-    subtitle = "Target-level median and IQR; directly implanted taxa excluded",
+    subtitle = "Stress-test median and IQR; all implanted taxa excluded",
     caption = "Panels use separate y scales. Counts are threshold transitions, not adjudicated false positives."
   ) + theme_paper
 save_plot(p_gained, "bystander_gained_call_burden")
 
-# A compact stress-test atlas preserves the identity of the implanted species.
+# The atlas preserves independent target identity and labels the community
+# mixture once as CRCpanel.
 heat <- metrics[is.finite(metrics$retention), ]
 heat$Dose <- factor(
   format(heat$dose_percent, trim = TRUE, scientific = FALSE),
@@ -294,10 +295,10 @@ p_heat <- ggplot(heat, aes(Dose, target_label, fill = retention)) +
   scale_fill_viridis_c(option = "C", limits = c(0, 1),
                        labels = label_percent()) +
   labs(
-    x = "Implanted target fraction (%)", y = "Implanted species",
+    x = "Implanted target fraction (%)", y = "Perturbation",
     fill = "Bystanders\nretained",
     title = "A perturbation atlas identifies context-specific call-set fragility",
-    subtitle = "CRC versus Control, BH q <= 0.05; directly implanted taxa excluded",
+    subtitle = "CRC versus Control, BH q <= 0.05; all implanted taxa excluded",
     caption = "Each cell is one controlled stress test, not an independent cohort estimate."
   ) + theme_paper +
   theme(axis.text.x = element_text(angle = 45, hjust = 1),
@@ -327,7 +328,7 @@ p_effect <- ggplot(
     x = NULL, y = "Absolute change in CRC-v-Control coefficient (log2 scale)",
     title = "Significance transitions mix threshold crossing with effect distortion",
     subtitle = "Distributions are descriptive; the paired counterfactual model supplies the formal distortion test",
-    caption = "Panels use separate y scales. Rows are repeated feature-by-target-by-dose transitions, not independent replicates."
+    caption = "Panels use separate y scales. Rows are repeated feature-by-perturbation-by-dose transitions, not independent replicates."
   ) + theme_paper + guides(fill = "none") +
   theme(axis.text.x = element_text(angle = 25, hjust = 1))
 save_plot(p_effect, "bystander_transition_effect_change", 12, 6.5)
@@ -336,7 +337,7 @@ if (analysis_status == "DEVELOPMENT_ONLY") {
   writeLines(c(
     "status=DEVELOPMENT_ONLY",
     "use_for_manuscript=NO",
-    "direct_implanted_target_excluded=YES",
+    "all_implanted_taxa_excluded=YES",
     "false_positive_interpretation=NOT_ESTABLISHED"
   ), file.path(outdir, "DEVELOPMENT_ONLY.txt"))
 }
@@ -347,11 +348,11 @@ writeLines(c(
     "These figures are engineering outputs and must be regenerated from sealed definitive inputs."
   else
     "These figures inherit definitive status from a sealed non-development disease run.",
-  "", "- Retention is target-excluded bystander retention.",
+  "", "- Retention excludes every implanted taxon in each perturbation.",
   "- Induced calls use the eligible non-baseline feature denominator.",
   "- Absolute gained-call burden is reported beside the normalized induced-call rate.",
   "- Community and independent baselines use different frozen sample panels; their denominators are not interchangeable.",
-  "- IQR ribbons summarize implanted species and are not confidence intervals.",
+  "- IQR ribbons summarize eligible stress tests and are not confidence intervals.",
   "- Lost/gained states are descriptive until paired counterfactual distortion is fitted.",
   "- No panel labels a disappearing native disease biomarker as a false positive."
 ), file.path(outdir, "FIGURE_GUIDE.md"))

@@ -51,6 +51,7 @@ apptainer exec --cleanenv --pwd "$ROOT" "$ANALYSIS_SIF" \
   --outdir "$OUTDIR/models"
 
 python3 analysis_v2/tests/test_disease_biomarker_propagation.py
+python3 analysis_v2/tests/test_disease_biomarker_community_exclusion.py
 python3 analysis_v2/scripts/evaluate_disease_biomarker_propagation.py \
   --calls "$OUTDIR/models/primary_disease_da_results.tsv" --aliases "$ALIASES" \
   --spike-panel "$SPIKE_PANEL" --outdir "$OUTDIR/evaluation" \

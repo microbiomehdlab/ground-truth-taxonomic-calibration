@@ -4,6 +4,32 @@ This tracked log records decisions that affect manuscript methods or
 interpretation. Generated run directories preserve the corresponding inputs,
 diagnostics, provenance, and checksums.
 
+## 2026-09-21 — Figure 6 community biomarker-fate defects corrected in code
+
+Community implantation is now treated as one physical ten-member perturbation
+per sample and dose, not ten independent stress tests.
+`evaluate_disease_biomarker_propagation.py` collapses the repeated
+per-`target_label` disease-model rows to one `CRCpanel` context before computing
+biomarker fate. Every frozen panel label must occur exactly once per physical
+feature/context, and repeated fitted effects, p values, q values, inclusion
+state, and exclusion reason must agree. Conflicts fail closed rather than being
+averaged; member fractions are summed to the total community fraction.
+
+Feature identity is canonicalized through the frozen profiler alias table
+before exclusion. All panel taxa are excluded from community non-implanted
+metrics whether reported by canonical name or profiler alias. They remain
+labelled `implanted_target` in the transition ledger; joint-mixture
+target-specific scalar fields are `NA`. Independent contexts retain their
+single-target behavior. The summary records the collapse count and policies.
+
+Regression tests prove physical-mixture deduplication, summed dose,
+alias/canonical exclusion, and failure on missing members or inconsistent
+repeated fits. The maintained disease runner executes them before evaluation.
+This supersedes the 18 September `PENDING` implementation status below, not its
+rationale. Existing Figure 6 numbers remain unlicensed until corrected real
+development execution and review; definitive publication use still requires
+sealed three-cohort inputs.
+
 ## 2026-09-21 — Yachida residual-genome-size audit completed and verified
 
 **Result.** André resumed the sealed Yachida `DEVELOPMENT_ONLY` propagation at
@@ -299,7 +325,7 @@ is released only for André's `DEVELOPMENT_ONLY` execution.
 `fit_continuous_dose_response.R` was parse-checked only; `mgcv` is absent
 locally and the continuous model has still never been executed.
 
-## 2026-09-18 — PENDING (NOT fixed): Figure 6 implanted-taxon exclusion
+## 2026-09-18 — Figure 6 defect record (superseded in code 21 September)
 
 Recorded as an open defect during the reference-scale correction and
 deliberately **not** implemented in that task. Three distinct problems in the

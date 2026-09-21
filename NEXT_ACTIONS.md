@@ -87,9 +87,9 @@ shared context in the same session.
 
 The profiler-scale implementation, Yachida propagation, paired reference
 comparison, and residual-genome-size audit are complete and checksum-verified.
-Next: finish the remaining methodological gates—the real continuous model and
-DiD, the Figure 6 implanted-taxon exclusion/counting correction, and
-Feng/Zeller replication—before freezing publication figures or final Results.
+Next: verify the corrected Figure 6 path on real development data, execute the
+real continuous model and DiD, and complete Feng/Zeller replication before
+freezing publication figures or final Results.
 
 **Progress, 17 September 2026.** The `G_j` source and `G_eff,i` derivation are
 decided and validated against the production MetaPhlAn vJan25 database and all
@@ -129,12 +129,11 @@ computed numbers). The stale CLAUDE.md line saying the downstream consumers were
 2. `mgcv` is absent locally, so `fit_continuous_dose_response.R` has been
    parse-checked only and has **never been executed**. Do not report otherwise.
 3. The ten-target genome-size table is still ungenerated (cluster-only FASTAs).
-4. **PENDING, not started — Figure 6 implanted-taxon exclusion.** Community
-   profiles exclude only the focal target instead of all ten implanted taxa;
-   community profiles may be counted repeatedly across `target_label` rows; and
-   feature aliases must be canonicalized before target exclusion. Recorded in
-   `analysis_v2/METHODS_DECISION_LOG.md` (2026-09-18) as `OPEN`. This was
-   deliberately excluded from the reference-scale task and needs its own task.
+4. **IMPLEMENTED, awaiting real execution — Figure 6 community correction.**
+   Community rows collapse to one physical mixture per dose, all panel taxa are
+   excluded after alias canonicalization, and missing members or inconsistent
+   repeated fits fail closed. Existing Figure 6 output remains unlicensed until
+   the corrected evaluator and plot are rerun and reviewed.
 
 ## 0. Protect and understand active work
 

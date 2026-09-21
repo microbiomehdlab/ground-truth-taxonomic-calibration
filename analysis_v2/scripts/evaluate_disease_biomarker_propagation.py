@@ -6,7 +6,7 @@ from collections import defaultdict
 from pathlib import Path
 
 KEY = ["cohort", "study", "analysis_population", "target_label", "assembly_arm", "profiler", "contrast"]
-REQUIRED = KEY + ["spike_fraction_target", "feature", "effect", "p_value", "q_value", "include", "exclusion_reason"]
+REQUIRED = KEY + ["dose_level", "spike_fraction_target", "feature", "effect", "p_value", "q_value", "include", "exclusion_reason"]
 OUTPUT = KEY + ["spike_fraction_target", "q_threshold", "target_alias", "baseline_biomarkers",
  "dose_biomarkers", "retained_biomarkers", "lost_biomarkers", "gained_biomarkers",
  "baseline_retention_rate", "dose_overlap_fraction", "biomarker_set_jaccard_vs_baseline",
@@ -42,13 +42,51 @@ def digest(path):
         for block in iter(lambda: handle.read(1024 * 1024), b""): value.update(block)
     return value.hexdigest()
 
+def collapse_community(rows, panel_labels):
+    """Collapse ten repeated panel-member fits to one physical mixture.
+
+    The disease model historically emits the same community profile once per
+    panel member.  A community stress test is nevertheless one physical
+    perturbation, not ten independent observations.  Repeated model results
+    must agree exactly on all fitted quantities; only the member fractions are
+    summed to recover the total community fraction.
+    """
+    independent=[]; buckets=defaultdict(list)
+    physical_fields=["cohort","study","analysis_population","assembly_arm",
+                     "profiler","contrast","dose_level","feature"]
+    for row in rows:
+        if row["analysis_population"] != "community":
+            independent.append(row); continue
+        buckets[tuple(row[x] for x in physical_fields)].append(row)
+    collapsed=[]
+    compare_fields=["effect","p_value","q_value","include","exclusion_reason"]
+    for key, members in buckets.items():
+        labels={row["target_label"] for row in members}
+        if labels != panel_labels:
+            raise ValueError("community context does not contain every implanted target: "
+                             "missing={} unexpected={}".format(
+                                 sorted(panel_labels-labels), sorted(labels-panel_labels)))
+        for field in compare_fields:
+            if len({row[field] for row in members}) != 1:
+                raise ValueError("community repeated fits disagree on {}".format(field))
+        by_label=defaultdict(list)
+        for row in members: by_label[row["target_label"]].append(row)
+        if any(len(values) != 1 for values in by_label.values()):
+            raise ValueError("community context repeats a target label")
+        representative=dict(members[0])
+        representative["target_label"]="CRCpanel"
+        representative["spike_fraction_target"]=render(sum(
+            number(row,"spike_fraction_target") for row in members))
+        collapsed.append(representative)
+    return independent+collapsed
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--calls", type=Path, required=True); parser.add_argument("--aliases", type=Path, required=True)
     parser.add_argument("--spike-panel", type=Path, required=True); parser.add_argument("--outdir", type=Path, required=True)
     parser.add_argument("--q-thresholds", default="0.05,0.10"); args = parser.parse_args()
     try:
-        rows, fields = read(args.calls)
+        rows, fields = read(args.calls); input_row_count=len(rows)
         if not set(REQUIRED) <= fields: raise ValueError("disease results lack required columns")
         alias_rows, alias_fields = read(args.aliases, ","); panel, panel_fields = read(args.spike_panel)
         if not {"canonical", "alias", "tool"} <= alias_fields or not {"label", "taxon_name"} <= panel_fields:
@@ -56,9 +94,23 @@ def main():
         thresholds = [float(x) for x in args.q_thresholds.split(",")]
         if any(not 0 < x < 1 for x in thresholds) or len(set(thresholds)) != len(thresholds): raise ValueError("invalid q thresholds")
         taxa = {x["label"]: x["taxon_name"] for x in panel}
+        if len(taxa) != len(panel) or not taxa: raise ValueError("duplicate or empty spike panel")
         alias_lookup = {(x["canonical"], x["tool"]): x["alias"] for x in alias_rows}
+        profilers_present={row["profiler"] for row in rows}
         target_alias = {(label, profiler): alias_lookup[(taxon, profiler)] for label, taxon in taxa.items()
-                        for profiler in ("kraken2_bracken", "metaphlan4") if (taxon, profiler) in alias_lookup}
+                        for profiler in profilers_present if (taxon, profiler) in alias_lookup}
+        canonical_lookup={}
+        for label,taxon in taxa.items():
+            for profiler in profilers_present:
+                alias=target_alias.get((label,profiler))
+                if alias is None: raise ValueError("missing target alias for {} {}".format(label,profiler))
+                for feature in (taxon,alias):
+                    old=canonical_lookup.setdefault((profiler,feature),taxon)
+                    if old != taxon: raise ValueError("ambiguous feature alias {} {}".format(profiler,feature))
+        # Canonicalization precedes exclusion.  This is essential when a panel
+        # member appears under a profiler alias rather than its panel taxon name.
+        implanted_canonical=set(taxa.values())
+        rows=collapse_community(rows,set(taxa)); collapsed_row_count=len(rows)
         included=[]; identities=set()
         for row in rows:
             if row["include"] not in {"0", "1"} or ((row["include"] == "0") != bool(row["exclusion_reason"].strip())): raise ValueError("invalid include/exclusion encoding")
@@ -76,27 +128,39 @@ def main():
             if dose == 0: continue
             context=group_key[:-1]; baseline=baselines.get(context)
             if baseline is None: raise ValueError("positive-dose context lacks baseline")
-            label=context[KEY.index("target_label")]; profiler=context[KEY.index("profiler")]; target=target_alias.get((label,profiler))
-            if target is None: raise ValueError("missing target alias for {} {}".format(label,profiler))
+            label=context[KEY.index("target_label")]; profiler=context[KEY.index("profiler")]
+            community=context[KEY.index("analysis_population")] == "community"
+            target=target_alias.get((label,profiler)) if not community else None
+            if not community and target is None: raise ValueError("missing target alias for {} {}".format(label,profiler))
+            excluded_canonical=(implanted_canonical if community else {taxa[label]})
+            def is_implanted(feature):
+                return canonical_lookup.get((profiler,feature),feature) in excluded_canonical
             dose_by={x["feature"]:x for x in dose_rows}; base_by={x["feature"]:x for x in baseline}
-            if target not in dose_by or target not in base_by: raise ValueError("target absent from disease result context")
+            if not community and (target not in dose_by or target not in base_by): raise ValueError("target absent from disease result context")
             if set(dose_by) != set(base_by): raise ValueError("feature universe differs between baseline and dose")
+            if community and not all(any(canonical_lookup.get((profiler,f),f) == taxon for f in base_by)
+                                     for taxon in implanted_canonical):
+                raise ValueError("community feature universe lacks an implanted panel member")
             for threshold in thresholds:
                 base_calls={f for f,x in base_by.items() if x["_q"] <= threshold}; dose_calls={f for f,x in dose_by.items() if x["_q"] <= threshold}
                 retained=base_calls & dose_calls; lost=base_calls-dose_calls; gained=dose_calls-base_calls; union=base_calls|dose_calls
-                base_bystanders=base_calls-{target}; dose_bystanders=dose_calls-{target}
+                base_bystanders={f for f in base_calls if not is_implanted(f)}
+                dose_bystanders={f for f in dose_calls if not is_implanted(f)}
                 retained_bystanders=base_bystanders & dose_bystanders
                 lost_bystanders=base_bystanders-dose_bystanders; gained_bystanders=dose_bystanders-base_bystanders
                 bystander_union=base_bystanders|dose_bystanders
-                eligible_nonbaseline_bystanders=(set(base_by)-{target})-base_bystanders
+                eligible_nonbaseline_bystanders={f for f in base_by if not is_implanted(f)}-base_bystanders
                 changes=[abs(dose_by[f]["_effect"]-base_by[f]["_effect"]) for f in base_calls]
                 flips=sum(1 for f in retained if dose_by[f]["_effect"]*base_by[f]["_effect"] < 0)
                 bystander_changes=[abs(dose_by[f]["_effect"]-base_by[f]["_effect"]) for f in base_bystanders]
                 bystander_flips=sum(1 for f in retained_bystanders
                                     if dose_by[f]["_effect"]*base_by[f]["_effect"] < 0)
-                target_row=dose_by[target]; base_target=base_by[target]
+                target_row=dose_by[target] if not community else None
+                base_target=base_by[target] if not community else None
                 record={field:value for field,value in zip(KEY,context)}
-                record.update(spike_fraction_target=render(dose),q_threshold=render(threshold),target_alias=target,
+                record.update(spike_fraction_target=render(dose),q_threshold=render(threshold),
+                  target_alias=target if not community else ";".join(sorted(
+                      target_alias[(member,profiler)] for member in taxa)),
                   baseline_biomarkers=str(len(base_calls)),dose_biomarkers=str(len(dose_calls)),retained_biomarkers=str(len(retained)),
                   lost_biomarkers=str(len(lost)),gained_biomarkers=str(len(gained)),
                   baseline_retention_rate=render(len(retained)/len(base_calls) if base_calls else None),
@@ -113,16 +177,18 @@ def main():
                   max_abs_effect_change_baseline_bystanders=render(max(bystander_changes) if bystander_changes else None),
                   median_abs_effect_change_baseline_biomarkers=render(statistics.median(changes) if changes else None),
                   max_abs_effect_change_baseline_biomarkers=render(max(changes) if changes else None),
-                  target_significant=str(int(target_row["_q"] <= threshold)),target_effect=render(target_row["_effect"]),
-                  target_q_value=render(target_row["_q"]),
-                  target_baseline_significant=str(int(base_target["_q"] <= threshold)),
-                  target_baseline_effect=render(base_target["_effect"]),
-                  target_baseline_q_value=render(base_target["_q"]),
-                  target_effect_change_from_baseline=render(target_row["_effect"]-base_target["_effect"]))
+                  target_significant="NA" if community else str(int(target_row["_q"] <= threshold)),
+                  target_effect=render(None if community else target_row["_effect"]),
+                  target_q_value=render(None if community else target_row["_q"]),
+                  target_baseline_significant="NA" if community else str(int(base_target["_q"] <= threshold)),
+                  target_baseline_effect=render(None if community else base_target["_effect"]),
+                  target_baseline_q_value=render(None if community else base_target["_q"]),
+                  target_effect_change_from_baseline=render(None if community else target_row["_effect"]-base_target["_effect"]))
                 output.append(record)
                 # Sparse feature-level ledger: the union of disease calls plus the
                 # implanted target. Uncalled bystanders are deliberately omitted.
-                for feature in sorted(union | {target}):
+                required_features={f for f in base_by if is_implanted(f)}
+                for feature in sorted(union | required_features):
                     baseline_called=feature in base_calls; dose_called=feature in dose_calls
                     sign_changed=(dose_by[feature]["_effect"]*base_by[feature]["_effect"] < 0)
                     if baseline_called and dose_called:
@@ -135,8 +201,8 @@ def main():
                         transition="direct_target_not_called"
                     entry={field:value for field,value in zip(KEY,context)}
                     entry.update(spike_fraction_target=render(dose),q_threshold=render(threshold),
-                      target_alias=target,feature=feature,
-                      feature_role="implanted_target" if feature == target else "bystander",
+                      target_alias=record["target_alias"],feature=feature,
+                      feature_role="implanted_target" if is_implanted(feature) else "bystander",
                       baseline_called=str(int(baseline_called)),dose_called=str(int(dose_called)),
                       transition=transition,baseline_effect=render(base_by[feature]["_effect"]),
                       dose_effect=render(dose_by[feature]["_effect"]),
@@ -153,7 +219,13 @@ def main():
         with ledger_path.open("w",newline="",encoding="utf-8") as handle:
             writer=csv.DictWriter(handle,fieldnames=LEDGER,delimiter="\t",lineterminator="\n"); writer.writeheader(); writer.writerows(ledger)
         summary=args.outdir/"disease_biomarker_propagation_summary.tsv"
-        summary.write_text("metric\tvalue\ninput_rows\t{}\nevaluated_rows\t{}\ntransition_rows\t{}\nstatus\tPASS\n".format(len(rows),len(output),len(ledger)),encoding="utf-8")
+        summary.write_text(
+            "metric\tvalue\ninput_rows\t{}\nphysical_rows_after_community_collapse\t{}\n"
+            "community_repeated_rows_collapsed\t{}\nevaluated_rows\t{}\n"
+            "transition_rows\t{}\ncommunity_target_exclusion\tall_panel_members\n"
+            "feature_identity_policy\tcanonicalize_before_exclusion\nstatus\tPASS\n".format(
+                input_row_count,collapsed_row_count,input_row_count-collapsed_row_count,
+                len(output),len(ledger)),encoding="utf-8")
         (args.outdir/"disease_biomarker_propagation.sha256").write_text("".join("{}  {}\n".format(digest(p),p.resolve()) for p in (args.calls,args.aliases,args.spike_panel,result,ledger_path,summary)),encoding="utf-8")
         (args.outdir/"SUCCESS").write_text("evaluated_rows\t{}\nstatus\tPASS\n".format(len(output)),encoding="utf-8")
         print("[PASS] Evaluated {} disease-biomarker propagation rows".format(len(output)))

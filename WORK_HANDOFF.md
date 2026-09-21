@@ -32,8 +32,8 @@ Yachida-only development evidence.
 The exact FASTA-derived target-genome-size table is
 `work/target_genome_sizes_20260919T224340Z/target_genome_sizes.tsv`. The frozen
 v2.1 container has DuckDB 1.0.0, PyArrow 17.0.0, and R `mgcv`, `sandwich`, and
-`arrow`. The real continuous model and DiD remain outstanding. Figure 6 remains
-blocked by the known implanted-taxon exclusion/counting defect.
+`arrow`. The real continuous model and DiD remain outstanding. The Figure 6
+community defect is corrected in code but has not been rerun on real data.
 
 The target-level residual-genome-size audit is now implemented, Codex-verified,
 committed, executed by André, and checksum-verified. Read-reference slopes were
@@ -64,11 +64,11 @@ DEVELOPMENT_ONLY execution**. `mgcv` is absent locally, so
 executed; the development run must establish that path before any definitive
 claim.
 
-**PENDING, not started:** the Figure 6 implanted-taxon exclusion defect —
-community profiles exclude only the focal target rather than all ten implanted
-taxa, community profiles may be counted repeatedly across `target_label` rows,
-and feature aliases must be canonicalized before target exclusion. Logged as
-`OPEN` in `analysis_v2/METHODS_DECISION_LOG.md`; it needs its own task.
+**IMPLEMENTED, awaiting execution:** the Figure 6 evaluator now treats each
+community dose as one physical mixture, requires consistent panel-member
+repetitions, canonicalizes aliases before excluding every implanted taxon, and
+fails on incomplete repetitions. Existing Figure 6 results remain unlicensed
+until the corrected development analysis is rerun and reviewed.
 
 ## Scientific story
 

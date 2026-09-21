@@ -36,8 +36,8 @@ Yachida-only validation of the scale correction, not yet a three-cohort claim.
 Paper drafting may proceed for the Introduction, experimental design, frozen
 methods, and manuscript structure. Final Results, abstract claims, Discussion,
 and publication figures remain blocked on cross-cohort replication, stratified
-sensitivity review, real model execution, Figure 6 correction, and the
-definitive three-cohort rebuild.
+sensitivity review, real model execution, corrected Figure 6 development
+execution, and the definitive three-cohort rebuild.
 
 ## 1. Executive recommendation
 
