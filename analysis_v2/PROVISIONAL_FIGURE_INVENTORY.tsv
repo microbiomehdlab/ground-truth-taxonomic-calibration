@@ -1,7 +1,7 @@
 figure	panel	title	state	asset	seal	note
-Figure 1	A	Paired perturbation study design	placeholder			Schematic to draw after sample and profile counts are frozen.
-Figure 1	B	Profiler-specific expected-abundance estimands	placeholder			Show read-proportional Bracken and genome-equivalent MetaPhlAn formulas.
-Figure 2	A	Detection across taxon, dose, and background	placeholder			Requires checked three-cohort corrected-scale model contrasts and intervals.
+Figure 1	A	Paired perturbation study design	provisional	work/three_cohort_recoverability_20260921T154031Z/study_design/figure_1A_study_design.svg	work/three_cohort_recoverability_20260921T154031Z/study_design/SUCCESS	Conceptual schematic only; final cohort and profile counts are not yet shown.
+Figure 1	B	Profiler-specific expected-abundance estimands	provisional	work/three_cohort_recoverability_20260921T154031Z/study_design/figure_1B_profiler_estimands.svg	work/three_cohort_recoverability_20260921T154031Z/study_design/SUCCESS	Read-proportional Bracken and genome-equivalent MetaPhlAn formulas; no fitted constant.
+Figure 2	A	Detection across taxon, dose, and background	provisional	work/three_cohort_recoverability_20260921T154031Z/detection/three_cohort_detection_heatmap.png	work/three_cohort_recoverability_20260921T154031Z/detection/SUCCESS	Descriptive positive-abundance fraction; Wilson intervals and denominators are in the source TSV. Model contrasts remain pending.
 Figure 2	B	Quantitative recovery with sample IQR boxes	provisional	work/three_cohort_recoverability_20260921T154031Z/quantitative_recovery_boxes/three_cohort_quantitative_recovery_boxes.png	work/three_cohort_recoverability_20260921T154031Z/quantitative_recovery_boxes/SUCCESS	Corrected endpoints; verify real plotted quartiles and zero counts.
 Figure 3	A	Non-implanted response atlas	placeholder			Rebuild and verify three-cohort profiler-scale response atlas.
 Figure 3	B	Cross-cohort response consistency	placeholder			Requires same target-feature estimand and uncertainty across cohorts.

@@ -10,14 +10,40 @@ each) and seven supplementary candidates. Its panel state is explicit:
   absent previews become `MISSING PREVIEW` placeholders.
 - `placeholder`: no figure is supplied or silently substituted.
 
-The book currently marks no scientific panel `checked`. Figure 2B and
-supplementary S2–S5 point to the corrected three-cohort development figures;
-all remain `provisional` pending review. Figure 1 needs a designed schematic
-and frozen sample counts. Figures 3–6 need the corrected three-cohort analysis
+The book currently marks no scientific panel `checked`. Figure 1A/B are
+count-free design schematics, Figure 2A is a descriptive detection heatmap,
+Figure 2B is quantitative recovery, and supplementary S2–S5 use the corrected
+three-cohort development sources. All remain `provisional` pending review.
+Figure 1 still needs final sample counts, and Figure 2A still needs model-based
+contrasts and uncertainty for the publication version. Figures 3–6 need the corrected three-cohort analysis
 and/or model gates described in the inventory. The four-taxon baseline figure
 is held back until its Feng/Zeller denominator discrepancy is resolved.
 
 André-only cluster command after pulling this code:
+
+First produce the newly available Figure 1 and Figure 2A previews from the
+already-derived corrected endpoint table (no profiling or fitting):
+
+```bash
+cd /mnt/nfs/microbiomehd/crc-lab/projects/ground-truth-taxonomic-calibration
+FIGURE_ROOT="$PWD/work/three_cohort_recoverability_20260921T154031Z"
+ANALYSIS_SIF="/mnt/beegfs/apptainer/images/ground_truth_analysis_v2_1.sif"
+python3 analysis_v2/scripts/build_study_design_schematics.py \
+  --outdir "$FIGURE_ROOT/study_design"
+apptainer exec --cleanenv --bind "$PWD:$PWD" --pwd "$PWD" "$ANALYSIS_SIF" \
+  Rscript analysis_v2/scripts/plot_three_cohort_detection.R \
+    --endpoints "$FIGURE_ROOT/endpoints/paired_endpoints.tsv" \
+    --outdir "$FIGURE_ROOT/detection"
+```
+
+Figure 2A shows the fraction of biological samples with native nonzero target
+abundance in each original-assembly community context. Its source TSV gives
+`detected`, `samples`, and Wilson 95% intervals. These are descriptive
+prevalences, not model-adjusted detection effects. The source gate requires
+all cohort-condition-profiler-target-dose contexts, matching native abundance
+flags, and corrected MetaPhlAn / unchanged Bracken reference types.
+
+Then assemble a **new** book:
 
 ```bash
 cd /mnt/nfs/microbiomehd/crc-lab/projects/ground-truth-taxonomic-calibration
