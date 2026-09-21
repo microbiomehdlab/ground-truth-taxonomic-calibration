@@ -37,6 +37,9 @@ Definitions:
   uncapped values and lists display-capped points separately. A second B panel
   summarizes median strength and IQR by within-profiler driver tertile (30
   contexts per tertile); it is descriptive, not an adjustment or new model.
+  The scatterplot also displays recovery-variability IQR only up to 2 on the
+  x-axis: open circles mark larger original values, listed in
+  `panel_B_variability_capped_points.tsv`. Recovery error is not capped.
 - **C:** descriptive Spearman correlation between each driver and biomarker
   strength over ten targets, separately for every cohort/condition/profiler.
   Undefined correlations are missing, never set to zero. These 10-target

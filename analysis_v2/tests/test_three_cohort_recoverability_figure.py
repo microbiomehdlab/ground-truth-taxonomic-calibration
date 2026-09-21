@@ -68,6 +68,9 @@ class ThreeCohortRecoverability(unittest.TestCase):
             # A zero reported q-value is a numerical lower-bound case. It must
             # remain in the source but cannot set the display axis to 300.
             biomarkers[0]["target_q_value"] = 0
+            # An extreme recovered/implanted ratio must remain auditable while
+            # the variability scatterplot stays readable.
+            endpoints[2]["recovered_spike_signal_profiler_scale"] = .002
             result = self.invoke(biomarkers, endpoints, root)
             self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
             with (root / "source/minimum_biomarker_fraction.tsv").open() as handle:
@@ -84,6 +87,9 @@ class ThreeCohortRecoverability(unittest.TestCase):
             with (root / "figures/panel_B_display_capped_points.tsv").open() as handle:
                 capped = list(csv.DictReader(handle, delimiter="\t"))
             self.assertTrue(any(float(row["biomarker_q"]) == 0 for row in capped))
+            with (root / "figures/panel_B_variability_capped_points.tsv").open() as handle:
+                x_capped = list(csv.DictReader(handle, delimiter="\t"))
+            self.assertTrue(any(float(row["driver_value"]) > 2 for row in x_capped))
             with (root / "figures/panel_B_driver_tertiles_source.tsv").open() as handle:
                 tertiles = list(csv.DictReader(handle, delimiter="\t"))
             self.assertEqual(len(tertiles), 24)

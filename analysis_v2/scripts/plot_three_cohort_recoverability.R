@@ -50,6 +50,7 @@ thresholds$dose_label <- factor(thresholds$dose_label, levels = c(dose_labels, "
 thresholds$context <- factor(paste(thresholds$condition, thresholds$cohort, sep = "\n"),
                              levels = as.vector(outer(condition_levels, cohort_labels, paste, sep = "\n")))
 drivers$driver <- factor(drivers$driver, levels = driver_levels, labels = driver_labels)
+drivers$driver_code <- driver_levels[as.integer(drivers$driver)]
 drivers$driver_value <- as.numeric(drivers$driver_value)
 drivers$biomarker_strength <- as.numeric(drivers$biomarker_strength)
 drivers$biomarker_q <- as.numeric(drivers$biomarker_q)
@@ -59,6 +60,12 @@ if (anyNA(drivers$driver) || any(!is.finite(drivers$driver_value)) ||
 display_cap <- 25
 drivers$display_strength <- pmin(drivers$biomarker_strength, display_cap)
 drivers$capped <- drivers$biomarker_strength > display_cap
+variability_cap <- 2
+drivers$display_x <- ifelse(drivers$driver_code == "recovery_iqr",
+                            pmin(drivers$driver_value, variability_cap),
+                            drivers$driver_value)
+drivers$x_capped <- drivers$driver_code == "recovery_iqr" &
+  drivers$driver_value > variability_cap
 drivers$context <- factor(paste(drivers$condition, drivers$cohort, sep = "\n"),
                           levels = levels(thresholds$context))
 theme_fig <- theme_bw(base_size = 9) + theme(panel.grid.minor = element_blank(),
@@ -76,19 +83,23 @@ pA <- ggplot(thresholds, aes(context, target_label, fill = dose_label)) +
        x = NULL, y = "Implanted taxon", fill = "Minimum fraction") + theme_fig
 colors <- c(Control = "#4C78A8", Adenoma = "#D8A03A", CRC = "#D95F02")
 shapes <- c(Feng = 16, Yachida = 17, Zeller = 15)
-pB <- ggplot(drivers, aes(driver_value, display_strength,
+pB <- ggplot(drivers, aes(display_x, display_strength,
                           color = condition, shape = cohort)) +
   geom_hline(yintercept = -log10(.05), linetype = 3, color = "grey55") +
   geom_point(size = 1.8, alpha = .75) +
   geom_point(data = drivers[drivers$capped, ], shape = 2, size = 3,
              inherit.aes = FALSE,
-             aes(x = driver_value, y = display_strength), color = "black") +
+             aes(x = display_x, y = display_strength), color = "black") +
+  geom_point(data = drivers[drivers$x_capped, ], shape = 1, size = 3,
+             inherit.aes = FALSE,
+             aes(x = display_x, y = display_strength), color = "black") +
   facet_grid(profiler ~ driver, scales = "free_x") +
   scale_y_continuous(limits = c(0, display_cap), breaks = c(0, 5, 10, 15, 20, 25)) +
   scale_color_manual(values = colors) + scale_shape_manual(values = shapes) +
   labs(title = "B. Biomarker significance versus baseline and recovery drivers at 0.01%",
-       subtitle = "Each point is one target x cohort x condition; open triangles mark values above 25 (including q = 0); dashed line: q = 0.05",
-       x = "Driver value", y = expression("Displayed " * -log[10](q) * " (capped at 25)"),
+       subtitle = "Open triangles: y > 25 (including q = 0); open circles: variability x > 2; dashed line: q = 0.05",
+       x = "Driver value (variability displayed to 2)",
+       y = expression("Displayed " * -log[10](q) * " (capped at 25)"),
        color = "Condition", shape = "Cohort") + theme_fig
 capped_source <- drivers[drivers$capped,
   c("cohort", "condition", "profiler", "target_label", "driver", "biomarker_q", "biomarker_strength")]
@@ -96,6 +107,11 @@ capped_source$driver <- gsub("[\r\n]", " ", as.character(capped_source$driver))
 write.table(capped_source,
   file.path(outdir, "panel_B_display_capped_points.tsv"), sep = "\t",
   quote = FALSE, row.names = FALSE)
+x_capped_source <- drivers[drivers$x_capped,
+  c("cohort", "condition", "profiler", "target_label", "driver_code",
+    "driver_value", "biomarker_q", "biomarker_strength")]
+write.table(x_capped_source, file.path(outdir, "panel_B_variability_capped_points.tsv"),
+            sep = "\t", quote = FALSE, row.names = FALSE)
 tertile_rows <- lapply(split(drivers, interaction(drivers$profiler, drivers$driver, drop = TRUE)),
   function(part) {
     if (nrow(part) != 90L) stop("Tertile group does not contain 90 contexts")
