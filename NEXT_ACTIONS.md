@@ -3,6 +3,15 @@
 **Purpose:** operational starting point for the next agent.
 **Last updated:** 21 September 2026.
 
+**Provisional paper figure book (21 September 2026):** Six main figures and
+seven supplementary candidates are inventoried in
+`analysis_v2/PROVISIONAL_FIGURE_INVENTORY.tsv`; a checksum-tracked HTML review
+book can be assembled with `scripts/assemble_provisional_figure_book.py`.
+This is a layout and evidence-gap review, not a claim that all panels are ready.
+The corrected three-cohort endpoint and recovery sources were run by André,
+but their rendered previews remain provisional; Figures 3–6 still have
+analysis/model gates, and the baseline-prevalence discrepancy is unresolved.
+
 **Three-panel recoverability successor:** code and local fixtures now cover all
 three cohorts and panels A–C; see `analysis_v2/THREE_COHORT_RECOVERABILITY_FIGURE.md`.
 It is **not yet empirically run**. It requires a single corrected three-cohort

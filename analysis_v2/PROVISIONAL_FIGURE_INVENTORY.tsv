@@ -1,0 +1,20 @@
+figure	panel	title	state	asset	seal	note
+Figure 1	A	Paired perturbation study design	placeholder			Schematic to draw after sample and profile counts are frozen.
+Figure 1	B	Profiler-specific expected-abundance estimands	placeholder			Show read-proportional Bracken and genome-equivalent MetaPhlAn formulas.
+Figure 2	A	Detection across taxon, dose, and background	placeholder			Requires checked three-cohort corrected-scale model contrasts and intervals.
+Figure 2	B	Quantitative recovery with sample IQR boxes	provisional	work/three_cohort_recoverability_20260921T154031Z/quantitative_recovery_boxes/three_cohort_quantitative_recovery_boxes.png	work/three_cohort_recoverability_20260921T154031Z/quantitative_recovery_boxes/SUCCESS	Corrected endpoints; verify real plotted quartiles and zero counts.
+Figure 3	A	Non-implanted response atlas	placeholder			Rebuild and verify three-cohort profiler-scale response atlas.
+Figure 3	B	Cross-cohort response consistency	placeholder			Requires same target-feature estimand and uncertainty across cohorts.
+Figure 4	A	Community reconstruction against observed profiles	placeholder			Label same-sample reconstruction; verify corrected-scale response operator.
+Figure 4	B	Additive versus composition-only error ratio	placeholder			Do not use older read-reference superposition results.
+Figure 5	A	Target-excluded CRC biomarker fate by dose	placeholder			Corrected exclusion code exists; real three-cohort result needs review.
+Figure 5	B	Continuous effect and ideal-counterfactual distortion	placeholder			Real continuous model and DiD have not passed the final execution gate.
+Figure 6	A	Directional cross-cohort biomarker replication	placeholder			Match frozen baseline feature universe and validation denominator.
+Figure 6	B	Perturbation stability versus external replication	placeholder			Exploratory linkage; source and inferential policy remain unverified.
+Supplement	S1	Four-taxon baseline prevalence and positive abundance	placeholder			Current draft differs from historical Feng/Zeller plot; denominator audit pending.
+Supplement	S2	Minimum dose for target biomarker recovery	provisional	work/three_cohort_recoverability_20260921T154031Z/figures_readable_v2/panel_A_minimum_spike_fraction.png	work/three_cohort_recoverability_20260921T154031Z/figures_readable_v2/SUCCESS	Exploratory three-cohort stratified calls; review counts and labels.
+Supplement	S3	Recovery drivers and biomarker significance	provisional	work/three_cohort_recoverability_20260921T154031Z/figures_readable_v2/panel_B_recovery_drivers.png	work/three_cohort_recoverability_20260921T154031Z/figures_readable_v2/SUCCESS	Display caps are explicit; inspect source and correlation sensitivity.
+Supplement	S4	Driver tertiles and biomarker significance	provisional	work/three_cohort_recoverability_20260921T154031Z/figures_readable_v2/panel_B_driver_tertiles.png	work/three_cohort_recoverability_20260921T154031Z/figures_readable_v2/SUCCESS	Descriptive 30-context tertiles, not a fitted model.
+Supplement	S5	Target-level Spearman association overview	provisional	work/three_cohort_recoverability_20260921T154031Z/figures_readable_v2/panel_C_spearman_associations.png	work/three_cohort_recoverability_20260921T154031Z/figures_readable_v2/SUCCESS	Ten-target descriptive correlations; no causal claim.
+Supplement	S6	Genome-size reference correction	placeholder			Yachida audit passed; replicate Feng and Zeller before pooled figure.
+Supplement	S7	Assembly and reference sensitivities	placeholder			Await aligned definitive three-cohort input and denominator audit.
