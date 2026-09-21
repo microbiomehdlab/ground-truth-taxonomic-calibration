@@ -15,8 +15,10 @@ count-free design schematics, Figure 2A is a descriptive detection heatmap,
 Figure 2B is quantitative recovery, and supplementary S2–S5 use the corrected
 three-cohort development sources. All remain `provisional` pending review.
 Figure 1 still needs final sample counts, and Figure 2A still needs model-based
-contrasts and uncertainty for the publication version. Figures 3–6 need the corrected three-cohort analysis
-and/or model gates described in the inventory. The four-taxon baseline figure
+contrasts and uncertainty for the publication version. Candidate Figures 3–6
+can now be generated from the finished-sample snapshot using the two runners
+in `PARTIAL_SNAPSHOT_FIGURES.md`; these have not been executed or reviewed on
+the cluster and remain development-only. The four-taxon baseline figure
 is held back until its Feng/Zeller denominator discrepancy is resolved.
 
 André-only cluster command after pulling this code:
