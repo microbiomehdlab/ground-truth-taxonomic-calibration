@@ -7,7 +7,7 @@ from pathlib import Path
 
 KEY = ["cohort", "study", "analysis_population", "target_label", "assembly_arm", "profiler", "contrast"]
 REQUIRED = KEY + ["dose_level", "spike_fraction_target", "feature", "effect", "p_value", "q_value", "include", "exclusion_reason"]
-OUTPUT = KEY + ["spike_fraction_target", "q_threshold", "target_alias", "baseline_biomarkers",
+OUTPUT = KEY + ["spike_fraction_target", "spike_fraction_total", "q_threshold", "target_alias", "baseline_biomarkers",
  "dose_biomarkers", "retained_biomarkers", "lost_biomarkers", "gained_biomarkers",
  "baseline_retention_rate", "dose_overlap_fraction", "biomarker_set_jaccard_vs_baseline",
  "baseline_bystander_biomarkers", "dose_bystander_biomarkers", "retained_bystanders",
@@ -19,7 +19,7 @@ OUTPUT = KEY + ["spike_fraction_target", "q_threshold", "target_alias", "baselin
  "max_abs_effect_change_baseline_biomarkers", "target_significant", "target_effect",
  "target_q_value", "target_baseline_significant", "target_baseline_effect",
  "target_baseline_q_value", "target_effect_change_from_baseline"]
-LEDGER = KEY + ["spike_fraction_target", "q_threshold", "target_alias", "feature",
+LEDGER = KEY + ["spike_fraction_target", "spike_fraction_total", "q_threshold", "target_alias", "feature",
  "feature_role", "baseline_called", "dose_called", "transition", "baseline_effect",
  "dose_effect", "effect_change", "baseline_q_value", "dose_q_value", "effect_sign_changed"]
 
@@ -48,8 +48,8 @@ def collapse_community(rows, panel_labels):
     The disease model historically emits the same community profile once per
     panel member.  A community stress test is nevertheless one physical
     perturbation, not ten independent observations.  Repeated model results
-    must agree exactly on all fitted quantities; only the member fractions are
-    summed to recover the total community fraction.
+    must agree exactly on all fitted quantities. Preserve the per-member dose
+    used on the figure's x axis, and also record the total mixture fraction.
     """
     independent=[]; buckets=defaultdict(list)
     physical_fields=["cohort","study","analysis_population","assembly_arm",
@@ -75,8 +75,11 @@ def collapse_community(rows, panel_labels):
             raise ValueError("community context repeats a target label")
         representative=dict(members[0])
         representative["target_label"]="CRCpanel"
-        representative["spike_fraction_target"]=render(sum(
-            number(row,"spike_fraction_target") for row in members))
+        fractions=[number(row,"spike_fraction_target") for row in members]
+        if any(f < 0 for f in fractions):
+            raise ValueError("negative community member fraction")
+        representative["spike_fraction_target"]=render(statistics.median(fractions))
+        representative["spike_fraction_total"]=render(sum(fractions))
         collapsed.append(representative)
     return independent+collapsed
 
@@ -158,7 +161,9 @@ def main():
                 target_row=dose_by[target] if not community else None
                 base_target=base_by[target] if not community else None
                 record={field:value for field,value in zip(KEY,context)}
-                record.update(spike_fraction_target=render(dose),q_threshold=render(threshold),
+                record.update(spike_fraction_target=render(dose),
+                  spike_fraction_total=dose_rows[0].get("spike_fraction_total", render(dose)),
+                  q_threshold=render(threshold),
                   target_alias=target if not community else ";".join(sorted(
                       target_alias[(member,profiler)] for member in taxa)),
                   baseline_biomarkers=str(len(base_calls)),dose_biomarkers=str(len(dose_calls)),retained_biomarkers=str(len(retained)),
@@ -200,7 +205,9 @@ def main():
                     else:
                         transition="direct_target_not_called"
                     entry={field:value for field,value in zip(KEY,context)}
-                    entry.update(spike_fraction_target=render(dose),q_threshold=render(threshold),
+                    entry.update(spike_fraction_target=render(dose),
+                      spike_fraction_total=record["spike_fraction_total"],
+                      q_threshold=render(threshold),
                       target_alias=record["target_alias"],feature=feature,
                       feature_role="implanted_target" if is_implanted(feature) else "bystander",
                       baseline_called=str(int(baseline_called)),dose_called=str(int(dose_called)),

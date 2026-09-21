@@ -71,7 +71,8 @@ class CommunityExclusionTest(unittest.TestCase):
         self.assertEqual(len(metrics),1)
         row=metrics[0]
         self.assertEqual(row["target_label"],"CRCpanel")
-        self.assertAlmostEqual(float(row["spike_fraction_target"]),.03)
+        self.assertAlmostEqual(float(row["spike_fraction_target"]),.015)
+        self.assertAlmostEqual(float(row["spike_fraction_total"]),.03)
         self.assertEqual(row["baseline_bystander_biomarkers"],"1")
         self.assertEqual(row["retained_bystanders"],"1")
         self.assertEqual(row["target_significant"],"NA")
@@ -81,6 +82,8 @@ class CommunityExclusionTest(unittest.TestCase):
         self.assertEqual(roles["A_ALIAS"],"implanted_target")
         self.assertEqual(roles["Species B"],"implanted_target")
         self.assertEqual(roles["Stable"],"bystander")
+        self.assertTrue(all(abs(float(r["spike_fraction_total"])-.03)<1e-12
+                            for r in ledger))
         with (out/"disease_biomarker_propagation_summary.tsv").open() as handle:
             summary={r["metric"]:r["value"] for r in csv.DictReader(handle,delimiter="\t")}
         self.assertEqual(summary["community_repeated_rows_collapsed"],"8")
@@ -92,6 +95,19 @@ class CommunityExclusionTest(unittest.TestCase):
         done=self.invoke(rows,"missing")
         self.assertNotEqual(done.returncode,0)
         self.assertIn("does not contain every implanted target",done.stdout+done.stderr)
+
+    def test_equal_member_dose_keeps_plot_axis_per_target(self):
+        rows=self.rows()
+        for row in rows:
+            if row["dose_level"] == "dose_01":
+                row["spike_fraction_target"] = .01
+        done=self.invoke(rows,"equal_dose")
+        self.assertEqual(done.returncode,0,done.stdout+done.stderr)
+        with (self.root/"equal_dose"/"disease_biomarker_propagation_metrics.tsv").open() as handle:
+            result=list(csv.DictReader(handle,delimiter="\t"))
+        self.assertEqual(len(result),1)
+        self.assertAlmostEqual(float(result[0]["spike_fraction_target"]),.01)
+        self.assertAlmostEqual(float(result[0]["spike_fraction_total"]),.02)
 
     def test_disagreeing_repeated_fit_fails(self):
         rows=self.rows()

@@ -4,6 +4,16 @@ This tracked log records decisions that affect manuscript methods or
 interpretation. Generated run directories preserve the corresponding inputs,
 diagnostics, provenance, and checksums.
 
+## 2026-09-21 — Figure 6 community dose-axis integration correction
+
+The physical-mixture collapse still counts each community fit once, but its
+`spike_fraction_target` must retain the per-member target dose used by the
+frozen Figure 6 x axis. For read-rounded member doses, it is their median;
+`spike_fraction_total` separately records their sum. Both are exported in the
+metrics and transition ledger. This supersedes the earlier entry's use of the
+summed fraction *as* `spike_fraction_target`. No real Figure 6 output has yet
+been regenerated or approved.
+
 ## 2026-09-21 — Figure 6 community biomarker-fate defects corrected in code
 
 Community implantation is now treated as one physical ten-member perturbation
