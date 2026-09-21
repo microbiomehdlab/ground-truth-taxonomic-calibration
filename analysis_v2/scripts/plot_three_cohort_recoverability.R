@@ -41,8 +41,10 @@ for (name in c("thresholds", "drivers")) {
 thresholds$minimum_fraction <- as.character(thresholds$minimum_fraction)
 dose_values <- c(.0001, .0005, .001, .005, .01, .05)
 dose_labels <- c("0.01%", "0.05%", "0.10%", "0.50%", "1.00%", "5.00%")
-thresholds$dose_label <- ifelse(thresholds$minimum_fraction == "NR", "NR",
-                                dose_labels[match(as.numeric(thresholds$minimum_fraction), dose_values)])
+thresholds$dose_label <- rep("NR", nrow(thresholds))
+has_dose <- thresholds$minimum_fraction != "NR"
+thresholds$dose_label[has_dose] <- dose_labels[match(
+  as.numeric(thresholds$minimum_fraction[has_dose]), dose_values)]
 if (anyNA(thresholds$dose_label)) stop("Threshold outside frozen dose grid")
 thresholds$dose_label <- factor(thresholds$dose_label, levels = c(dose_labels, "NR"))
 thresholds$context <- factor(paste(thresholds$condition, thresholds$cohort, sep = "\n"),
@@ -50,8 +52,13 @@ thresholds$context <- factor(paste(thresholds$condition, thresholds$cohort, sep 
 drivers$driver <- factor(drivers$driver, levels = driver_levels, labels = driver_labels)
 drivers$driver_value <- as.numeric(drivers$driver_value)
 drivers$biomarker_strength <- as.numeric(drivers$biomarker_strength)
+drivers$biomarker_q <- as.numeric(drivers$biomarker_q)
 if (anyNA(drivers$driver) || any(!is.finite(drivers$driver_value)) ||
-    any(!is.finite(drivers$biomarker_strength))) stop("Invalid driver data")
+    any(!is.finite(drivers$biomarker_strength)) || anyNA(drivers$biomarker_q) ||
+    any(drivers$biomarker_q < 0 | drivers$biomarker_q > 1)) stop("Invalid driver data")
+display_cap <- 25
+drivers$display_strength <- pmin(drivers$biomarker_strength, display_cap)
+drivers$capped <- drivers$biomarker_strength > display_cap
 drivers$context <- factor(paste(drivers$condition, drivers$cohort, sep = "\n"),
                           levels = levels(thresholds$context))
 theme_fig <- theme_bw(base_size = 9) + theme(panel.grid.minor = element_blank(),
@@ -69,15 +76,57 @@ pA <- ggplot(thresholds, aes(context, target_label, fill = dose_label)) +
        x = NULL, y = "Implanted taxon", fill = "Minimum fraction") + theme_fig
 colors <- c(Control = "#4C78A8", Adenoma = "#D8A03A", CRC = "#D95F02")
 shapes <- c(Feng = 16, Yachida = 17, Zeller = 15)
-pB <- ggplot(drivers, aes(driver_value, biomarker_strength,
+pB <- ggplot(drivers, aes(driver_value, display_strength,
                           color = condition, shape = cohort)) +
   geom_hline(yintercept = -log10(.05), linetype = 3, color = "grey55") +
   geom_point(size = 1.8, alpha = .75) +
+  geom_point(data = drivers[drivers$capped, ], shape = 2, size = 3,
+             inherit.aes = FALSE,
+             aes(x = driver_value, y = display_strength), color = "black") +
   facet_grid(profiler ~ driver, scales = "free_x") +
+  scale_y_continuous(limits = c(0, display_cap), breaks = c(0, 5, 10, 15, 20, 25)) +
   scale_color_manual(values = colors) + scale_shape_manual(values = shapes) +
   labs(title = "B. Biomarker significance versus baseline and recovery drivers at 0.01%",
-       subtitle = "Each point is one target × cohort × condition; dashed line marks q = 0.05",
-       x = "Driver value", y = expression(-log[10](q)), color = "Condition", shape = "Cohort") + theme_fig
+       subtitle = "Each point is one target x cohort x condition; open triangles mark values above 25 (including q = 0); dashed line: q = 0.05",
+       x = "Driver value", y = expression("Displayed " * -log[10](q) * " (capped at 25)"),
+       color = "Condition", shape = "Cohort") + theme_fig
+capped_source <- drivers[drivers$capped,
+  c("cohort", "condition", "profiler", "target_label", "driver", "biomarker_q", "biomarker_strength")]
+capped_source$driver <- gsub("[\r\n]", " ", as.character(capped_source$driver))
+write.table(capped_source,
+  file.path(outdir, "panel_B_display_capped_points.tsv"), sep = "\t",
+  quote = FALSE, row.names = FALSE)
+tertile_rows <- lapply(split(drivers, interaction(drivers$profiler, drivers$driver, drop = TRUE)),
+  function(part) {
+    if (nrow(part) != 90L) stop("Tertile group does not contain 90 contexts")
+    order_index <- order(part$driver_value, part$cohort, part$condition, part$target_label)
+    part$tertile <- NA_integer_
+    part$tertile[order_index] <- rep(1:3, each = 30)
+    do.call(rbind, lapply(1:3, function(t) {
+      values <- part$biomarker_strength[part$tertile == t]
+      data.frame(profiler = part$profiler[1], driver = part$driver[1],
+                 tertile = c("Low", "Mid", "High")[t], n = length(values),
+                 median = median(values), q1 = unname(quantile(values, .25)),
+                 q3 = unname(quantile(values, .75)))
+    }))
+  })
+tertiles <- do.call(rbind, tertile_rows)
+tertiles$tertile <- factor(tertiles$tertile, levels = c("Low", "Mid", "High"))
+tertiles_source <- tertiles
+tertiles_source$driver <- gsub("[\r\n]", " ", as.character(tertiles_source$driver))
+write.table(tertiles_source, file.path(outdir, "panel_B_driver_tertiles_source.tsv"),
+            sep = "\t", quote = FALSE, row.names = FALSE)
+pB_tertiles <- ggplot(tertiles, aes(tertile, pmin(median, display_cap),
+                                   group = profiler, color = profiler)) +
+  geom_line() + geom_point(size = 2) +
+  geom_errorbar(aes(ymin = pmin(q1, display_cap), ymax = pmin(q3, display_cap)),
+                width = .12) +
+  facet_wrap(~ driver, scales = "free_y", nrow = 1) +
+  scale_y_continuous(limits = c(0, display_cap)) +
+  labs(title = "B2. Median biomarker strength by driver tertile",
+       subtitle = "30 contexts per tertile and profiler; bars show IQR; display capped at 25",
+       x = "Driver tertile", y = expression("Displayed median " * -log[10](q)),
+       color = "Profiler") + theme_fig
 correlation <- do.call(rbind, lapply(split(drivers,
   interaction(drivers$cohort, drivers$condition, drivers$profiler, drivers$driver, drop = TRUE)),
   function(part) {
@@ -109,24 +158,26 @@ save_plot <- function(plot, name, width, height) {
 }
 save_plot(pA, "panel_A_minimum_spike_fraction", 17, 7)
 save_plot(pB, "panel_B_recovery_drivers", 15, 8)
+save_plot(pB_tertiles, "panel_B_driver_tertiles", 15, 4)
 save_plot(pC, "panel_C_spearman_associations", 15, 6)
 draw_combined <- function() {
   grid::grid.newpage()
-  grid::pushViewport(grid::viewport(layout = grid::grid.layout(3, 1,
-    heights = grid::unit(c(7, 8, 6), "null"))))
+  grid::pushViewport(grid::viewport(layout = grid::grid.layout(4, 1,
+    heights = grid::unit(c(7, 8, 4, 6), "null"))))
   print(pA, vp = grid::viewport(layout.pos.row = 1), newpage = FALSE)
   print(pB, vp = grid::viewport(layout.pos.row = 2), newpage = FALSE)
-  print(pC, vp = grid::viewport(layout.pos.row = 3), newpage = FALSE)
+  print(pB_tertiles, vp = grid::viewport(layout.pos.row = 3), newpage = FALSE)
+  print(pC, vp = grid::viewport(layout.pos.row = 4), newpage = FALSE)
   grid::popViewport()
 }
-pdf(file.path(outdir, "three_cohort_recoverability_combined.pdf"), width = 17, height = 21)
+pdf(file.path(outdir, "three_cohort_recoverability_combined.pdf"), width = 17, height = 25)
 draw_combined()
 dev.off()
 png(file.path(outdir, "three_cohort_recoverability_combined.png"),
-    width = 3400, height = 4200, res = 200)
+    width = 3400, height = 5000, res = 200)
 draw_combined()
 dev.off()
-writeLines(c("DEVELOPMENT_ONLY", "Awaits corrected profiler-scale endpoints from all three cohorts."),
+writeLines(c("DEVELOPMENT_ONLY", "Corrected three-cohort endpoints; exploratory biomarker associations."),
            file.path(outdir, "DEVELOPMENT_ONLY.txt"))
 writeLines("status\tPASS", file.path(outdir, "SUCCESS"))
 message("[PASS] Three-cohort recoverability figure: ", outdir)

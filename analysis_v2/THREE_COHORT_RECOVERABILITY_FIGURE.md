@@ -31,7 +31,12 @@ Definitions:
   fraction + 1e-6), observed target-detection fraction, median absolute
   `(recovered−implanted)/implanted` error, and IQR of the signed
   recovered/implanted ratio. Both recovery drivers use the selected
-  profiler-scale signal from the paired endpoints.
+  profiler-scale signal from the paired endpoints. The scatterplot displays
+  strength up to 25; open triangles mark larger values, including reported
+  `q=0` (stored as 300 solely to keep `-log10(q)` finite). The source retains
+  uncapped values and lists display-capped points separately. A second B panel
+  summarizes median strength and IQR by within-profiler driver tertile (30
+  contexts per tertile); it is descriptive, not an adjustment or new model.
 - **C:** descriptive Spearman correlation between each driver and biomarker
   strength over ten targets, separately for every cohort/condition/profiler.
   Undefined correlations are missing, never set to zero. These 10-target

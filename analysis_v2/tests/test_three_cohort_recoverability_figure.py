@@ -65,6 +65,9 @@ class ThreeCohortRecoverability(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temp:
             root = Path(temp)
             biomarkers, endpoints = self.fixture()
+            # A zero reported q-value is a numerical lower-bound case. It must
+            # remain in the source but cannot set the display axis to 300.
+            biomarkers[0]["target_q_value"] = 0
             result = self.invoke(biomarkers, endpoints, root)
             self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
             with (root / "source/minimum_biomarker_fraction.tsv").open() as handle:
@@ -75,8 +78,16 @@ class ThreeCohortRecoverability(unittest.TestCase):
                                    "--outdir", str(root / "figures")], capture_output=True, text=True)
             self.assertEqual(plot.returncode, 0, plot.stdout + plot.stderr)
             for stem in ("panel_A_minimum_spike_fraction", "panel_B_recovery_drivers",
-                         "panel_C_spearman_associations", "three_cohort_recoverability_combined"):
+                         "panel_B_driver_tertiles", "panel_C_spearman_associations",
+                         "three_cohort_recoverability_combined"):
                 self.assertGreater((root / "figures" / (stem + ".pdf")).stat().st_size, 0)
+            with (root / "figures/panel_B_display_capped_points.tsv").open() as handle:
+                capped = list(csv.DictReader(handle, delimiter="\t"))
+            self.assertTrue(any(float(row["biomarker_q"]) == 0 for row in capped))
+            with (root / "figures/panel_B_driver_tertiles_source.tsv").open() as handle:
+                tertiles = list(csv.DictReader(handle, delimiter="\t"))
+            self.assertEqual(len(tertiles), 24)
+            self.assertTrue(all(int(row["n"]) == 30 for row in tertiles))
 
     def test_read_scale_metaphlan_rejected(self):
         with tempfile.TemporaryDirectory() as temp:
