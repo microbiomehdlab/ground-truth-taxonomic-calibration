@@ -3,6 +3,13 @@
 **Purpose:** operational starting point for the next agent.
 **Last updated:** 21 September 2026.
 
+**Three-panel recoverability successor:** code and local fixtures now cover all
+three cohorts and panels A–C; see `analysis_v2/THREE_COHORT_RECOVERABILITY_FIGURE.md`.
+It is **not yet empirically run**. It requires a single corrected three-cohort
+profiler-scale paired-endpoint table; the older mixed-provenance read-reference
+table is not acceptable. Do not treat the existing two-cohort driver figure as
+the updated result or bypass the new scale gate.
+
 **Time-sensitive draft baseline figure:** `build_three_cohort_baseline_figure_input.py`
 and `plot_three_cohort_baseline_discordance.R` now derive the four-taxon
 prevalence/Wilson-interval and positive-only abundance panels directly from the

@@ -4,6 +4,19 @@ This tracked log records decisions that affect manuscript methods or
 interpretation. Generated run directories preserve the corresponding inputs,
 diagnostics, provenance, and checksums.
 
+## 2026-09-21 — Three-cohort recoverability figure, code-only
+
+A three-panel successor to the old two-cohort biomarker-recoverability figure
+is implemented, but not yet run on real three-cohort corrected endpoints.
+Panel A uses the first of six nominal independent doses with positive target
+enrichment at BH q ≤ 0.05. Panels B and C use target-level biomarker q and
+baseline/detection/recovery drivers at 0.01%; the recovery error and ratio IQR
+are computed only from each profiler's own scale in the paired endpoint table.
+Panel C's Spearman correlations across ten targets are descriptive. The builder
+requires a complete three-cohort grid and genome-equivalent MetaPhlAn reference
+type, rejecting old read-reference input. Definitions and execution gates are
+in `THREE_COHORT_RECOVERABILITY_FIGURE.md`. No final empirical result is claimed.
+
 ## 2026-09-21 — Figure 6 community dose-axis integration correction
 
 The physical-mixture collapse still counts each community fit once, but its
