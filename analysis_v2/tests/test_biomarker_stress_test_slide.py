@@ -38,7 +38,8 @@ class StressTestSlide(unittest.TestCase):
             root = Path(temp)
             panel, ledger = self.fixture(root)
             done = subprocess.run(["python3", str(SCRIPT), "--ledger", str(ledger),
-                                   "--panel", str(panel), "--outdir", str(root / "out")],
+                                   "--panel", str(panel), "--cohort", "yachida",
+                                   "--outdir", str(root / "out")],
                                   capture_output=True, text=True)
             self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
             self.assertTrue((root / "out/SUCCESS").is_file())
@@ -52,7 +53,8 @@ class StressTestSlide(unittest.TestCase):
             root = Path(temp)
             panel, ledger = self.fixture(root, omit=True)
             done = subprocess.run(["python3", str(SCRIPT), "--ledger", str(ledger),
-                                   "--panel", str(panel), "--outdir", str(root / "out")],
+                                   "--panel", str(panel), "--cohort", "yachida",
+                                   "--outdir", str(root / "out")],
                                   capture_output=True, text=True)
             self.assertNotEqual(done.returncode, 0)
             self.assertIn("incomplete challenge grid", done.stderr)

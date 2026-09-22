@@ -54,11 +54,14 @@ passes, run:
 python3 analysis_v2/scripts/plot_biomarker_stress_test.py \
   --ledger "$FIGURE_ROOT/partial_snapshot_biomarker/evaluation/disease_biomarker_transition_ledger.tsv" \
   --panel spikes/spike_panel.tsv \
-  --cohort yachida --dose-percent 0.1 --top 10 \
-  --outdir "$FIGURE_ROOT/biomarker_stress_test_yachida_0p1"
+  --cohort feng --dose-percent 0.1 --top 10 \
+  --outdir "$FIGURE_ROOT/biomarker_stress_test_feng_0p1"
 ```
 
-The SVG selects the top ten baseline CRC calls separately per profiler,
+The September 2026 partial disease-model snapshot has no Yachida baseline
+CRC calls at BH q <= 0.05 in either profiler, so the slide deliberately uses
+Feng as a **single-cohort illustration**, not a pooled result. The SVG selects
+the top ten Feng baseline CRC calls separately per profiler,
 ranked **only** by unspiked BH q. Each independent target is a column; the
 direct target is excluded from its own challenge. Green means same-direction
 significance retained, gold means significance lost without reversal, and

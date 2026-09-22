@@ -158,7 +158,7 @@ if __name__ == "__main__":
     parser.add_argument("--ledger", required=True, type=Path)
     parser.add_argument("--panel", required=True, type=Path)
     parser.add_argument("--outdir", required=True, type=Path)
-    parser.add_argument("--cohort", default="yachida")
+    parser.add_argument("--cohort", required=True, choices=("feng", "yachida", "zeller"))
     parser.add_argument("--dose-percent", type=float, default=.1)
     parser.add_argument("--top", type=int, default=10)
     args = parser.parse_args()
