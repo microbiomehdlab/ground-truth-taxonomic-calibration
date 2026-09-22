@@ -33,7 +33,42 @@ def num(row, field):
     return value
 
 
-def build(matched, audit, high_audit):
+def paired_calls(path):
+    """Exact low-dose, phenotype-specific paired spike-vs-own-baseline calls."""
+    required = {"cohort", "analysis_population", "target_label", "assembly_arm",
+                "profiler", "contrast", "spike_fraction_target", "q_threshold",
+                "target_called", "target_effect", "target_q_value"}
+    with path.open(newline="", encoding="utf-8") as handle:
+        reader = csv.DictReader(handle, delimiter="\t")
+        if not required <= set(reader.fieldnames or ()):
+            raise ValueError("paired metrics lack required target-call columns")
+        records = list(reader)
+    selected = {}
+    for cohort in COHORTS:
+        for profiler in PROFILERS:
+            for condition in CONDITIONS:
+                contrast = "spiked_vs_matched_baseline__background_" + condition
+                row = unique(records, lambda r: r["cohort"] == cohort and r["profiler"] == profiler and
+                    r["contrast"] == contrast and r["target_label"] == "Fnuc" and
+                    r["analysis_population"] == "community" and r["assembly_arm"] == "original" and
+                    math.isclose(num(r, "spike_fraction_target"), 1e-5, rel_tol=.05) and
+                    math.isclose(num(r, "q_threshold"), .05, abs_tol=1e-10),
+                    f"paired {cohort}/{profiler}/{condition}")
+                if row["contrast"] != contrast or row["target_label"] != "Fnuc" or \
+                   row["analysis_population"] != "community" or row["assembly_arm"] != "original" or \
+                   not math.isclose(num(row, "spike_fraction_target"), 1e-5, rel_tol=.05) or \
+                   not math.isclose(num(row, "q_threshold"), .05, abs_tol=1e-10):
+                    raise ValueError("paired row is not the requested 0.001% stratified context")
+                if row["target_called"] not in ("0", "1"):
+                    raise ValueError("invalid paired target_called")
+                effect, q = num(row, "target_effect"), num(row, "target_q_value")
+                if not 0 <= q <= 1 or (row["target_called"] == "1") != (effect > 0 and q <= .05):
+                    raise ValueError("paired target call disagrees with effect/q")
+                selected[cohort, profiler, condition] = row
+    return selected
+
+
+def build(matched, audit, high_audit, paired_metrics):
     files = {
         "models": matched / "matched_species_models.tsv",
         "baseline": matched / "matched_species_baseline_summary.tsv",
@@ -49,6 +84,7 @@ def build(matched, audit, high_audit):
         raise ValueError("high audit must be the 0.1%-per-member community spike")
     high_transitions = read(high_audit / "fnuc_call_transition_summary.tsv")
     high_response = read(high_audit / "fnuc_target_condition_response.tsv")
+    paired = paired_calls(paired_metrics)
     if not tables["models"] or not tables["baseline"]:
         raise ValueError("matched-species tables are empty")
     result = []
@@ -80,7 +116,9 @@ def build(matched, audit, high_audit):
             result.append(dict(profiler=profiler, cohort=cohort, model=model,
                                baseline=baseline, transition=transition,
                                community=community,
-                               high_transition=high_t, high_community=high_c))
+                               high_transition=high_t, high_community=high_c,
+                               paired={condition: paired[cohort, profiler, condition]
+                                       for condition in CONDITIONS}))
     return result
 
 
@@ -105,7 +143,7 @@ def pct(row):
 
 
 def draw(path, contexts):
-    width, height = 2000, 1490
+    width, height = 2000, 1600
     parts = [f'<svg xmlns="http://www.w3.org/2000/svg" width="{width}" height="{height}" viewBox="0 0 {width} {height}">',
              '<rect width="100%" height="100%" fill="white"/>']
     text(parts, 40, 50, "Can measurement explain the missing F. nucleatum adenoma call?", 32, weight="bold")
@@ -116,7 +154,7 @@ def draw(path, contexts):
     for ci, cohort in enumerate(COHORTS):
         text(parts, x0 + ci*(cw+gap)+cw/2, 135, cohort.title(), 22, weight="bold", anchor="middle")
     for pi, profiler in enumerate(PROFILERS):
-        block = 182 + pi*550
+        block = 182 + pi*590
         color = colors[profiler]
         text(parts, 40, block+18, "Kraken2 + Bracken" if pi == 0 else "MetaPhlAn 4", 17,
              color=color, weight="bold")
@@ -124,14 +162,15 @@ def draw(path, contexts):
                   (106, "Adenoma effect [CI], q"), (137, "CRC effect [CI], q"),
                   (187, "0.001% zero→positive"), (217, "0.001% adenoma recovery"),
                   (247, "0.001% recovery <0.5"),
-                  (285, "0.001% adenoma effect"),
-                  (315, "0.001% adenoma q / call"), (345, "0.001% CRC / other calls"),
-                  (385, "0.1% zero→positive"), (415, "0.1% adenoma recovery"),
-                  (445, "0.1% adenoma call"), (475, "0.1% CRC call"),
-                  (505, "0.1% other calls"))
+                  (280, "0.001% paired C/A/CRC call"),
+                  (320, "0.001% adenoma effect"),
+                  (350, "0.001% adenoma q / call"), (380, "0.001% CRC / other calls"),
+                  (420, "0.1% zero→positive"), (450, "0.1% adenoma recovery"),
+                  (480, "0.1% adenoma call"), (510, "0.1% CRC call"),
+                  (540, "0.1% other calls"))
         for offset, label in labels:
             text(parts, 40, block+offset, label, 13)
-        for offset in (75, 150, 260, 358):
+        for offset in (75, 150, 260, 393):
             line(parts, 40, block+offset, 1968, block+offset)
         for ci, cohort in enumerate(COHORTS):
             r = next(z for z in contexts if z["cohort"] == cohort and z["profiler"] == profiler)
@@ -140,7 +179,7 @@ def draw(path, contexts):
             def put(offset, value, size=14, emphasis=False):
                 text(parts, x+10, block+offset, value, size, color if emphasis else "#243240",
                      "bold" if emphasis else "normal")
-            parts.append(f'<rect x="{x}" y="{block}" width="{cw}" height="520" rx="6" fill="#f5f8fa"/>')
+            parts.append(f'<rect x="{x}" y="{block}" width="{cw}" height="555" rx="6" fill="#f5f8fa"/>')
             put(27, " / ".join(f'{k[:3]} {b[k]["positive"]}/{b[k]["n"]} ({pct(b[k]):.0f}%)'
                               for k in CONDITIONS), 13)
             med = b["Adenoma"]["positive_abundance_median_percent"]
@@ -157,33 +196,38 @@ def draw(path, contexts):
             ac = c["Adenoma"]
             put(217, f'{num(ac,"recovery_median"):.2f} [{num(ac,"recovery_q1"):.2f},{num(ac,"recovery_q3"):.2f}]')
             put(247, f'<0.5: {ac["below_half"]}/{ac["n"]}')
+            paired = r["paired"]
+            put(280, " / ".join(
+                f'{k[:3]} {"call" if paired[k]["target_called"] == "1" else "no call"} '
+                f'q={num(paired[k],"target_q_value"):.2g}' for k in CONDITIONS), 12)
             at, ct = t["Adenoma_vs_Control"], t["CRC_vs_Control"]
-            put(285, f'{num(at,"target_baseline_effect"):+.2f} → {num(at,"target_dose_effect"):+.2f}', 14, True)
-            put(315, f'{num(at,"target_baseline_q"):.2g} → {num(at,"target_dose_q"):.2g} '
+            put(320, f'{num(at,"target_baseline_effect"):+.2f} → {num(at,"target_dose_effect"):+.2f}', 14, True)
+            put(350, f'{num(at,"target_baseline_q"):.2g} → {num(at,"target_dose_q"):.2g} '
                      f'({"called" if at["target_dose_called"] == "1" else "not called"})')
             status = lambda v: "call" if v == "1" else "no call"
-            put(345, f'{status(ct["target_baseline_called"])} → {status(ct["target_dose_called"])}; '
+            put(380, f'{status(ct["target_baseline_called"])} → {status(ct["target_dose_called"])}; '
                      f'Fuso +{ct["related_gained"]}/−{ct["related_lost"]}, '
                      f'other +{ct["other_bystander_gained"]}/−{ct["other_bystander_lost"]}', 13)
             hc, ht = r["high_community"], r["high_transition"]
-            put(385, " / ".join(f'{k[:3]} {ratio(hc[k],"zero_rescued","baseline_zero")}'
+            put(420, " / ".join(f'{k[:3]} {ratio(hc[k],"zero_rescued","baseline_zero")}'
                                 for k in CONDITIONS))
             ha = hc["Adenoma"]
-            put(415, f'{num(ha,"recovery_median"):.2f} [{num(ha,"recovery_q1"):.2f},{num(ha,"recovery_q3"):.2f}]; '
+            put(450, f'{num(ha,"recovery_median"):.2f} [{num(ha,"recovery_q1"):.2f},{num(ha,"recovery_q3"):.2f}]; '
                      f'<0.5 {ha["below_half"]}/{ha["n"]}')
-            for offset, contrast in ((445, "Adenoma_vs_Control"), (475, "CRC_vs_Control")):
+            for offset, contrast in ((480, "Adenoma_vs_Control"), (510, "CRC_vs_Control")):
                 h = ht[contrast]
                 put(offset, f'{num(h,"target_baseline_effect"):+.2f} → {num(h,"target_dose_effect"):+.2f}; '
                     f'q {num(h,"target_baseline_q"):.2g} → {num(h,"target_dose_q"):.2g}; '
                     f'{"called" if h["target_dose_called"] == "1" else "not called"}', 12, True)
             high_crc = ht["CRC_vs_Control"]
-            put(505, f'CRC: Fuso +{high_crc["related_gained"]}/−{high_crc["related_lost"]}; '
+            put(540, f'CRC: Fuso +{high_crc["related_gained"]}/−{high_crc["related_lost"]}; '
                      f'other +{high_crc["other_bystander_gained"]}/−{high_crc["other_bystander_lost"]}', 12)
-    text(parts, 40, 1328, "Reading the figure", 20, weight="bold")
-    text(parts, 40, 1358, "0.1% per member is ~1% total ten-species mixture: a strong perturbation, not an endogenous-equivalent detection limit.", 16)
-    text(parts, 40, 1386, "A recovered spike weakens one measured failure mode; it does not establish native accuracy or biological absence.", 16)
-    text(parts, 40, 1414, "Call changes cannot be attributed solely to F. nucleatum; direct CRC–adenoma contrast/power, read-level QC and native validation remain unresolved.", 16)
-    text(parts, 40, 1447, "C/A/CRC = Control/Adenoma/CRC; recovery 1 is ideal. Both call audits use ten-species mixtures.", 15)
+    text(parts, 40, 1428, "Reading the figure", 20, weight="bold")
+    text(parts, 40, 1458, "Paired call = F. nucleatum increased versus each sample's own unspiked profile, BH q≤0.05; it is not an adenoma-vs-control call.", 16)
+    text(parts, 40, 1486, "0.1% per member is ~1% total ten-species mixture: a strong perturbation, not an endogenous-equivalent detection limit.", 16)
+    text(parts, 40, 1514, "A recovered spike weakens one measured failure mode; it does not establish native accuracy or biological absence.", 16)
+    text(parts, 40, 1542, "Call changes cannot be attributed solely to F. nucleatum; direct CRC–adenoma contrast/power, read-level QC and native validation remain unresolved.", 16)
+    text(parts, 40, 1570, "C/A/CRC = Control/Adenoma/CRC; recovery 1 is ideal. Both call audits use ten-species mixtures.", 15)
     parts.append("</svg>\n")
     path.write_text("\n".join(parts), encoding="utf-8")
 
@@ -193,12 +237,15 @@ def main():
     parser.add_argument("--matched-dir", type=Path, required=True)
     parser.add_argument("--audit-dir", type=Path, required=True)
     parser.add_argument("--high-audit-dir", type=Path, required=True)
+    parser.add_argument("--paired-metrics", type=Path, required=True,
+                        help="phenotype-stratified community biomarker_propagation_metrics.tsv")
     parser.add_argument("--outdir", type=Path, required=True)
     args = parser.parse_args()
     if args.outdir.exists():
         parser.error("output exists: " + str(args.outdir))
     try:
-        contexts = build(args.matched_dir, args.audit_dir, args.high_audit_dir)
+        contexts = build(args.matched_dir, args.audit_dir, args.high_audit_dir,
+                         args.paired_metrics)
         args.outdir.mkdir(parents=True)
         draw(args.outdir / "fnuc_integrated_methods.svg", contexts)
         (args.outdir / "SUCCESS").write_text("status\tPASS\n", encoding="utf-8")
