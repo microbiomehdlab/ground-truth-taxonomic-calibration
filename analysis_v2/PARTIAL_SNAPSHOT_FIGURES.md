@@ -44,6 +44,28 @@ OUTDIR="$FIGURE_ROOT/partial_snapshot_biomarker" \
 test -s "$FIGURE_ROOT/partial_snapshot_biomarker/SUCCESS"
 ```
 
+The biomarker runner is independent of the long response analyzer and can run
+in a separate compute allocation while that analyzer continues. It uses the
+existing disease-model calls and does not switch the response reference scale.
+For a talk-sized, feature-level stress-test plot, after its evaluation stage
+passes, run:
+
+```bash
+python3 analysis_v2/scripts/plot_biomarker_stress_test.py \
+  --ledger "$FIGURE_ROOT/partial_snapshot_biomarker/evaluation/disease_biomarker_transition_ledger.tsv" \
+  --panel spikes/spike_panel.tsv \
+  --cohort yachida --dose-percent 0.1 --top 10 \
+  --outdir "$FIGURE_ROOT/biomarker_stress_test_yachida_0p1"
+```
+
+The SVG selects the top ten baseline CRC calls separately per profiler,
+ranked **only** by unspiked BH q. Each independent target is a column; the
+direct target is excluded from its own challenge. Green means same-direction
+significance retained, gold means significance lost without reversal, and
+magenta means effect direction reversed. This is technical robustness, not a
+false-positive verdict or biological validation. The script requires a
+complete selected target grid and refuses to overwrite an existing output.
+
 Then assemble a **new** provisional book using
 `analysis_v2/PROVISIONAL_FIGURE_BOOK.md`. The inventory points to four response
 previews (Figure 3A/B and 4A/B), two target-excluded biomarker previews
