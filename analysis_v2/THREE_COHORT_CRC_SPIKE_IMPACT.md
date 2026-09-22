@@ -36,8 +36,10 @@ effect direction, evaluability and strongest q; this is a descriptive display
 rule, not a biomarker-validation score. Missing fits are not negatives.
 
 The community spike is **one physical mixture per cohort and dose**, not ten
-independent challenges. The selected member dose is 0.1%; the SVG obtains the
-actual total mixture fraction from the ledger rather than assuming it.
+independent challenges. The selected median member dose is 0.1%; the SVG
+obtains and labels the actual total mixture fraction separately for each
+cohort and profiler. Totals are required to agree *within* a cohort/profiler
+challenge, but need not be the same across cohorts.
 Dark green means a baseline q<=0.05 call remains significant in the same
 direction, gold means significance is lost, magenta means a significant call
 reverses direction, blue means a previously nonsignificant call is gained, and

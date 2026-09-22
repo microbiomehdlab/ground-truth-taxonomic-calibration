@@ -40,7 +40,8 @@ class SpikeImpact(unittest.TestCase):
                     ledger.append(dict(cohort=cohort, analysis_population="community",
                                        assembly_arm="original", profiler=profiler,
                                        contrast="CRC_vs_Control", target_label="CRCpanel",
-                                       spike_fraction_target="0.001", spike_fraction_total="0.01",
+                                       spike_fraction_target="0.001",
+                                       spike_fraction_total={"feng": "0.008", "yachida": "0.01", "zeller": "0.012"}[cohort],
                                        q_threshold="0.05", feature=feature,
                                        feature_role="implanted_target" if is_direct else "bystander",
                                        baseline_called=str(int(called)), dose_called=str(int(dose_called)),
@@ -70,6 +71,7 @@ class SpikeImpact(unittest.TestCase):
             self.assertEqual(next(r for r in rows if r["profiler"] == "kraken2_bracken" and
                                   r["cohort"] == "yachida" and r["feature"] == "Species B")["spike_fate"],
                              "lost_significance")
+            self.assertEqual({float(r["total_mixture_percent"]) for r in rows}, {0.8, 1.0, 1.2})
 
     def test_missing_significant_fate_fails_closed(self):
         with tempfile.TemporaryDirectory() as temp:

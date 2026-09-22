@@ -77,7 +77,7 @@ def read_calls(path):
 
 def read_ledger(path, dose_percent):
     chosen = {}
-    totals = set()
+    totals = {}
     context_seen = set()
     with path.open(newline="", encoding="utf-8") as handle:
         reader = csv.DictReader(handle, delimiter="\t")
@@ -102,17 +102,19 @@ def read_ledger(path, dose_percent):
             total = number(row["spike_fraction_total"], "total mixture dose")
             if total <= 0:
                 raise ValueError("invalid total mixture dose")
-            totals.add(round(total, 12))
-            context_seen.add((cohort, profiler))
+            context = cohort, profiler
+            if context in totals and not math.isclose(totals[context], total, rel_tol=1e-9,
+                                                       abs_tol=1e-12):
+                raise ValueError("selected community mixture has inconsistent total fraction within {}".format(context))
+            totals[context] = total
+            context_seen.add(context)
             key = cohort, profiler, feature
             if key in chosen:
                 raise ValueError("duplicate selected community challenge row: {}".format(key))
             chosen[key] = row
     if context_seen != {(c, p) for c in COHORTS for p in PROFILERS}:
         raise ValueError("selected community challenge missing cohort/profiler contexts")
-    if len(totals) != 1:
-        raise ValueError("selected community mixtures have different total fractions")
-    return chosen, totals.pop()
+    return chosen, totals
 
 
 def rank(fits, profiler):
@@ -163,16 +165,17 @@ COLORS = {
 }
 
 
-def draw(outdir, profiler, rows, total_fraction, dose_percent):
+def draw(outdir, profiler, rows, totals, dose_percent):
     width, height = 1500, 200 + 63 * (len(rows) // 3) + 100
     label = "Kraken2 + Bracken" if profiler == "kraken2_bracken" else "MetaPhlAn 4"
     parts = ['<svg xmlns="http://www.w3.org/2000/svg" width="{}" height="{}" viewBox="0 0 {} {}">'.format(width, height, width, height),
              '<rect width="100%" height="100%" fill="white"/>',
              '<text x="30" y="43" font-family="sans-serif" font-size="29" font-weight="bold">Which {} CRC calls survive a known spike?</text>'.format(html.escape(label)),
-             '<text x="30" y="74" font-family="sans-serif" font-size="17">Unspiked community CRC calls; {:.3f}% per target, {:.3f}% total community mixture · BH q ≤ 0.05 · DEVELOPMENT ONLY</text>'.format(dose_percent, total_fraction * 100),
+             '<text x="30" y="74" font-family="sans-serif" font-size="17">Unspiked community CRC calls; {:.3f}% median member dose; cohort-specific total mixture shown below · BH q ≤ 0.05 · DEVELOPMENT ONLY</text>'.format(dose_percent),
              '<text x="30" y="106" font-family="sans-serif" font-size="16">Each cell: original signed effect and q; colour: fate after the controlled community spike.</text>']
     for ci, cohort in enumerate(COHORTS):
-        parts.append('<text x="{}" y="159" font-family="sans-serif" font-size="21" text-anchor="middle" font-weight="bold">{}</text>'.format(650 + ci * 265, cohort.title()))
+        parts.append('<text x="{}" y="159" font-family="sans-serif" font-size="20" text-anchor="middle" font-weight="bold">{} (total {:.3f}%)</text>'.format(
+            650 + ci * 265, cohort.title(), 100 * totals[cohort, profiler]))
     for ri in range(len(rows) // 3):
         feature = rows[ri * 3]["feature"]
         y = 181 + ri * 63
@@ -200,7 +203,7 @@ def build(calls_path, ledger_path, outdir, dose_percent, top):
     if outdir.exists():
         raise ValueError("output exists: {}".format(outdir))
     fits = read_calls(calls_path)
-    ledger, total = read_ledger(ledger_path, dose_percent)
+    ledger, totals = read_ledger(ledger_path, dose_percent)
     rows, summary = [], []
     for profiler in PROFILERS:
         ranked, score = rank(fits, profiler)
@@ -221,7 +224,7 @@ def build(calls_path, ledger_path, outdir, dose_percent, top):
                               spike_fate=status, same_direction_significant_cohorts=shared,
                               same_direction_all_three=int(same_direction),
                               member_dose_percent=dose_percent,
-                              total_mixture_percent=100 * total)
+                              total_mixture_percent=100 * totals[cohort, profiler])
                 profiler_rows.append(record)
         rows.extend(profiler_rows)
         summary.extend([dict(profiler=profiler, metric="baseline_candidates_any_cohort", value=len(ranked)),
@@ -234,7 +237,7 @@ def build(calls_path, ledger_path, outdir, dose_percent, top):
     write_tsv(outdir / "top_candidate_spike_fates.tsv", rows)
     write_tsv(outdir / "candidate_summary.tsv", summary)
     for profiler in PROFILERS:
-        draw(outdir, profiler, [r for r in rows if r["profiler"] == profiler], total, dose_percent)
+        draw(outdir, profiler, [r for r in rows if r["profiler"] == profiler], totals, dose_percent)
     (outdir / "source.sha256").write_text("{}  {}\n{}  {}\n".format(
         digest(calls_path), calls_path.resolve(), digest(ledger_path), ledger_path.resolve()), encoding="utf-8")
     (outdir / "DEVELOPMENT_ONLY.txt").write_text("status\tDEVELOPMENT_ONLY\n", encoding="utf-8")
