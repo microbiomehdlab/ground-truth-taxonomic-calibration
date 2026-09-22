@@ -15,7 +15,8 @@ CALL_FIELDS = {"cohort", "analysis_population", "assembly_arm", "profiler", "con
 LEDGER_FIELDS = {"cohort", "analysis_population", "assembly_arm", "profiler", "contrast",
                  "target_label", "spike_fraction_target", "spike_fraction_total",
                  "q_threshold", "feature", "feature_role", "baseline_called",
-                 "dose_called", "baseline_q_value", "effect_sign_changed"}
+                 "dose_called", "baseline_q_value", "dose_q_value",
+                 "effect_sign_changed"}
 
 
 def number(value, label):
@@ -111,6 +112,11 @@ def read_ledger(path, dose_percent):
             key = cohort, profiler, feature
             if key in chosen:
                 raise ValueError("duplicate selected community challenge row: {}".format(key))
+            dose_q = number(row["dose_q_value"], "post-spike q")
+            if not 0 <= dose_q <= 1:
+                raise ValueError("post-spike q outside [0,1]")
+            if row["dose_called"] not in ("0", "1") or row["dose_called"] != str(int(dose_q <= .05)):
+                raise ValueError("post-spike q and call flag disagree for {}".format(key))
             chosen[key] = row
     if context_seen != {(c, p) for c in COHORTS for p in PROFILERS}:
         raise ValueError("selected community challenge missing cohort/profiler contexts")
@@ -199,34 +205,89 @@ def draw(outdir, profiler, rows, totals, dose_percent):
     (outdir / (profiler + "_top_candidates.svg")).write_text("".join(parts), encoding="utf-8")
 
 
+def draw_shared(outdir, profiler, rows, totals, dose_percent):
+    width, row_h = 1650, 79
+    height = 218 + row_h * (len(rows) // 3) + 104
+    label = "Kraken2 + Bracken" if profiler == "kraken2_bracken" else "MetaPhlAn 4"
+    parts = ['<svg xmlns="http://www.w3.org/2000/svg" width="{}" height="{}" viewBox="0 0 {} {}">'.format(width, height, width, height),
+             '<rect width="100%" height="100%" fill="white"/>',
+             '<text x="30" y="44" font-family="sans-serif" font-size="30" font-weight="bold">Three-cohort {} CRC candidates: before and after a known spike</text>'.format(html.escape(label)),
+             '<text x="30" y="77" font-family="sans-serif" font-size="17">Original unspiked community calls; {:.3f}% median member dose; one physical community mixture per cohort · DEVELOPMENT ONLY</text>'.format(dose_percent),
+             '<text x="30" y="108" font-family="sans-serif" font-size="16">Each cohort: original CRC effect and q (left) | fate and post-spike q (right). Only same-direction BH q ≤ 0.05 in all three shown.</text>']
+    for ci, cohort in enumerate(COHORTS):
+        x = 500 + ci * 378
+        parts.append('<text x="{}" y="159" font-family="sans-serif" font-size="20" text-anchor="middle" font-weight="bold">{} · total {:.3f}%</text>'.format(
+            x + 174, cohort.title(), 100 * totals[cohort, profiler]))
+        parts.append('<text x="{}" y="184" font-family="sans-serif" font-size="15" text-anchor="middle">Original CRC call</text>'.format(x + 91))
+        parts.append('<text x="{}" y="184" font-family="sans-serif" font-size="15" text-anchor="middle">After spike</text>'.format(x + 268))
+    status_label = {"retained_same_direction": "retained", "lost_significance": "lost",
+                    "direction_reversed": "direction reversed",
+                    "direct_target_excluded": "direct target excluded"}
+    for ri in range(len(rows) // 3):
+        feature = rows[3 * ri]["feature"]
+        y = 202 + ri * row_h
+        short = feature if len(feature) <= 53 else feature[:50] + "..."
+        parts.append('<title>{}</title><text x="30" y="{}" font-family="sans-serif" font-size="19">{}</text>'.format(
+            html.escape(feature), y + 37, html.escape(short)))
+        for ci, row in enumerate(rows[3 * ri:3 * ri + 3]):
+            x = 500 + ci * 378
+            effect, q = float(row["baseline_effect"]), float(row["baseline_q"])
+            before_fill = "#176c70" if effect > 0 else "#a84c62"
+            status = row["spike_fate"]
+            after_q = row["post_spike_q"]
+            after_text = status_label.get(status, status.replace("_", " "))
+            if status != "direct_target_excluded" and after_q:
+                after_text += " · q={:.2g}".format(float(after_q))
+            parts.append('<rect x="{}" y="{}" width="177" height="55" rx="4" fill="{}"/>'.format(x, y, before_fill))
+            parts.append('<rect x="{}" y="{}" width="173" height="55" rx="4" fill="{}"/>'.format(x + 181, y, COLORS[status]))
+            parts.append('<text x="{}" y="{}" font-family="sans-serif" font-size="15" fill="white">{:+.2f} · q={:.2g}</text>'.format(x + 7, y + 34, effect, q))
+            parts.append('<text x="{}" y="{}" font-family="sans-serif" font-size="14" fill="{}">{}</text>'.format(
+                x + 187, y + 34, "white" if status in ("retained_same_direction", "direction_reversed") else "#25303a", html.escape(after_text)))
+    footer = height - 65
+    parts.append('<text x="30" y="{}" font-family="sans-serif" font-size="15">Original: teal positive effect, rose negative effect. After spike: green retained, gold lost significance, magenta reversed, grey direct target excluded.</text>'.format(footer))
+    parts.append('<text x="30" y="{}" font-family="sans-serif" font-size="15">Directly implanted species cannot be evaluated as bystanders. Loss of significance is technical sensitivity, not proof of a biological false positive.</text>'.format(footer + 26))
+    parts.append('</svg>\n')
+    (outdir / (profiler + "_shared_candidates.svg")).write_text("".join(parts), encoding="utf-8")
+
+
 def build(calls_path, ledger_path, outdir, dose_percent, top):
     if outdir.exists():
         raise ValueError("output exists: {}".format(outdir))
     fits = read_calls(calls_path)
     ledger, totals = read_ledger(ledger_path, dose_percent)
-    rows, summary = [], []
+    rows, shared_rows, summary = [], [], []
     for profiler in PROFILERS:
         ranked, score = rank(fits, profiler)
         if not ranked:
             raise ValueError("no baseline CRC candidates for {}".format(profiler))
         shown = ranked[:top]
-        profiler_rows = []
-        for feature in shown:
-            shared, same_direction, _, _ = score(feature)
+        shared_features = [feature for feature in ranked if score(feature)[0] == 3]
+        profiler_rows, profiler_shared_rows = [], []
+        for feature in dict.fromkeys(shown + shared_features):
+            shared_count, same_direction, _, _ = score(feature)
+            feature_rows = []
             for cohort in COHORTS:
                 fit = fits.get((cohort, profiler, feature))
-                status = fate(fit, ledger.get((cohort, profiler, feature)))
-                record = dict(profiler=profiler, rank=len(profiler_rows) // 3 + 1,
+                challenge = ledger.get((cohort, profiler, feature))
+                status = fate(fit, challenge)
+                record = dict(profiler=profiler, rank=ranked.index(feature) + 1,
                               feature=feature, cohort=cohort,
                               baseline_effect="" if fit is None else "{:.9g}".format(fit[0]),
                               baseline_q="" if fit is None else "{:.9g}".format(fit[1]),
                               baseline_called=int(fit is not None and fit[1] <= .05),
-                              spike_fate=status, same_direction_significant_cohorts=shared,
+                              spike_fate=status,
+                              post_spike_q="" if challenge is None or status == "direct_target_excluded" else challenge["dose_q_value"],
+                              same_direction_significant_cohorts=shared_count,
                               same_direction_all_three=int(same_direction),
                               member_dose_percent=dose_percent,
                               total_mixture_percent=100 * totals[cohort, profiler])
-                profiler_rows.append(record)
+                feature_rows.append(record)
+            if feature in shown:
+                profiler_rows.extend(feature_rows)
+            if shared_count == 3:
+                profiler_shared_rows.extend(feature_rows)
         rows.extend(profiler_rows)
+        shared_rows.extend(profiler_shared_rows)
         summary.extend([dict(profiler=profiler, metric="baseline_candidates_any_cohort", value=len(ranked)),
                         dict(profiler=profiler, metric="shared_significant_direction_all_three", value=sum(score(f)[0] == 3 for f in ranked)),
                         dict(profiler=profiler, metric="plotted_candidates", value=len(shown)),
@@ -235,9 +296,11 @@ def build(calls_path, ledger_path, outdir, dose_percent, top):
                         dict(profiler=profiler, metric="plotted_baseline_calls_direct_target_excluded", value=sum(r["spike_fate"] == "direct_target_excluded" for r in profiler_rows))])
     outdir.mkdir(parents=True)
     write_tsv(outdir / "top_candidate_spike_fates.tsv", rows)
+    write_tsv(outdir / "shared_candidate_spike_fates.tsv", shared_rows)
     write_tsv(outdir / "candidate_summary.tsv", summary)
     for profiler in PROFILERS:
         draw(outdir, profiler, [r for r in rows if r["profiler"] == profiler], totals, dose_percent)
+        draw_shared(outdir, profiler, [r for r in shared_rows if r["profiler"] == profiler], totals, dose_percent)
     (outdir / "source.sha256").write_text("{}  {}\n{}  {}\n".format(
         digest(calls_path), calls_path.resolve(), digest(ledger_path), ledger_path.resolve()), encoding="utf-8")
     (outdir / "DEVELOPMENT_ONLY.txt").write_text("status\tDEVELOPMENT_ONLY\n", encoding="utf-8")

@@ -26,6 +26,8 @@ python3 analysis_v2/scripts/plot_three_cohort_crc_spike_impact.py \
 cat "$OUTDIR/candidate_summary.tsv"
 echo "$OUTDIR/kraken2_bracken_top_candidates.svg"
 echo "$OUTDIR/metaphlan4_top_candidates.svg"
+echo "$OUTDIR/kraken2_bracken_shared_candidates.svg"
+echo "$OUTDIR/metaphlan4_shared_candidates.svg"
 ```
 
 Each profiler has its own SVG so names remain readable. The full selected
@@ -34,6 +36,15 @@ spike fate, are in `top_candidate_spike_fates.tsv`. Top ten is **per profiler**,
 ranked by the number of same-direction significant cohorts, then all-cohort
 effect direction, evaluability and strongest q; this is a descriptive display
 rule, not a biomarker-validation score. Missing fits are not negatives.
+
+The `*_shared_candidates.svg` files are the slide-sized focused view: only
+features with a significant effect in the same direction in **all three**
+cohorts. For each cohort they separate the original signed effect/BH q from
+the post-spike fate/BH q. The companion
+`shared_candidate_spike_fates.tsv` retains the exact numbers. Post-spike q is
+hidden for direct implanted targets, because their abundance was intentionally
+changed; those cells cannot assess bystander robustness. The focused plots do
+not imply that different profilers report identical feature identities.
 
 The community spike is **one physical mixture per cohort and dose**, not ten
 independent challenges. The selected median member dose is 0.1%; the SVG

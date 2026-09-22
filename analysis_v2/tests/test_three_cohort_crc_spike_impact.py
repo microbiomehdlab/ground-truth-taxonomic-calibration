@@ -45,7 +45,9 @@ class SpikeImpact(unittest.TestCase):
                                        q_threshold="0.05", feature=feature,
                                        feature_role="implanted_target" if is_direct else "bystander",
                                        baseline_called=str(int(called)), dose_called=str(int(dose_called)),
-                                       baseline_q_value=q, effect_sign_changed="0"))
+                                       baseline_q_value=q,
+                                       dose_q_value="0.02" if dose_called else "0.3",
+                                       effect_sign_changed="0"))
         write(root / "calls.tsv", calls)
         write(root / "ledger.tsv", ledger)
 
@@ -59,6 +61,7 @@ class SpikeImpact(unittest.TestCase):
             self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
             for profiler in PROFILERS:
                 ET.parse(root / "out" / (profiler + "_top_candidates.svg"))
+                ET.parse(root / "out" / (profiler + "_shared_candidates.svg"))
             with (root / "out/top_candidate_spike_fates.tsv").open() as handle:
                 rows = list(csv.DictReader(handle, delimiter="\t"))
             self.assertEqual(len(rows), 12)
@@ -72,6 +75,14 @@ class SpikeImpact(unittest.TestCase):
                                   r["cohort"] == "yachida" and r["feature"] == "Species B")["spike_fate"],
                              "lost_significance")
             self.assertEqual({float(r["total_mixture_percent"]) for r in rows}, {0.8, 1.0, 1.2})
+            with (root / "out/shared_candidate_spike_fates.tsv").open() as handle:
+                shared = list(csv.DictReader(handle, delimiter="\t"))
+            self.assertEqual(len(shared), 6)
+            self.assertEqual({r["feature"] for r in shared}, {"Species A"})
+            self.assertEqual(next(r for r in shared if r["profiler"] == "metaphlan4" and
+                                  r["cohort"] == "feng")["post_spike_q"], "")
+            self.assertEqual(next(r for r in shared if r["profiler"] == "kraken2_bracken" and
+                                  r["cohort"] == "feng")["post_spike_q"], "0.02")
 
     def test_missing_significant_fate_fails_closed(self):
         with tempfile.TemporaryDirectory() as temp:
