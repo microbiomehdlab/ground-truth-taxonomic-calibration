@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Compare three explicitly matched spike-panel species across profilers and disease stages."""
+"""Compare four explicitly matched spike-panel species across profilers and disease stages."""
 from __future__ import annotations
 
 import argparse
@@ -13,9 +13,9 @@ from plot_shared_crc_adenoma_bridge import (
     panel_aliases, sha256, txt, write_tsv,
 )
 
-LABELS = ("Fnuc", "Pmic", "Dpne")
+LABELS = ("Fnuc", "Pmic", "Dpne", "Psto")
 NAMES = {"Fnuc": "Fusobacterium nucleatum", "Pmic": "Parvimonas micra",
-         "Dpne": "Dialister pneumosintes"}
+         "Dpne": "Dialister pneumosintes", "Psto": "Peptostreptococcus stomatis"}
 
 
 def matched_features(panel_map):
@@ -75,13 +75,33 @@ def matched_calls(path, selected):
     return rows
 
 
+def call_status(crc, aden):
+    """Classify association calls only; direct-spike measurements never set color."""
+    if not crc["evaluable"] or not aden["evaluable"]:
+        return "Not evaluable", "#e5e9ed"
+    if not crc["significant"]:
+        if aden["significant"]:
+            return "Adenoma call; CRC not called", "#d9eaf6"
+        return "CRC and adenoma not called", "#f1f5f7"
+    if aden["significant"] and aden["same_direction_as_crc"]:
+        return "CRC call retained in adenoma", "#c6eadc"
+    if aden["significant"]:
+        return "Adenoma call reversed", "#e9bdd0"
+    if aden["same_direction_as_crc"]:
+        return "Same direction; adenoma not called", "#f8e7bd"
+    if aden["effect"] == 0:
+        return "Adenoma effect estimated at zero", "#e5e9ed"
+    return "Opposite direction; adenoma not called", "#f1cbd5"
+
+
 def draw(path, selected, calls, baselines, spikes):
-    width, height = 1710, 1580
+    width, height = 1710, 2030
     parts = [f'<svg xmlns="http://www.w3.org/2000/svg" width="{width}" height="{height}" viewBox="0 0 {width} {height}">',
              '<rect width="100%" height="100%" fill="white"/>']
     txt(parts, 28, 43, "Matched species: CRC, adenoma, baseline and low-dose spike response", 28, weight="bold")
     txt(parts, 28, 72, "Same biological spike-panel species in both profilers; rows are NOT selected by CRC significance. DEVELOPMENT ONLY", 16)
     txt(parts, 28, 99, "C and A: age/sex-adjusted effect vs Control [95% CI], BH q. Baseline: detected/total. Spike: 0.01% direct recovery median [Q1,Q3].", 14)
+    txt(parts, 28, 124, "Box color describes CRC-to-adenoma call status only: green retained · amber same direction/not called · pink reversed/opposite · blue adenoma-only · grey neither.", 13)
     lookup = {(r["profiler"], r["feature"], r["cohort"], r["contrast"]): r for r in calls}
     base = {(r["profiler"], r["feature"], r["cohort"], r["condition"]): r for r in baselines}
     spike = {(r["profiler"], r["feature"], r["cohort"], r["condition"]): r for r in spikes
@@ -100,14 +120,16 @@ def draw(path, selected, calls, baselines, spikes):
                 txt(parts, 28, y+54, "Reported: " + feature, 13)
             for ci, cohort in enumerate(COHORTS):
                 x = 267 + ci*410
-                parts.append(f'<rect x="{x}" y="{y}" width="391" height="183" rx="5" fill="#f1f5f7"/>')
                 crc = lookup[profiler, feature, cohort, "CRC_vs_Control"]
                 aden = lookup[profiler, feature, cohort, "Adenoma_vs_Control"]
+                status, fill = call_status(crc, aden)
+                parts.append(f'<rect x="{x}" y="{y}" width="391" height="183" rx="5" fill="{fill}"/>')
                 for j, (tag, row) in enumerate((("C", crc), ("A", aden))):
                     label_text = (f'{tag}: {row["effect"]:+.2f} [{row["lower_95"]:+.2f},{row["upper_95"]:+.2f}] q={row["q_value"]:.2g}'
                                   if row["evaluable"] else f"{tag}: not evaluable")
                     color = "#117866" if row["significant"] else "#2b3945"
                     txt(parts, x+8, y+22+j*23, label_text, 13, color=color)
+                txt(parts, x+8, y+66, status, 12, weight="bold")
                 for j, condition in enumerate(CONDITIONS):
                     b = base[profiler, feature, cohort, condition]
                     s = spike.get((profiler, feature, cohort, condition))
@@ -116,8 +138,8 @@ def draw(path, selected, calls, baselines, spikes):
                     response = (f'rec {s["recovery_median"]:.2f} [{s["recovery_q1"]:.2f},{s["recovery_q3"]:.2f}], '
                                 f'low {s["fraction_below_half"]:.0%}, det {s["observed_positive"]}/{s["n"]}'
                                 if s else "spike unavailable")
-                    txt(parts, x+8, y+79+j*33, f'{condition[:3]} {b["positive"]}/{b["n"]}; {baseline}', 12)
-                    txt(parts, x+8, y+94+j*33, response, 12, color="#006a9c")
+                    txt(parts, x+8, y+88+j*29, f'{condition[:3]} {b["positive"]}/{b["n"]}; {baseline}', 12)
+                    txt(parts, x+8, y+102+j*29, response, 12, color="#006a9c")
     txt(parts, 28, height-69, "Spike recovery is on each profiler's own scale; compare within profiler. Positive-only medians exclude zeros.", 14)
     txt(parts, 28, height-42, "Good spike recovery does not prove biological absence; a nonsignificant adenoma q does not establish absence.", 14)
     parts.append("</svg>\n")
@@ -153,7 +175,7 @@ def build(calls, manifest, abundance, endpoints, panel, aliases, outdir):
         "Descriptive matched-species comparison; no direct CRC-vs-Adenoma contrast is inferred.\n",
         encoding="utf-8")
     (outdir / "SUCCESS").write_text("status\tPASS\n", encoding="utf-8")
-    print(f"[PASS] three matched species across both profilers and three cohorts: {outdir}")
+    print(f"[PASS] {len(LABELS)} matched species across both profilers and three cohorts: {outdir}")
 
 
 def main():
