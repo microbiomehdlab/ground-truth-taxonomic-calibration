@@ -54,12 +54,20 @@ class MechanismAtlasTest(unittest.TestCase):
             self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
             for stem in ("zeller_Pmic", "yachida_Dpne"):
                 ET.parse(root / "out" / (stem + "_mechanism_atlas.svg"))
+                svg = (root / "out" / (stem + "_mechanism_atlas.svg")).read_text()
+                self.assertNotIn("10^", svg)
+                self.assertIn("before →", svg)
+                self.assertIn("raw rank P(CRC&gt;Control)", svg)
             with (root / "out/full_baseline_and_low_dose_summary.tsv").open() as handle:
                 rows = list(csv.DictReader(handle, delimiter="\t"))
             self.assertEqual(len(rows), 8)
             self.assertEqual({int(r["n_full_baseline"]) for r in rows}, {4})
             self.assertEqual({float(r["baseline_prevalence"]) for r in rows}, {.5})
             self.assertEqual({int(r["paired_spike_n_at_0p01"]) for r in rows}, {4})
+            self.assertEqual({int(r["paired_spike_baseline_negative_at_0p01"]) for r in rows}, {2})
+            self.assertEqual({int(r["paired_spike_rescued_at_0p01"]) for r in rows}, {2})
+            self.assertEqual({float(r["raw_crc_abundance_rank_probability"]) for r in rows if
+                              r["condition"] == "CRC"}, {.5})
             self.assertTrue((root / "out/SUCCESS").is_file())
 
 

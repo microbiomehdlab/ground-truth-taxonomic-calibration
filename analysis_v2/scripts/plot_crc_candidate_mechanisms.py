@@ -8,7 +8,6 @@ import hashlib
 import html
 import math
 import statistics
-from collections import defaultdict
 from pathlib import Path
 
 from diagnose_crc_candidate_recovery import (
@@ -26,7 +25,12 @@ SUMMARY_FIELDS = ("cohort", "target_label", "canonical_taxon", "condition", "pro
                   "baseline_zero", "positive_abundance_q1_percent",
                   "positive_abundance_median_percent", "positive_abundance_q3_percent",
                   "all_sample_median_percent", "all_sample_iqr_percent",
-                  "paired_spike_n_at_0p01", "paired_spike_recovery_q1_at_0p01",
+                  "crc_minus_control_prevalence_pp", "raw_crc_abundance_rank_probability",
+                  "paired_spike_n_at_0p01", "paired_spike_baseline_positive_at_0p01",
+                  "paired_spike_observed_positive_at_0p01",
+                  "paired_spike_baseline_negative_at_0p01",
+                  "paired_spike_rescued_at_0p01", "paired_spike_dropped_at_0p01",
+                  "paired_spike_recovery_q1_at_0p01",
                   "paired_spike_recovery_median_at_0p01", "paired_spike_recovery_q3_at_0p01",
                   "paired_spike_fraction_below_half_at_0p01")
 COLORS = {"kraken2_bracken": "#d55e00", "metaphlan4": "#0072b2"}
@@ -119,6 +123,20 @@ def summary_rows(baselines, spikes, spike_samples):
                                r["dose_fraction"] == DOSES[0]]
                 if len(low_samples) != low["n_paired"]:
                     raise ValueError("low-dose sample count disagrees with summary")
+                baseline_negative = [r for r in low_samples if r["baseline_abundance_fraction"] == 0]
+                rescued = sum(r["observed_abundance_fraction"] > 0 for r in baseline_negative)
+                dropped = sum(r["baseline_abundance_fraction"] > 0 and
+                              r["observed_abundance_fraction"] == 0 for r in low_samples)
+                control_values = [r["abundance_fraction"] for r in baselines if
+                                  r["cohort"] == cohort and r["condition"] == "Control" and
+                                  r["profiler"] == profiler]
+                crc_values = [r["abundance_fraction"] for r in baselines if
+                              r["cohort"] == cohort and r["condition"] == "CRC" and
+                              r["profiler"] == profiler]
+                rank_probability = sum((x > y) + .5 * (x == y) for x in crc_values
+                                       for y in control_values) / (len(crc_values) * len(control_values))
+                prevalence_difference = 100 * (sum(x > 0 for x in crc_values) / len(crc_values) -
+                                                sum(y > 0 for y in control_values) / len(control_values))
                 result.append(dict(cohort=cohort, target_label=target, canonical_taxon=canonical,
                                    condition=condition, profiler=profiler,
                                    n_full_baseline=len(values), baseline_positive=len(positive),
@@ -129,7 +147,16 @@ def summary_rows(baselines, spikes, spike_samples):
                                    positive_abundance_q3_percent=100 * p3,
                                    all_sample_median_percent=100 * am,
                                    all_sample_iqr_percent=100 * (a3 - a1),
+                                   crc_minus_control_prevalence_pp=(prevalence_difference if condition == "CRC" else ""),
+                                   raw_crc_abundance_rank_probability=(rank_probability if condition == "CRC" else ""),
                                    paired_spike_n_at_0p01=low["n_paired"],
+                                   paired_spike_baseline_positive_at_0p01=sum(
+                                       r["baseline_abundance_fraction"] > 0 for r in low_samples),
+                                   paired_spike_observed_positive_at_0p01=sum(
+                                       r["observed_abundance_fraction"] > 0 for r in low_samples),
+                                   paired_spike_baseline_negative_at_0p01=len(baseline_negative),
+                                   paired_spike_rescued_at_0p01=rescued,
+                                   paired_spike_dropped_at_0p01=dropped,
                                    paired_spike_recovery_q1_at_0p01=low["recovery_ratio_q1"],
                                    paired_spike_recovery_median_at_0p01=low["recovery_ratio_median"],
                                    paired_spike_recovery_q3_at_0p01=low["recovery_ratio_q3"],
@@ -146,7 +173,7 @@ def svg_text(parts, x, y, label, size=15, weight="normal", color="#1b2933", anch
 
 
 def draw(path, cohort, target, canonical, model, baselines, baseline_summary, spikes, spike_samples):
-    width, height = 1600, 1120
+    width, height = 1600, 1190
     parts = [f'<svg xmlns="http://www.w3.org/2000/svg" width="{width}" height="{height}" viewBox="0 0 {width} {height}">',
              '<rect width="100%" height="100%" fill="white"/>']
     svg_text(parts, 42, 52, f'Why is the {canonical} CRC call profiler-dependent in {cohort.title()}?', 29, "bold")
@@ -158,7 +185,7 @@ def draw(path, cohort, target, canonical, model, baselines, baseline_summary, sp
         parts.append(f'<rect x="{x}" y="105" width="745" height="105" rx="5" fill="#f3f6f8"/>')
         svg_text(parts, x + 15, 137, name, 21, "bold", COLORS[profiler])
         svg_text(parts, x + 15, 165, f'CRC effect {m["effect"]:+.2f} [95% CI {m["lower_95"]:+.2f}, {m["upper_95"]:+.2f}]', 17)
-        svg_text(parts, x + 15, 190, f'BH q={m["q_value"]:.3g} · model n={m["n_samples"]} · feature: {m["reported_feature"]}', 15)
+        svg_text(parts, x + 15, 190, f'BH q={m["q_value"]:.3g} · SE={m["standard_error"]:.2f} · model n={m["n_samples"]} · feature: {m["reported_feature"]}', 15)
     svg_text(parts, 42, 248, "A. Full-cohort unspiked baseline: detectability and abundance variability", 22, "bold")
     svg_text(parts, 42, 273, "Each dot is one sample. The zero column is separate; positive abundances use a shared log10-percent axis.", 15)
     positive = [100 * r["abundance_fraction"] for r in baselines if r["abundance_fraction"] > 0]
@@ -172,7 +199,7 @@ def draw(path, cohort, target, canonical, model, baselines, baseline_summary, sp
     for tick in range(low_log, high_log + 1):
         x = abundance_x(10 ** tick)
         parts.append(f'<line x1="{x:.1f}" y1="302" x2="{x:.1f}" y2="575" stroke="#e5eaed"/>')
-        svg_text(parts, x, 295, f'10^{tick}%', 13, anchor="middle")
+        svg_text(parts, x, 295, f'{10 ** tick:g}%', 13, anchor="middle")
     svg_text(parts, 92, 295, "zero", 13, anchor="middle")
     for i, profiler in enumerate(PROFILERS):
         for j, condition in enumerate(CONDITIONS):
@@ -201,6 +228,10 @@ def draw(path, cohort, target, canonical, model, baselines, baseline_summary, sp
             iqr = s["positive_abundance_q1_percent"], s["positive_abundance_q3_percent"]
             svg_text(parts, 1190, y + 17,
                      f'positive median {med:.3g}% [IQR {iqr[0]:.3g}, {iqr[1]:.3g}]', 13)
+            if condition == "CRC":
+                svg_text(parts, 1190, y + 35,
+                         f'CRC−Control detected: {s["crc_minus_control_prevalence_pp"]:+.0f} pp; '
+                         f'raw rank P(CRC>Control): {s["raw_crc_abundance_rank_probability"]:.2f}', 12)
     svg_text(parts, 42, 633, "B. Direct spike recovery in paired samples (0.01%, 0.05%, 0.10%)", 22, "bold")
     svg_text(parts, 42, 659, "Recovery ratio = measured added signal / expected added signal; 1 is ideal. Points are samples; thick marks are median and Q1–Q3.", 15)
     chart_x0, chart_x1 = 120, 1180
@@ -249,21 +280,27 @@ def draw(path, cohort, target, canonical, model, baselines, baseline_summary, sp
                  "● " + ("Kraken2 + Bracken" if i == 0 else "MetaPhlAn 4"), 15, color=COLORS[profiler])
     svg_text(parts, 1200, 825, "Each dose: Control then CRC", 14)
     svg_text(parts, 1200, 848, f'Points beyond plotted y range: {clipped}', 13)
-    svg_text(parts, 1200, 880, "At 0.01% (paired subset):", 15, "bold")
+    svg_text(parts, 1200, 880, "Lowest tested spike: 0.01%", 15, "bold")
     for i, profiler in enumerate(PROFILERS):
         for j, condition in enumerate(CONDITIONS):
             s = next(r for r in spikes if r["profiler"] == profiler and
                      r["condition"] == condition and r["dose_fraction"] == DOSES[0])
-            samples = [r for r in spike_samples if r["profiler"] == profiler and
-                       r["condition"] == condition and r["dose_fraction"] == DOSES[0]]
-            under = sum(r["recovery_ratio"] < .5 for r in samples)
-            svg_text(parts, 1200, 904 + (i * 2 + j) * 23,
-                     f'{"K+B" if i == 0 else "Meta"} {condition}: detected '
-                     f'{s["observed_positive"]}/{s["n_paired"]}; '
-                     f'<0.5 recovery {under}/{len(samples)}', 13, color=COLORS[profiler])
-    svg_text(parts, 42, 1030, "Caution: full-cohort baselines and the paired spike subset have different n. Abundance fractions are profiler-specific estimates.", 15)
-    svg_text(parts, 42, 1057, "Good spike recovery does not prove a biological CRC association; a non-significant q does not prove biological absence.", 15)
-    svg_text(parts, 42, 1085, "Spike reference: Kraken read-proportional; MetaPhlAn genome-equivalent. Original assembly; no pseudocounts.", 15)
+            r = next(r for r in baseline_summary if r["profiler"] == profiler and
+                     r["condition"] == condition)
+            y = 906 + (i * 2 + j) * 43
+            svg_text(parts, 1200, y,
+                     f'{"K+B" if i == 0 else "Meta"} {condition}: '
+                     f'{r["paired_spike_baseline_positive_at_0p01"]}/{s["n_paired"]} before → '
+                     f'{r["paired_spike_observed_positive_at_0p01"]}/{s["n_paired"]} after',
+                     13, color=COLORS[profiler])
+            svg_text(parts, 1200, y + 17,
+                     f'newly detected {r["paired_spike_rescued_at_0p01"]}/'
+                     f'{r["paired_spike_baseline_negative_at_0p01"]} baseline zeros; '
+                     f'<0.5 recovery {r["paired_spike_fraction_below_half_at_0p01"]:.0%}',
+                     12, color=COLORS[profiler])
+    svg_text(parts, 42, 1100, "Caution: full-cohort and spike-subset n differ. Raw rank probability is unadjusted (0.5=no separation); ties count half.", 15)
+    svg_text(parts, 42, 1127, "Good recovery does not prove a biological CRC association; a non-significant q does not prove biological absence.", 15)
+    svg_text(parts, 42, 1155, "0.01% is the lowest tested dose, not a formal detection limit. Kraken read-proportional; MetaPhlAn genome-equivalent.", 15)
     parts.append("</svg>\n")
     path.write_text("\n".join(parts), encoding="utf-8")
 

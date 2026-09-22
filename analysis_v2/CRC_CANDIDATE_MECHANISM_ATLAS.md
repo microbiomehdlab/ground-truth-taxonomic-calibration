@@ -11,11 +11,18 @@ micra*. Each SVG shows both profilers and three distinct sources of evidence:
    zeros displayed separately, detection count and prevalence, and the median
    [Q1, Q3] abundance **among positive samples**. MetaPhlAn and Kraken values
    are native profiler-relative abundance estimates, not interchangeable
-   absolute cell counts.
+   absolute cell counts. The positive-abundance axis uses decimal percent
+   labels on a log scale. The CRC row also shows the change in detection
+   prevalence and the unadjusted probability that a random CRC sample has
+   greater reported abundance than a random Control (ties count half;
+   0.5 means no rank separation).
 3. The smaller same-sample independent single-species spike subset: per-sample
    recovery ratios at 0.01%, 0.05%, and 0.10% in Control and CRC, plus median
-   and IQR. The 0.01% readout explicitly gives post-spike detection and the
-   fraction recovering less than half the expected signal.
+   and IQR. The **lowest tested dose, 0.01%**, explicitly gives paired
+   before-spike to after-spike detection and the number of initially
+   undetected samples newly detected, alongside the fraction recovering less
+   than half the expected signal. It is not a formal detection limit; a
+   rescued fraction based on one baseline-negative sample is very uncertain.
 
 Run on lobo after pulling the relevant commit. The inputs were already made
 for the three-cohort partial snapshot; do not rerun the 27-million-row response
@@ -48,5 +55,7 @@ spike sample count are deliberately separate. Native abundance is on a
 profiler-specific scale. Low-dose recovery tests analytical behavior in
 controlled samples, not the causal origin of an unspiked disease association.
 The positive-only abundance IQR excludes zeros, which are displayed and
-counted separately. This is exploratory, provisional evidence, not a final
+counted separately. The raw rank-separation measure is descriptive and does
+not adjust for age, sex, or other cohort differences; it does not replace the
+model effect/CI/q. This is exploratory, provisional evidence, not a final
 manuscript claim.
