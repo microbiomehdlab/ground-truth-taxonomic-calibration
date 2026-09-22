@@ -113,7 +113,8 @@ def make_rows(calls: Path, certificates: Path, aliases: Path) -> list[dict]:
                     ELSE 'SAME_DIRECTION_NOT_SIGNIFICANT' END AS replication_status,
                CASE WHEN d.feature IS NOT NULL AND sign(s.effect)=sign(d.effect)
                               AND d.q <= 0.05 THEN 1 ELSE 0 END AS replicated,
-               c.destination_reliability, c.destination_contexts,
+               c.destination_reliability,
+               c.destination_contexts AS destination_reliability_contexts,
                c.training_reliability, c.training_contexts,
                s.distinct_fits, coalesce(d.distinct_fits,1) AS destination_distinct_fits
         FROM baseline s

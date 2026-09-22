@@ -1,5 +1,6 @@
 import csv
 import importlib.util
+import subprocess
 import tempfile
 import unittest
 import xml.etree.ElementTree as ET
@@ -83,6 +84,17 @@ class BridgeTest(unittest.TestCase):
             bridge.plot(summary, root / "figure.svg")
             self.assertGreater((root / "figure.svg").stat().st_size, 1000)
             ET.parse(root / "figure.svg")
+            result = subprocess.run(
+                ["python3", str(SCRIPT), "--calls", str(root / "calls.tsv"),
+                 "--certificates", str(root / "cert.tsv"), "--aliases", str(root / "alias.csv"),
+                 "--outdir", str(root / "complete")], capture_output=True, text=True,
+            )
+            self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+            ET.parse(root / "complete/replication_by_reliability_tertile.svg")
+            with (root / "complete/candidate_destination_bridge.tsv").open() as handle:
+                exported = list(csv.DictReader(handle, delimiter="\t"))
+            self.assertEqual(len(exported), 4)
+            self.assertEqual(exported[0]["destination_reliability_contexts"], "20")
 
     def test_missing_destination_is_not_failure(self):
         with tempfile.TemporaryDirectory() as temp:
