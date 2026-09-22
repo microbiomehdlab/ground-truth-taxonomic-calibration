@@ -68,6 +68,8 @@ class IntegratedMethodsTest(unittest.TestCase):
             figure = (root / "out/fnuc_integrated_methods.svg").read_text(encoding="utf-8")
             self.assertIn("0.001% adenoma effect", figure)
             self.assertIn("0.1% adenoma call", figure)
+            self.assertIn("0.1% other calls", figure)
+            self.assertNotIn("paired response not supplied", figure)
             self.assertNotIn("0.01% independent recovery", figure)
             self.assertTrue((root / "out/SUCCESS").is_file())
             write(matched / "matched_species_models.tsv", models[:-1])
