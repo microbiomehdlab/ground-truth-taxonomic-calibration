@@ -1071,16 +1071,42 @@ def build_biomarker_replication(
                             sample_size=-1).create_view("disease")
         connection.read_csv(str(certificate_path), header=True, delimiter="\t",
                             sample_size=-1).create_view("certificates")
+        connection.execute("""
+            CREATE TABLE feature_aliases (
+                profiler VARCHAR, source_feature VARCHAR,
+                canonical_feature VARCHAR, rationale VARCHAR
+            )
+        """)
         if feature_aliases:
-            connection.read_csv(str(feature_aliases), header=True, delimiter="\t",
-                                sample_size=-1).create_view("feature_aliases")
-        else:
-            connection.execute("""
-                CREATE TABLE feature_aliases (
-                    profiler VARCHAR, source_feature VARCHAR,
-                    canonical_feature VARCHAR, rationale VARCHAR
-                )
-            """)
+            # The response runner passes the spike-panel CSV (canonical/alias/tool),
+            # while other callers may pass the native TSV mapping schema.
+            with feature_aliases.open(newline="", encoding="utf-8") as handle:
+                first = handle.readline()
+                handle.seek(0)
+                delimiter = "," if "," in first and "\t" not in first else "\t"
+                reader = csv.DictReader(handle, delimiter=delimiter)
+                fields = set(reader.fieldnames or ())
+                if {"canonical", "alias", "tool"} <= fields:
+                    aliases = [(r["tool"].strip(), r["alias"].strip(),
+                                r["canonical"].strip(), "spike-panel alias") for r in reader]
+                elif {"profiler", "source_feature", "canonical_feature"} <= fields:
+                    aliases = [(r["profiler"].strip(), r["source_feature"].strip(),
+                                r["canonical_feature"].strip(), r.get("rationale", ""))
+                               for r in reader]
+                else:
+                    raise ValueError("unrecognized feature alias schema")
+            if any(not all(item[:3]) for item in aliases):
+                raise ValueError("feature alias mapping contains blank identifiers")
+            seen_aliases = {}
+            for profiler, source, canonical, _ in aliases:
+                key = profiler, source
+                if key in seen_aliases and seen_aliases[key] != canonical:
+                    raise ValueError(f"conflicting feature alias: {key}")
+                seen_aliases[key] = canonical
+            if aliases:
+                unique_aliases = {(p, s): (p, s, c, r) for p, s, c, r in aliases}
+                connection.executemany("INSERT INTO feature_aliases VALUES (?, ?, ?, ?)",
+                                       list(unique_aliases.values()))
         cohort_sql = ",".join("'" + item.replace("'", "''") + "'" for item in sorted(cohorts))
         query = f"""
         WITH baseline AS (
