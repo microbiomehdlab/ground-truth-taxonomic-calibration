@@ -38,11 +38,14 @@ class IntegratedMethodsTest(unittest.TestCase):
                             related_gained="0", related_lost="0",
                             other_bystander_gained="0", other_bystander_lost="1"))
                     for condition in ("Control", "Adenoma", "CRC"):
-                        paired.append(dict(common, analysis_population="community",
-                            target_label="Fnuc", assembly_arm="original",
-                            contrast="spiked_vs_matched_baseline__background_" + condition,
-                            spike_fraction_target=".00001", q_threshold=".05",
-                            target_called="1", target_effect="2", target_q_value=".01"))
+                        for dose in (1e-4, 5e-4, 1e-3, 5e-3, 1e-2, 5e-2):
+                            called = dose >= (1e-4 if condition == "Control" else 1e-3)
+                            paired.append(dict(common, analysis_population="independent",
+                                target_label="Fnuc", assembly_arm="original",
+                                contrast="spiked_vs_matched_baseline__background_" + condition,
+                                spike_fraction_target=str(dose), q_threshold=".05",
+                                target_called=str(int(called)), target_effect="2",
+                                target_q_value=".01" if called else ".8"))
                         baselines.append(dict(common, feature="Fusobacterium nucleatum",
                             condition=condition, positive="2", n="10",
                             positive_abundance_median_percent=".002",
@@ -76,8 +79,8 @@ class IntegratedMethodsTest(unittest.TestCase):
             self.assertIn("0.001% adenoma effect", figure)
             self.assertIn("0.1% adenoma call", figure)
             self.assertIn("0.1% other calls", figure)
-            self.assertIn("0.001% paired C/A/CRC call", figure)
-            self.assertIn("Ade call q=0.01", figure)
+            self.assertIn("Independent first paired call", figure)
+            self.assertIn("Ade 0.1% q=0.01", figure)
             self.assertNotIn("paired response not supplied", figure)
             self.assertNotIn("0.01% independent recovery", figure)
             self.assertTrue((root / "out/SUCCESS").is_file())

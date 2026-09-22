@@ -12,6 +12,7 @@ COHORTS = ("feng", "yachida", "zeller")
 PROFILERS = ("kraken2_bracken", "metaphlan4")
 CONDITIONS = ("Control", "Adenoma", "CRC")
 TARGET = "Fusobacterium nucleatum"
+INDEPENDENT_DOSES = (1e-4, 5e-4, 1e-3, 5e-3, 1e-2, 5e-2)
 
 
 def read(path):
@@ -34,7 +35,7 @@ def num(row, field):
 
 
 def paired_calls(path):
-    """Exact low-dose, phenotype-specific paired spike-vs-own-baseline calls."""
+    """First significant tested independent single-species dose by background."""
     required = {"cohort", "analysis_population", "target_label", "assembly_arm",
                 "profiler", "contrast", "spike_fraction_target", "q_threshold",
                 "target_called", "target_effect", "target_q_value"}
@@ -48,23 +49,27 @@ def paired_calls(path):
         for profiler in PROFILERS:
             for condition in CONDITIONS:
                 contrast = "spiked_vs_matched_baseline__background_" + condition
-                row = unique(records, lambda r: r["cohort"] == cohort and r["profiler"] == profiler and
+                matches = [r for r in records if r["cohort"] == cohort and r["profiler"] == profiler and
                     r["contrast"] == contrast and r["target_label"] == "Fnuc" and
-                    r["analysis_population"] == "community" and r["assembly_arm"] == "original" and
-                    math.isclose(num(r, "spike_fraction_target"), 1e-5, rel_tol=.05) and
-                    math.isclose(num(r, "q_threshold"), .05, abs_tol=1e-10),
-                    f"paired {cohort}/{profiler}/{condition}")
-                if row["contrast"] != contrast or row["target_label"] != "Fnuc" or \
-                   row["analysis_population"] != "community" or row["assembly_arm"] != "original" or \
-                   not math.isclose(num(row, "spike_fraction_target"), 1e-5, rel_tol=.05) or \
-                   not math.isclose(num(row, "q_threshold"), .05, abs_tol=1e-10):
-                    raise ValueError("paired row is not the requested 0.001% stratified context")
-                if row["target_called"] not in ("0", "1"):
-                    raise ValueError("invalid paired target_called")
-                effect, q = num(row, "target_effect"), num(row, "target_q_value")
-                if not 0 <= q <= 1 or (row["target_called"] == "1") != (effect > 0 and q <= .05):
-                    raise ValueError("paired target call disagrees with effect/q")
-                selected[cohort, profiler, condition] = row
+                    r["analysis_population"] == "independent" and r["assembly_arm"] == "original" and
+                    math.isclose(num(r, "q_threshold"), .05, abs_tol=1e-10)]
+                doses = {}
+                for row in matches:
+                    achieved = num(row, "spike_fraction_target")
+                    dose = min(INDEPENDENT_DOSES, key=lambda d: abs(achieved-d)/d)
+                    if abs(achieved-dose)/dose > .05 or dose in doses:
+                        raise ValueError("invalid/duplicate independent dose " + repr((cohort, profiler, condition, achieved)))
+                    if row["target_called"] not in ("0", "1"):
+                        raise ValueError("invalid paired target_called")
+                    effect, q = num(row, "target_effect"), num(row, "target_q_value")
+                    if not 0 <= q <= 1 or (row["target_called"] == "1") != (effect > 0 and q <= .05):
+                        raise ValueError("paired target call disagrees with effect/q")
+                    doses[dose] = row
+                if set(doses) != set(INDEPENDENT_DOSES):
+                    raise ValueError("incomplete independent dose grid " + repr((cohort, profiler, condition)))
+                first = next(((dose, doses[dose]) for dose in INDEPENDENT_DOSES
+                              if doses[dose]["target_called"] == "1"), None)
+                selected[cohort, profiler, condition] = first
     return selected
 
 
@@ -147,7 +152,7 @@ def draw(path, contexts):
     parts = [f'<svg xmlns="http://www.w3.org/2000/svg" width="{width}" height="{height}" viewBox="0 0 {width} {height}">',
              '<rect width="100%" height="100%" fill="white"/>']
     text(parts, 40, 50, "Can measurement explain the missing F. nucleatum adenoma call?", 32, weight="bold")
-    text(parts, 40, 80, "Six contexts · equal ten-species community mixes: 0.001% and 0.1% F. nucleatum per member · DEVELOPMENT ONLY", 17)
+    text(parts, 40, 80, "Six contexts · community mixes at 0.001% and 0.1% per member; independent single-species paired-dose test · DEVELOPMENT ONLY", 17)
     text(parts, 40, 106, "Each row tests a different mechanism; these are not interchangeable scales or a causal score.", 15)
     x0, cw, gap = 270, 545, 20
     colors = {"kraken2_bracken": "#b75000", "metaphlan4": "#006b9b"}
@@ -162,7 +167,7 @@ def draw(path, contexts):
                   (106, "Adenoma effect [CI], q"), (137, "CRC effect [CI], q"),
                   (187, "0.001% zero→positive"), (217, "0.001% adenoma recovery"),
                   (247, "0.001% recovery <0.5"),
-                  (280, "0.001% paired C/A/CRC call"),
+                  (280, "Independent first paired call"),
                   (320, "0.001% adenoma effect"),
                   (350, "0.001% adenoma q / call"), (380, "0.001% CRC / other calls"),
                   (420, "0.1% zero→positive"), (450, "0.1% adenoma recovery"),
@@ -198,8 +203,8 @@ def draw(path, contexts):
             put(247, f'<0.5: {ac["below_half"]}/{ac["n"]}')
             paired = r["paired"]
             put(280, " / ".join(
-                f'{k[:3]} {"call" if paired[k]["target_called"] == "1" else "no call"} '
-                f'q={num(paired[k],"target_q_value"):.2g}' for k in CONDITIONS), 12)
+                f'{k[:3]} {100*paired[k][0]:g}% q={num(paired[k][1],"target_q_value"):.2g}'
+                if paired[k] else f'{k[:3]} NR' for k in CONDITIONS), 12)
             at, ct = t["Adenoma_vs_Control"], t["CRC_vs_Control"]
             put(320, f'{num(at,"target_baseline_effect"):+.2f} → {num(at,"target_dose_effect"):+.2f}', 14, True)
             put(350, f'{num(at,"target_baseline_q"):.2g} → {num(at,"target_dose_q"):.2g} '
@@ -223,11 +228,11 @@ def draw(path, contexts):
             put(540, f'CRC: Fuso +{high_crc["related_gained"]}/−{high_crc["related_lost"]}; '
                      f'other +{high_crc["other_bystander_gained"]}/−{high_crc["other_bystander_lost"]}', 12)
     text(parts, 40, 1428, "Reading the figure", 20, weight="bold")
-    text(parts, 40, 1458, "Paired call = F. nucleatum increased versus each sample's own unspiked profile, BH q≤0.05; it is not an adenoma-vs-control call.", 16)
+    text(parts, 40, 1458, "Independent first paired call = lowest tested single-species dose with F. nucleatum increased vs own unspiked profile, BH q≤0.05; NR = none.", 16)
     text(parts, 40, 1486, "0.1% per member is ~1% total ten-species mixture: a strong perturbation, not an endogenous-equivalent detection limit.", 16)
     text(parts, 40, 1514, "A recovered spike weakens one measured failure mode; it does not establish native accuracy or biological absence.", 16)
     text(parts, 40, 1542, "Call changes cannot be attributed solely to F. nucleatum; direct CRC–adenoma contrast/power, read-level QC and native validation remain unresolved.", 16)
-    text(parts, 40, 1570, "C/A/CRC = Control/Adenoma/CRC; recovery 1 is ideal. Both call audits use ten-species mixtures.", 15)
+    text(parts, 40, 1570, "C/A/CRC = Control/Adenoma/CRC; recovery 1 is ideal. Independent paired and community disease-call tests are distinct.", 15)
     parts.append("</svg>\n")
     path.write_text("\n".join(parts), encoding="utf-8")
 
@@ -238,7 +243,7 @@ def main():
     parser.add_argument("--audit-dir", type=Path, required=True)
     parser.add_argument("--high-audit-dir", type=Path, required=True)
     parser.add_argument("--paired-metrics", type=Path, required=True,
-                        help="phenotype-stratified community biomarker_propagation_metrics.tsv")
+                        help="phenotype-stratified biomarker_propagation_metrics.tsv with all independent doses")
     parser.add_argument("--outdir", type=Path, required=True)
     args = parser.parse_args()
     if args.outdir.exists():
