@@ -37,7 +37,6 @@ def build(matched, audit, high_audit):
     files = {
         "models": matched / "matched_species_models.tsv",
         "baseline": matched / "matched_species_baseline_summary.tsv",
-        "spikes": matched / "matched_species_spike_summary.tsv",
         "transitions": audit / "fnuc_call_transition_summary.tsv",
         "response": audit / "fnuc_target_condition_response.tsv",
         "related": audit / "fnuc_related_species_response.tsv",
@@ -51,7 +50,7 @@ def build(matched, audit, high_audit):
         raise ValueError("high audit must be the 0.1%-per-member community spike")
     high_transitions = read(high_audit / "fnuc_call_transition_summary.tsv")
     high_response = read(high_audit / "fnuc_target_condition_response.tsv")
-    if not tables["models"] or not tables["baseline"] or not tables["spikes"]:
+    if not tables["models"] or not tables["baseline"]:
         raise ValueError("matched-species tables are empty")
     result = []
     for profiler in PROFILERS:
@@ -65,10 +64,6 @@ def build(matched, audit, high_audit):
                 lambda r, condition=condition: same(r) and r["feature"] == TARGET and
                 r["condition"] == condition, f"baseline {cohort}/{profiler}/{condition}")
                 for condition in CONDITIONS}
-            direct = {condition: unique(tables["spikes"],
-                lambda r, condition=condition: same(r) and r["feature"] == TARGET and
-                r["condition"] == condition and math.isclose(num(r, "dose_percent"), .01),
-                f"direct spike {cohort}/{profiler}/{condition}") for condition in CONDITIONS}
             transition = {contrast: unique(tables["transitions"],
                 lambda r, contrast=contrast: same(r) and r["contrast"] == contrast,
                 f"transition {cohort}/{profiler}/{contrast}")
@@ -85,7 +80,7 @@ def build(matched, audit, high_audit):
                 f"high-dose response {cohort}/{profiler}/{condition}") for condition in CONDITIONS}
             related = [r for r in tables["related"] if same(r)]
             result.append(dict(profiler=profiler, cohort=cohort, model=model,
-                               baseline=baseline, direct=direct, transition=transition,
+                               baseline=baseline, transition=transition,
                                community=community, related=related,
                                high_transition=high_t, high_community=high_c))
     return result
@@ -112,42 +107,42 @@ def pct(row):
 
 
 def draw(path, contexts):
-    width, height = 2000, 1620
+    width, height = 2000, 1490
     parts = [f'<svg xmlns="http://www.w3.org/2000/svg" width="{width}" height="{height}" viewBox="0 0 {width} {height}">',
              '<rect width="100%" height="100%" fill="white"/>']
     text(parts, 40, 50, "Can measurement explain the missing F. nucleatum adenoma call?", 32, weight="bold")
-    text(parts, 40, 80, "Six contexts · equal community mixes: 0.001% and 0.1% F. nucleatum per member; 0.01% independent F. nucleatum spike · DEVELOPMENT ONLY", 17)
+    text(parts, 40, 80, "Six contexts · equal ten-species community mixes: 0.001% and 0.1% F. nucleatum per member · DEVELOPMENT ONLY", 17)
     text(parts, 40, 106, "Each row tests a different mechanism; these are not interchangeable scales or a causal score.", 15)
     x0, cw, gap = 270, 545, 20
     colors = {"kraken2_bracken": "#b75000", "metaphlan4": "#006b9b"}
     for ci, cohort in enumerate(COHORTS):
         text(parts, x0 + ci*(cw+gap)+cw/2, 135, cohort.title(), 22, weight="bold", anchor="middle")
     for pi, profiler in enumerate(PROFILERS):
-        block = 182 + pi*615
+        block = 182 + pi*550
         color = colors[profiler]
         text(parts, 40, block+18, "Kraken2 + Bracken" if pi == 0 else "MetaPhlAn 4", 17,
              color=color, weight="bold")
         labels = ((27, "Native detection C/A/CRC"), (57, "Adenoma positive abundance"),
                   (106, "Adenoma effect [CI], q"), (137, "CRC effect [CI], q"),
-                  (187, "0.001% zero→positive"), (217, "Adenoma recovery [Q1,Q3]"),
-                  (247, "Adenoma recovery <0.5"), (295, "0.01% independent recovery"),
-                  (325, "0.01% detected"), (375, "Adenoma effect before→after"),
-                  (405, "Adenoma q before→after"), (435, "CRC call; other calls"),
-                  (464, "Related Fuso paired shift"),
-                  (500, "0.1% zero→positive"), (530, "0.1% adenoma recovery"),
-                  (560, "0.1% adenoma call"), (590, "0.1% CRC call"))
+                  (187, "0.001% zero→positive"), (217, "0.001% adenoma recovery"),
+                  (247, "0.001% recovery <0.5"),
+                  (285, "0.001% adenoma effect"),
+                  (315, "0.001% adenoma q / call"), (345, "0.001% CRC / other calls"),
+                  (374, "0.001% related Fuso shift"),
+                  (415, "0.1% zero→positive"), (445, "0.1% adenoma recovery"),
+                  (475, "0.1% adenoma call"), (505, "0.1% CRC call"))
         for offset, label in labels:
             text(parts, 40, block+offset, label, 13)
-        for offset in (75, 150, 260, 337):
+        for offset in (75, 150, 260, 388):
             line(parts, 40, block+offset, 1968, block+offset)
         for ci, cohort in enumerate(COHORTS):
             r = next(z for z in contexts if z["cohort"] == cohort and z["profiler"] == profiler)
             x = x0 + ci*(cw+gap)
-            b, d, c, t, m = r["baseline"], r["direct"], r["community"], r["transition"], r["model"]
+            b, c, t, m = r["baseline"], r["community"], r["transition"], r["model"]
             def put(offset, value, size=14, emphasis=False):
                 text(parts, x+10, block+offset, value, size, color if emphasis else "#243240",
                      "bold" if emphasis else "normal")
-            parts.append(f'<rect x="{x}" y="{block}" width="{cw}" height="600" rx="6" fill="#f5f8fa"/>')
+            parts.append(f'<rect x="{x}" y="{block}" width="{cw}" height="520" rx="6" fill="#f5f8fa"/>')
             put(27, " / ".join(f'{k[:3]} {b[k]["positive"]}/{b[k]["n"]} ({pct(b[k]):.0f}%)'
                               for k in CONDITIONS), 13)
             med = b["Adenoma"]["positive_abundance_median_percent"]
@@ -164,40 +159,37 @@ def draw(path, contexts):
             ac = c["Adenoma"]
             put(217, f'{num(ac,"recovery_median"):.2f} [{num(ac,"recovery_q1"):.2f},{num(ac,"recovery_q3"):.2f}]')
             put(247, f'<0.5: {ac["below_half"]}/{ac["n"]}')
-            ad = d["Adenoma"]
-            put(295, f'{num(ad,"recovery_median"):.2f} [{num(ad,"recovery_q1"):.2f},{num(ad,"recovery_q3"):.2f}]')
-            put(325, f'{ad["observed_positive"]}/{ad["n"]}')
             at, ct = t["Adenoma_vs_Control"], t["CRC_vs_Control"]
-            put(375, f'{num(at,"target_baseline_effect"):+.2f} → {num(at,"target_dose_effect"):+.2f}', 14, True)
-            put(405, f'{num(at,"target_baseline_q"):.2g} → {num(at,"target_dose_q"):.2g} '
+            put(285, f'{num(at,"target_baseline_effect"):+.2f} → {num(at,"target_dose_effect"):+.2f}', 14, True)
+            put(315, f'{num(at,"target_baseline_q"):.2g} → {num(at,"target_dose_q"):.2g} '
                      f'({"called" if at["target_dose_called"] == "1" else "not called"})')
             status = lambda v: "call" if v == "1" else "no call"
-            put(435, f'{status(ct["target_baseline_called"])} → {status(ct["target_dose_called"])}; '
+            put(345, f'{status(ct["target_baseline_called"])} → {status(ct["target_dose_called"])}; '
                      f'Fuso +{ct["related_gained"]}/−{ct["related_lost"]}, '
                      f'other +{ct["other_bystander_gained"]}/−{ct["other_bystander_lost"]}', 13)
             # A related-species response is optional; the model-call count is shown independently.
             if r["related"]:
                 strongest = max(r["related"], key=lambda z: abs(num(z,"response_median")))
                 label = strongest["feature"].replace("Fusobacterium ", "F. ")
-                put(464, f'{label}: {100*num(strongest,"response_median"):+.2g} percentage points', 12)
+                put(374, f'{label}: {100*num(strongest,"response_median"):+.2g} percentage points', 12)
             else:
-                put(464, "paired response not supplied", 12)
+                put(374, "paired response not supplied", 12)
             hc, ht = r["high_community"], r["high_transition"]
-            put(500, " / ".join(f'{k[:3]} {ratio(hc[k],"zero_rescued","baseline_zero")}'
+            put(415, " / ".join(f'{k[:3]} {ratio(hc[k],"zero_rescued","baseline_zero")}'
                                 for k in CONDITIONS))
             ha = hc["Adenoma"]
-            put(530, f'{num(ha,"recovery_median"):.2f} [{num(ha,"recovery_q1"):.2f},{num(ha,"recovery_q3"):.2f}]; '
+            put(445, f'{num(ha,"recovery_median"):.2f} [{num(ha,"recovery_q1"):.2f},{num(ha,"recovery_q3"):.2f}]; '
                      f'<0.5 {ha["below_half"]}/{ha["n"]}')
-            for offset, contrast in ((560, "Adenoma_vs_Control"), (590, "CRC_vs_Control")):
+            for offset, contrast in ((475, "Adenoma_vs_Control"), (505, "CRC_vs_Control")):
                 h = ht[contrast]
                 put(offset, f'{num(h,"target_baseline_effect"):+.2f} → {num(h,"target_dose_effect"):+.2f}; '
                     f'q {num(h,"target_baseline_q"):.2g} → {num(h,"target_dose_q"):.2g}; '
                     f'{"called" if h["target_dose_called"] == "1" else "not called"}', 12, True)
-    text(parts, 40, 1433, "Reading the figure", 20, weight="bold")
-    text(parts, 40, 1463, "0.1% per member is ~1% total ten-species mixture: a strong perturbation, not an endogenous-equivalent detection limit.", 16)
-    text(parts, 40, 1491, "A recovered spike weakens one measured failure mode; it does not establish native accuracy or biological absence.", 16)
-    text(parts, 40, 1519, "Call changes cannot be attributed solely to F. nucleatum; direct CRC–adenoma contrast/power, read-level QC and native validation remain unresolved.", 16)
-    text(parts, 40, 1552, "C/A/CRC = Control/Adenoma/CRC; recovery 1 is ideal. Community and independent spikes are distinct experiments.", 15)
+    text(parts, 40, 1328, "Reading the figure", 20, weight="bold")
+    text(parts, 40, 1358, "0.1% per member is ~1% total ten-species mixture: a strong perturbation, not an endogenous-equivalent detection limit.", 16)
+    text(parts, 40, 1386, "A recovered spike weakens one measured failure mode; it does not establish native accuracy or biological absence.", 16)
+    text(parts, 40, 1414, "Call changes cannot be attributed solely to F. nucleatum; direct CRC–adenoma contrast/power, read-level QC and native validation remain unresolved.", 16)
+    text(parts, 40, 1447, "C/A/CRC = Control/Adenoma/CRC; recovery 1 is ideal. Both call audits use ten-species mixtures.", 15)
     parts.append("</svg>\n")
     path.write_text("\n".join(parts), encoding="utf-8")
 
