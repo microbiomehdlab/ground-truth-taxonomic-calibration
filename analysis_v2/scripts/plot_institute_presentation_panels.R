@@ -18,7 +18,8 @@ needed_baseline <- c("cohort", "sample_id", "condition", "profiler", "target_lab
 needed_endpoints <- c("cohort", "sample_id", "condition", "analysis_population",
                       "assembly_arm", "profiler", "target_label", "spike_fraction_target",
                       "reference_type", "observed_abundance_fraction",
-                      "expected_abundance_profiler_scale")
+                      "expected_abundance_profiler_scale", "read_proportional_reference",
+                      "baseline_abundance_fraction", "spike_fraction_total")
 if (length(setdiff(needed_baseline, names(baseline))) ||
     length(setdiff(needed_endpoints, names(endpoints)))) stop("Required figure columns missing")
 cohorts <- c("feng", "yachida", "zeller")
@@ -39,13 +40,20 @@ expected_ref <- ifelse(endpoints$profiler == "metaphlan4",
                        "genome_equivalent", "read_proportional")
 if (any(endpoints$reference_type != expected_ref)) stop("Wrong endpoint reference type")
 for (field in c("spike_fraction_target", "observed_abundance_fraction",
-                "expected_abundance_profiler_scale")) {
+                "expected_abundance_profiler_scale", "read_proportional_reference",
+                "baseline_abundance_fraction", "spike_fraction_total")) {
   endpoints[[field]] <- as.numeric(endpoints[[field]])
   if (any(!is.finite(endpoints[[field]]))) stop("Nonfinite ", field)
 }
 if (any(endpoints$observed_abundance_fraction < 0) ||
-    any(endpoints$expected_abundance_profiler_scale <= 0))
+    any(endpoints$expected_abundance_profiler_scale <= 0) ||
+    any(endpoints$read_proportional_reference <= 0))
   stop("Invalid observed or expected abundance")
+if (any(abs(endpoints$read_proportional_reference -
+            ((1 - endpoints$spike_fraction_total) *
+               endpoints$baseline_abundance_fraction +
+               endpoints$spike_fraction_target)) > 1e-8))
+  stop("Read-proportional reference contradicts the original equation")
 if (any(!endpoints$condition %in% conditions)) stop("Unexpected endpoint condition")
 dose_grid <- c(.0001, .0005, .001)
 near_dose <- function(v) {
@@ -161,6 +169,59 @@ p4 <- ggplot(rs, aes(dose_label, median, color = cohort, group = cohort)) +
        x = "Implanted target fraction", y = expression(log[2](observed/expected)),
        color = "Cohort") + theme_slide
 save_slide(p4, "slide4_focused_recovery")
+
+# Companion slide: the same MetaPhlAn observations under the original and
+# genome-equivalent expectations. This is a reference sensitivity, not two
+# independent measurements or a replacement for the corrected primary plot.
+m <- r[r$profiler == "metaphlan4", , drop = FALSE]
+comparison <- do.call(rbind, lapply(c("Original read-proportional",
+                                       "Corrected genome-equivalent"), function(label) {
+  part <- m
+  part$reference <- label
+  expected <- if (label == "Original read-proportional")
+    part$read_proportional_reference else part$expected_abundance_profiler_scale
+  part$recovery <- ifelse(part$observed_abundance_fraction > 0,
+                          log2(part$observed_abundance_fraction / expected), NA_real_)
+  part
+}))
+comparison_parts <- split(comparison, interaction(comparison$reference,
+  comparison$cohort, comparison$target_label, comparison$dose, drop = TRUE))
+cs <- do.call(rbind, lapply(comparison_parts, function(part) {
+  positive <- part$recovery[is.finite(part$recovery)]
+  data.frame(reference = part$reference[1], cohort = part$cohort[1],
+             target_label = part$target_label[1], dose = part$dose[1],
+             n_total = nrow(part), n_positive = length(positive),
+             n_zero = nrow(part) - length(positive),
+             q1 = if (length(positive)) unname(quantile(positive, .25)) else NA_real_,
+             median = if (length(positive)) median(positive) else NA_real_,
+             q3 = if (length(positive)) unname(quantile(positive, .75)) else NA_real_)
+}))
+if (nrow(cs) != 2*3*3*3) stop("Reference-comparison contexts incomplete")
+write_source(cs, "slide4_metaphlan_reference_comparison.tsv")
+cs$cohort <- cohort_label(cs$cohort)
+cs$reference <- factor(cs$reference, levels = c("Original read-proportional",
+                                                  "Corrected genome-equivalent"))
+cs$target_label <- factor(cs$target_label, levels = c("Bfrag", "Dpne", "Fnuc"),
+                          labels = c("B. fragilis", "D. pneumoniae", "F. nucleatum"))
+cs$dose_label <- factor(sprintf("%.2f%%", 100 * cs$dose),
+                        levels = sprintf("%.2f%%", 100 * dose_grid))
+p4c <- ggplot(cs, aes(dose_label, median, color = cohort, group = cohort)) +
+  geom_hline(yintercept = 0, linetype = 2, color = "grey45") +
+  geom_errorbar(aes(ymin = q1, ymax = q3),
+                position = position_dodge(width = .45), width = .13,
+                linewidth = .7, na.rm = TRUE) +
+  geom_point(position = position_dodge(width = .45), size = 3, na.rm = TRUE) +
+  facet_grid(reference ~ target_label) +
+  scale_color_manual(values = cohort_colors) +
+  labs(title = "The expected-abundance equation changes MetaPhlAn recovery",
+       subtitle = "Same community-spike observations; positive-only median and sample IQR; zeros counted separately",
+       caption = paste0("Original: E = (1 - F)b + f; corrected: E = [(1 - F)b + f G_eff/G_t] / ",
+                        "[(1 - F) + sum_k(f_k G_eff/G_k)]. F = total spike fraction; ",
+                        "f = target fraction; b = baseline abundance."),
+       x = "Implanted target fraction", y = expression(log[2](observed/expected)),
+       color = "Cohort") + theme_slide +
+  theme(plot.caption = element_text(size = 10, hjust = 0))
+save_slide(p4c, "slide4_metaphlan_reference_comparison", height = 8.2)
 
 # Slide 5: one complete cohort; detection is not conflated with accuracy.
 f <- endpoints[endpoints$cohort == "yachida" &

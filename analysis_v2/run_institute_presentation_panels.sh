@@ -29,7 +29,7 @@ apptainer exec --cleanenv --bind "$ROOT:$ROOT" --pwd "$ROOT" "$ANALYSIS_SIF" \
   --baseline "$OUTDIR/baseline_input/baseline_four_taxa_samples.tsv" \
   --endpoints "$ENDPOINTS" \
   --outdir "$OUTDIR/slides"
-for stem in slide3_baseline_visibility slide4_focused_recovery slide5_fnuc_detection; do
+for stem in slide3_baseline_visibility slide4_focused_recovery slide4_metaphlan_reference_comparison slide5_fnuc_detection; do
   test -s "$OUTDIR/slides/$stem.png" || { echo "[ERROR] Missing $stem.png" >&2; exit 1; }
   test -s "$OUTDIR/slides/$stem.pdf" || { echo "[ERROR] Missing $stem.pdf" >&2; exit 1; }
 done
