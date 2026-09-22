@@ -2,6 +2,7 @@ import csv
 import importlib.util
 import tempfile
 import unittest
+import xml.etree.ElementTree as ET
 from pathlib import Path
 
 SCRIPT = Path(__file__).resolve().parents[1] / "scripts/bridge_crc_replication_reliability.py"
@@ -79,8 +80,9 @@ class BridgeTest(unittest.TestCase):
             self.assertEqual(feng_to_zeller["replication_status"], "DIRECTION_REVERSED")
             self.assertEqual(feng_to_zeller["replicated"], 0)
             summary = bridge.make_summary(rows)
-            bridge.plot(summary, root / "figure.png")
-            self.assertGreater((root / "figure.png").stat().st_size, 1000)
+            bridge.plot(summary, root / "figure.svg")
+            self.assertGreater((root / "figure.svg").stat().st_size, 1000)
+            ET.parse(root / "figure.svg")
 
     def test_missing_destination_is_not_failure(self):
         with tempfile.TemporaryDirectory() as temp:

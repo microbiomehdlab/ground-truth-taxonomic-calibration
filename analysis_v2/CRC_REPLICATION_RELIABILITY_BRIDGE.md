@@ -13,12 +13,14 @@ ROOT="$PWD/work/three_cohort_recoverability_20260921T154031Z"
 CALLS="$PWD/work/analysis_v2_three_cohort_mapreduce_dev_20260913_193010/models/disease/models/primary_disease_da_results.tsv"
 CERTS="$ROOT/partial_snapshot_response/response_analysis/reliability_certificates.tsv"
 OUTDIR="$ROOT/crc_replication_reliability_$(date -u +%Y%m%dT%H%M%SZ)"
-python3 analysis_v2/scripts/bridge_crc_replication_reliability.py \
+SIF="/mnt/beegfs/apptainer/images/ground_truth_analysis_v2_1.sif"
+apptainer exec --cleanenv --bind "$PWD:$PWD" --pwd "$PWD" "$SIF" \
+  python3 analysis_v2/scripts/bridge_crc_replication_reliability.py \
   --calls "$CALLS" --certificates "$CERTS" \
   --aliases examples/spike_taxon_aliases.csv --outdir "$OUTDIR"
 ```
 
-Open `replication_by_reliability_tertile.png`. The underlying
+Open `replication_by_reliability_tertile.svg` in VS Code. The underlying
 `candidate_destination_bridge.tsv` retains every source–destination pair,
 including missing destination fits and missing spike scores. The figure shows
 replication fractions in **within-profiler, within-destination-cohort**

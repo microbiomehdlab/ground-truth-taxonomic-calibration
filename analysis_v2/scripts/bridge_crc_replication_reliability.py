@@ -10,13 +10,10 @@ from __future__ import annotations
 import argparse
 import csv
 import hashlib
-import math
+import html
 from pathlib import Path
 
 import duckdb
-import matplotlib
-matplotlib.use("Agg")
-import matplotlib.pyplot as plt
 
 COHORTS = ("feng", "yachida", "zeller")
 PROFILERS = ("kraken2_bracken", "metaphlan4")
@@ -180,30 +177,58 @@ def make_summary(rows: list[dict]) -> list[dict]:
 
 
 def plot(summary: list[dict], path: Path) -> None:
-    fig, axes = plt.subplots(2, 3, figsize=(12, 6), sharey=True, layout="constrained")
+    width, height = 1440, 790
+    panel_width, panel_height = 420, 300
+    left, top = 65, 105
+    elements = [
+        f'<svg xmlns="http://www.w3.org/2000/svg" width="{width}" height="{height}" viewBox="0 0 {width} {height}">',
+        '<rect width="100%" height="100%" fill="white"/>',
+        '<style>text{font-family:Arial,sans-serif;fill:#18232c}.title{font-size:27px;font-weight:700}'
+        '.subtitle{font-size:15px}.panel{font-size:18px;font-weight:700}'
+        '.tick{font-size:13px}.count{font-size:15px;font-weight:700}'
+        '.note{font-size:12px;fill:#53616c}</style>',
+        '<text class="title" x="65" y="42">Does spike-measured reliability track CRC biomarker replication?</text>',
+        '<text class="subtitle" x="65" y="72">Same-direction BH q ≤ 0.05 in destination cohort; each bar shows replicated/evaluable calls</text>',
+    ]
     for i, profiler in enumerate(PROFILERS):
         for j, cohort in enumerate(COHORTS):
-            ax = axes[i, j]
             group = [r for r in summary if r["profiler"] == profiler and r["destination_cohort"] == cohort]
-            xs = range(3)
-            ax.bar(xs, [r["replication_fraction"] if r["n"] else 0 for r in group],
-                   color="#168a78" if i == 0 else "#3b7097", width=.65)
-            for x, row in zip(xs, group):
-                ax.text(x, min(1.03, (row["replication_fraction"] if row["n"] else 0) + .035),
-                        f'{row["replicated"]}/{row["n"]}', ha="center", fontsize=9)
-            ax.set_xticks(list(xs), ["Lower", "Middle", "Upper"])
-            ax.set_ylim(0, 1.13)
-            ax.set_title(f'{cohort.title()} · {"Kraken2 + Bracken" if i == 0 else "MetaPhlAn 4"}')
-            ax.text(.5, -.19, f'Missing destination fit: {group[0]["missing_destination_fit"]}; '
-                    f'no spike score: {group[0]["missing_spike_score"]}',
-                    transform=ax.transAxes, ha="center", fontsize=8)
-            if j == 0:
-                ax.set_ylabel("Same-direction BH q ≤ 0.05\nreplication fraction")
-            ax.grid(axis="y", alpha=.2)
-    fig.suptitle("Does spike-measured reliability track CRC biomarker replication?", fontsize=15)
-    fig.supxlabel("Destination-cohort spike reliability tertile · DEVELOPMENT ONLY", fontsize=10)
-    fig.savefig(path, dpi=180, bbox_inches="tight")
-    plt.close(fig)
+            x0, y0 = left + j * 455, top + i * 335
+            plot_left, plot_top = x0 + 48, y0 + 42
+            plot_width, plot_height = 345, 175
+            title = f'{cohort.title()} · {"Kraken2 + Bracken" if i == 0 else "MetaPhlAn 4"}'
+            elements.append(f'<rect x="{x0}" y="{y0}" width="{panel_width}" height="{panel_height}" '
+                            'fill="#fff" stroke="#cad3da"/>')
+            elements.append(f'<text class="panel" x="{x0 + 15}" y="{y0 + 28}">{html.escape(title)}</text>')
+            for fraction in (0, .5, 1):
+                y = plot_top + plot_height * (1 - fraction)
+                elements.append(f'<line x1="{plot_left}" y1="{y:.1f}" x2="{plot_left + plot_width}" '
+                                f'y2="{y:.1f}" stroke="#e0e5e8"/>')
+                elements.append(f'<text class="tick" x="{plot_left - 10}" y="{y + 4:.1f}" '
+                                f'text-anchor="end">{fraction:.0%}</text>')
+            for k, row in enumerate(group):
+                center = plot_left + 62 + k * 112
+                if row["n"]:
+                    bar_height = plot_height * row["replication_fraction"]
+                    y = plot_top + plot_height - bar_height
+                    color = "#168a78" if i == 0 else "#3b7097"
+                    elements.append(f'<rect x="{center - 32}" y="{y:.1f}" width="64" '
+                                    f'height="{bar_height:.1f}" fill="{color}"/>')
+                    label = f'{row["replicated"]}/{row["n"]}'
+                else:
+                    label = "no data"
+                elements.append(f'<text class="count" x="{center}" y="{max(plot_top + 15, y - 8) if row["n"] else plot_top + plot_height - 12:.1f}" '
+                                f'text-anchor="middle">{label}</text>')
+                elements.append(f'<text class="tick" x="{center}" y="{plot_top + plot_height + 20}" '
+                                f'text-anchor="middle">{row["reliability_tertile"].title()}</text>')
+            elements.append(f'<text class="note" x="{x0 + 15}" y="{y0 + 277}">'
+                            f'Missing fit: {group[0]["missing_destination_fit"]}; '
+                            f'no local spike score: {group[0]["missing_spike_score"]}</text>')
+    elements.extend([
+        '<text class="subtitle" x="65" y="785">Destination-cohort spike reliability tertile · DEVELOPMENT ONLY · descriptive, not causal</text>',
+        '</svg>',
+    ])
+    path.write_text("\n".join(elements) + "\n", encoding="utf-8")
 
 
 def main() -> None:
@@ -225,7 +250,7 @@ def main() -> None:
     args.outdir.mkdir(parents=True)
     write_tsv(args.outdir / "candidate_destination_bridge.tsv", FIELDS, rows)
     write_tsv(args.outdir / "replication_by_reliability_tertile.tsv", tuple(summary[0]), summary)
-    plot(summary, args.outdir / "replication_by_reliability_tertile.png")
+    plot(summary, args.outdir / "replication_by_reliability_tertile.svg")
     with (args.outdir / "source_sha256.tsv").open("w", encoding="utf-8") as handle:
         handle.write("source\tsha256\n")
         for path in (args.calls, args.certificates, args.aliases):
