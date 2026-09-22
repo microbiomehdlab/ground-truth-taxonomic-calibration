@@ -171,6 +171,14 @@ COLORS = {
 }
 
 
+def display_feature(profiler, feature):
+    # Preserve the frozen profiler feature as the join key and in source TSVs.
+    # This label makes the known taxonomic synonym explicit for readers.
+    if profiler == "kraken2_bracken" and feature == "Allisonella pneumosintes":
+        return "Dialister pneumosintes [Allisonella in Kraken]"
+    return feature
+
+
 def draw(outdir, profiler, rows, totals, dose_percent):
     width, height = 1500, 200 + 63 * (len(rows) // 3) + 100
     label = "Kraken2 + Bracken" if profiler == "kraken2_bracken" else "MetaPhlAn 4"
@@ -185,9 +193,10 @@ def draw(outdir, profiler, rows, totals, dose_percent):
     for ri in range(len(rows) // 3):
         feature = rows[ri * 3]["feature"]
         y = 181 + ri * 63
-        short = feature if len(feature) <= 54 else feature[:51] + "..."
+        display = display_feature(profiler, feature)
+        short = display if len(display) <= 54 else display[:51] + "..."
         parts.append('<title>{}</title><text x="30" y="{}" font-family="sans-serif" font-size="17">{}</text>'.format(
-            html.escape(feature), y + 28, html.escape(short)))
+            html.escape(display), y + 28, html.escape(short)))
         for ci, row in enumerate(rows[ri * 3:ri * 3 + 3]):
             x = 530 + ci * 265
             status = row["spike_fate"]
@@ -226,9 +235,10 @@ def draw_shared(outdir, profiler, rows, totals, dose_percent):
     for ri in range(len(rows) // 3):
         feature = rows[3 * ri]["feature"]
         y = 202 + ri * row_h
-        short = feature if len(feature) <= 53 else feature[:50] + "..."
+        display = display_feature(profiler, feature)
+        short = display if len(display) <= 53 else display[:50] + "..."
         parts.append('<title>{}</title><text x="30" y="{}" font-family="sans-serif" font-size="19">{}</text>'.format(
-            html.escape(feature), y + 37, html.escape(short)))
+            html.escape(display), y + 37, html.escape(short)))
         for ci, row in enumerate(rows[3 * ri:3 * ri + 3]):
             x = 500 + ci * 378
             effect, q = float(row["baseline_effect"]), float(row["baseline_q"])
@@ -271,7 +281,8 @@ def build(calls_path, ledger_path, outdir, dose_percent, top):
                 challenge = ledger.get((cohort, profiler, feature))
                 status = fate(fit, challenge)
                 record = dict(profiler=profiler, rank=ranked.index(feature) + 1,
-                              feature=feature, cohort=cohort,
+                              feature=feature, display_feature=display_feature(profiler, feature),
+                              cohort=cohort,
                               baseline_effect="" if fit is None else "{:.9g}".format(fit[0]),
                               baseline_q="" if fit is None else "{:.9g}".format(fit[1]),
                               baseline_called=int(fit is not None and fit[1] <= .05),

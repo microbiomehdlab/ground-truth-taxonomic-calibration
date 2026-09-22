@@ -36,6 +36,10 @@ spike fate, are in `top_candidate_spike_fates.tsv`. Top ten is **per profiler**,
 ranked by the number of same-direction significant cohorts, then all-cohort
 effect direction, evaluability and strongest q; this is a descriptive display
 rule, not a biomarker-validation score. Missing fits are not negatives.
+Kraken's `Allisonella pneumosintes` feature is displayed as
+`Dialister pneumosintes [Allisonella in Kraken]` using the validated spike
+alias mapping; the original feature remains unchanged in the `feature` column
+and the display label is recorded separately.
 
 The `*_shared_candidates.svg` files are the slide-sized focused view: only
 features with a significant effect in the same direction in **all three**

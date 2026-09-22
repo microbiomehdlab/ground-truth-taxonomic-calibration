@@ -1,4 +1,5 @@
 import csv
+import importlib.util
 import subprocess
 import tempfile
 import unittest
@@ -19,6 +20,15 @@ def write(path, rows):
 
 
 class SpikeImpact(unittest.TestCase):
+    def test_allisonella_display_uses_canonical_match(self):
+        spec = importlib.util.spec_from_file_location("impact_plot", SCRIPT)
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        self.assertEqual(module.display_feature("kraken2_bracken", "Allisonella pneumosintes"),
+                         "Dialister pneumosintes [Allisonella in Kraken]")
+        self.assertEqual(module.display_feature("metaphlan4", "Dialister pneumosintes"),
+                         "Dialister pneumosintes")
+
     def fixture(self, root, missing=False):
         calls, ledger = [], []
         for profiler in PROFILERS:
