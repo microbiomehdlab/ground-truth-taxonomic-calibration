@@ -33,7 +33,7 @@ def num(row, field):
     return value
 
 
-def build(matched, audit):
+def build(matched, audit, high_audit):
     files = {
         "models": matched / "matched_species_models.tsv",
         "baseline": matched / "matched_species_baseline_summary.tsv",
@@ -46,6 +46,11 @@ def build(matched, audit):
         if not path.is_file() or not path.stat().st_size:
             raise ValueError(f"missing {name}: {path}")
     tables = {name: read(path) for name, path in files.items()}
+    metadata = read(high_audit / "dose_metadata.tsv")
+    if len(metadata) != 1 or not math.isclose(num(metadata[0], "member_dose_percent"), .1):
+        raise ValueError("high audit must be the 0.1%-per-member community spike")
+    high_transitions = read(high_audit / "fnuc_call_transition_summary.tsv")
+    high_response = read(high_audit / "fnuc_target_condition_response.tsv")
     if not tables["models"] or not tables["baseline"] or not tables["spikes"]:
         raise ValueError("matched-species tables are empty")
     result = []
@@ -71,10 +76,18 @@ def build(matched, audit):
             community = {condition: unique(tables["response"],
                 lambda r, condition=condition: same(r) and r["condition"] == condition,
                 f"community {cohort}/{profiler}/{condition}") for condition in CONDITIONS}
+            high_t = {contrast: unique(high_transitions,
+                lambda r, contrast=contrast: same(r) and r["contrast"] == contrast,
+                f"high-dose transition {cohort}/{profiler}/{contrast}")
+                for contrast in ("CRC_vs_Control", "Adenoma_vs_Control")}
+            high_c = {condition: unique(high_response,
+                lambda r, condition=condition: same(r) and r["condition"] == condition,
+                f"high-dose response {cohort}/{profiler}/{condition}") for condition in CONDITIONS}
             related = [r for r in tables["related"] if same(r)]
             result.append(dict(profiler=profiler, cohort=cohort, model=model,
                                baseline=baseline, direct=direct, transition=transition,
-                               community=community, related=related))
+                               community=community, related=related,
+                               high_transition=high_t, high_community=high_c))
     return result
 
 
@@ -99,18 +112,18 @@ def pct(row):
 
 
 def draw(path, contexts):
-    width, height = 2000, 1370
+    width, height = 2000, 1620
     parts = [f'<svg xmlns="http://www.w3.org/2000/svg" width="{width}" height="{height}" viewBox="0 0 {width} {height}">',
              '<rect width="100%" height="100%" fill="white"/>']
     text(parts, 40, 50, "Can measurement explain the missing F. nucleatum adenoma call?", 32, weight="bold")
-    text(parts, 40, 80, "Six cohort–profiler contexts · 0.001% per member community mix; 0.01% independent F. nucleatum spike · DEVELOPMENT ONLY", 17)
+    text(parts, 40, 80, "Six contexts · equal community mixes: 0.001% and 0.1% F. nucleatum per member; 0.01% independent F. nucleatum spike · DEVELOPMENT ONLY", 17)
     text(parts, 40, 106, "Each row tests a different mechanism; these are not interchangeable scales or a causal score.", 15)
     x0, cw, gap = 270, 545, 20
     colors = {"kraken2_bracken": "#b75000", "metaphlan4": "#006b9b"}
     for ci, cohort in enumerate(COHORTS):
         text(parts, x0 + ci*(cw+gap)+cw/2, 135, cohort.title(), 22, weight="bold", anchor="middle")
     for pi, profiler in enumerate(PROFILERS):
-        block = 182 + pi*485
+        block = 182 + pi*615
         color = colors[profiler]
         text(parts, 40, block+18, "Kraken2 + Bracken" if pi == 0 else "MetaPhlAn 4", 17,
              color=color, weight="bold")
@@ -120,7 +133,9 @@ def draw(path, contexts):
                   (247, "Adenoma recovery <0.5"), (295, "0.01% independent recovery"),
                   (325, "0.01% detected"), (375, "Adenoma effect before→after"),
                   (405, "Adenoma q before→after"), (435, "CRC call; other calls"),
-                  (464, "Related Fuso paired shift"))
+                  (464, "Related Fuso paired shift"),
+                  (500, "0.1% zero→positive"), (530, "0.1% adenoma recovery"),
+                  (560, "0.1% adenoma call"), (590, "0.1% CRC call"))
         for offset, label in labels:
             text(parts, 40, block+offset, label, 13)
         for offset in (75, 150, 260, 337):
@@ -132,7 +147,7 @@ def draw(path, contexts):
             def put(offset, value, size=14, emphasis=False):
                 text(parts, x+10, block+offset, value, size, color if emphasis else "#243240",
                      "bold" if emphasis else "normal")
-            parts.append(f'<rect x="{x}" y="{block}" width="{cw}" height="470" rx="6" fill="#f5f8fa"/>')
+            parts.append(f'<rect x="{x}" y="{block}" width="{cw}" height="600" rx="6" fill="#f5f8fa"/>')
             put(27, " / ".join(f'{k[:3]} {b[k]["positive"]}/{b[k]["n"]} ({pct(b[k]):.0f}%)'
                               for k in CONDITIONS), 13)
             med = b["Adenoma"]["positive_abundance_median_percent"]
@@ -167,11 +182,22 @@ def draw(path, contexts):
                 put(464, f'{label}: {100*num(strongest,"response_median"):+.2g} percentage points', 12)
             else:
                 put(464, "paired response not supplied", 12)
-    text(parts, 40, 1191, "Reading the figure", 20, weight="bold")
-    text(parts, 40, 1221, "A recovered spike weakens a specific detection-failure explanation; it does not establish native measurement accuracy or biological absence.", 16)
-    text(parts, 40, 1249, "The equal spike is a ten-species mixture: changes in calls or related taxa cannot be attributed solely to F. nucleatum.", 16)
-    text(parts, 40, 1277, "Still unresolved: direct CRC–adenoma contrast and power; read depth/batch/marker QC; native-signal validation and species-specific misassignment.", 16)
-    text(parts, 40, 1310, "C/A/CRC = Control/Adenoma/CRC; recovery 1 is ideal. Profiler-scale recoveries are not cross-platform abundance comparisons.", 15)
+            hc, ht = r["high_community"], r["high_transition"]
+            put(500, " / ".join(f'{k[:3]} {ratio(hc[k],"zero_rescued","baseline_zero")}'
+                                for k in CONDITIONS))
+            ha = hc["Adenoma"]
+            put(530, f'{num(ha,"recovery_median"):.2f} [{num(ha,"recovery_q1"):.2f},{num(ha,"recovery_q3"):.2f}]; '
+                     f'<0.5 {ha["below_half"]}/{ha["n"]}')
+            for offset, contrast in ((560, "Adenoma_vs_Control"), (590, "CRC_vs_Control")):
+                h = ht[contrast]
+                put(offset, f'{num(h,"target_baseline_effect"):+.2f} → {num(h,"target_dose_effect"):+.2f}; '
+                    f'q {num(h,"target_baseline_q"):.2g} → {num(h,"target_dose_q"):.2g}; '
+                    f'{"called" if h["target_dose_called"] == "1" else "not called"}', 12, True)
+    text(parts, 40, 1433, "Reading the figure", 20, weight="bold")
+    text(parts, 40, 1463, "0.1% per member is ~1% total ten-species mixture: a strong perturbation, not an endogenous-equivalent detection limit.", 16)
+    text(parts, 40, 1491, "A recovered spike weakens one measured failure mode; it does not establish native accuracy or biological absence.", 16)
+    text(parts, 40, 1519, "Call changes cannot be attributed solely to F. nucleatum; direct CRC–adenoma contrast/power, read-level QC and native validation remain unresolved.", 16)
+    text(parts, 40, 1552, "C/A/CRC = Control/Adenoma/CRC; recovery 1 is ideal. Community and independent spikes are distinct experiments.", 15)
     parts.append("</svg>\n")
     path.write_text("\n".join(parts), encoding="utf-8")
 
@@ -180,12 +206,13 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--matched-dir", type=Path, required=True)
     parser.add_argument("--audit-dir", type=Path, required=True)
+    parser.add_argument("--high-audit-dir", type=Path, required=True)
     parser.add_argument("--outdir", type=Path, required=True)
     args = parser.parse_args()
     if args.outdir.exists():
         parser.error("output exists: " + str(args.outdir))
     try:
-        contexts = build(args.matched_dir, args.audit_dir)
+        contexts = build(args.matched_dir, args.audit_dir, args.high_audit_dir)
         args.outdir.mkdir(parents=True)
         draw(args.outdir / "fnuc_integrated_methods.svg", contexts)
         (args.outdir / "SUCCESS").write_text("status\tPASS\n", encoding="utf-8")

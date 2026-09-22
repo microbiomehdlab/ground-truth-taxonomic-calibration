@@ -2,6 +2,8 @@
 
 `plot_fnuc_spike_biomarker_audit.py` connects the 0.001%-per-member community spike to the existing paired disease-model transition ledger. It tests the question: **if the same known *F. nucleatum* addition is made across clinical groups, is the post-spike CRC-vs-Control or Adenoma-vs-Control *F. nucleatum* call recovered, lost, or changed?** The added ten-species mixture totals about 0.01%. It does not create a new biological disease association; changes diagnose the response of the profiling-and-modeling workflow to a controlled addition.
 
+The default is 0.001% **per member**. Pass `--member-dose-percent 0.1` to evaluate the 0.1%-per-member community dose (approximately 1% total mixture) with the same before/after disease-call logic. The output records the selected dose in `dose_metadata.tsv`. This higher dose tests a strong, measurable perturbation; it is not a native-equivalent detection limit and must not be confused with the separate 0.01% single-species recovery experiment.
+
 Outputs:
 
 - `fnuc_spike_biomarker_audit.svg`: baseline→spiked target effect, BH q and call status for both contrasts in all three cohorts and both profilers; gained/lost calls among related *Fusobacterium* species and other bystanders; paired target rescue and recovery separately in Control, Adenoma and CRC; optional related-species response summary.

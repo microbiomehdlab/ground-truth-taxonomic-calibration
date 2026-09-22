@@ -37,6 +37,11 @@ class FnucSpikeBiomarkerAuditTest(unittest.TestCase):
                                            feature_role="bystander", baseline_called="0",
                                            dose_called="1", baseline_effect=".1", dose_effect=".5",
                                            baseline_q_value=".8", dose_q_value=".02", transition="gained"))
+                        higher = dict(common, spike_fraction_target=".001")
+                        ledger.append(dict(higher, feature="Fusobacterium nucleatum",
+                                           feature_role="implanted_target", baseline_called="0",
+                                           dose_called="1", baseline_effect=".3", dose_effect=".6",
+                                           baseline_q_value=".8", dose_q_value=".03", transition="gained"))
                     for condition in ("Control", "Adenoma", "CRC"):
                         for sample in range(3):
                             endpoints.append(dict(cohort=cohort, profiler=profiler, condition=condition,
@@ -48,6 +53,15 @@ class FnucSpikeBiomarkerAuditTest(unittest.TestCase):
                                 baseline_abundance_fraction="0", observed_abundance_fraction=".00001",
                                 implanted_signal_profiler_scale=".00001",
                                 recovered_spike_signal_profiler_scale=".00001"))
+                            endpoints.append(dict(cohort=cohort, profiler=profiler, condition=condition,
+                                sample_id=f"s{sample}", analysis_population="community",
+                                assembly_arm="original", target_label="Fnuc",
+                                spike_fraction_target=".001",
+                                reference_type="genome_equivalent" if profiler == "metaphlan4"
+                                               else "read_proportional",
+                                baseline_abundance_fraction="0", observed_abundance_fraction=".001",
+                                implanted_signal_profiler_scale=".001",
+                                recovered_spike_signal_profiler_scale=".001"))
             write(root / "ledger.tsv", ledger)
             write(root / "endpoints.tsv", endpoints)
             db = duckdb.connect()
@@ -83,6 +97,17 @@ class FnucSpikeBiomarkerAuditTest(unittest.TestCase):
                 bystander = list(csv.DictReader(handle, delimiter="\t"))
             self.assertEqual(len(bystander), 18)
             self.assertTrue((root / "out/SUCCESS").is_file())
+            high = subprocess.run(["python3", str(SCRIPT), "--ledger", str(root / "ledger.tsv"),
+                                   "--endpoints", str(root / "endpoints.tsv"),
+                                   "--member-dose-percent", "0.1", "--outdir", str(root / "high")],
+                                  capture_output=True, text=True)
+            self.assertEqual(high.returncode, 0, high.stdout + high.stderr)
+            with (root / "high/dose_metadata.tsv").open() as handle:
+                metadata = list(csv.DictReader(handle, delimiter="\t"))
+            self.assertEqual(metadata[0]["member_dose_percent"], "0.1")
+            with (root / "high/fnuc_call_transition_summary.tsv").open() as handle:
+                high_rows = list(csv.DictReader(handle, delimiter="\t"))
+            self.assertEqual({float(r["target_dose_effect"]) for r in high_rows}, {0.6})
 
 
 if __name__ == "__main__":

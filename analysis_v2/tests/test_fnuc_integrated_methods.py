@@ -19,9 +19,10 @@ class IntegratedMethodsTest(unittest.TestCase):
     def test_plot_and_missing_context_rejected(self):
         with tempfile.TemporaryDirectory() as temp:
             root = Path(temp)
-            matched, audit = root / "matched", root / "audit"
+            matched, audit, high = root / "matched", root / "audit", root / "high"
             matched.mkdir()
             audit.mkdir()
+            high.mkdir()
             models, baselines, spikes, transitions, response = [], [], [], [], []
             for profiler in ("kraken2_bracken", "metaphlan4"):
                 for cohort in ("feng", "yachida", "zeller"):
@@ -52,10 +53,15 @@ class IntegratedMethodsTest(unittest.TestCase):
             write(matched / "matched_species_spike_summary.tsv", spikes)
             write(audit / "fnuc_call_transition_summary.tsv", transitions)
             write(audit / "fnuc_target_condition_response.tsv", response)
+            write(high / "fnuc_call_transition_summary.tsv", transitions)
+            write(high / "fnuc_target_condition_response.tsv", response)
+            (high / "dose_metadata.tsv").write_text(
+                "member_dose_percent\tapprox_total_mix_percent\n0.1\t1\n", encoding="utf-8")
             (audit / "fnuc_related_species_response.tsv").write_text(
                 "cohort\tprofiler\tcondition\tfeature\tresponse_median\n", encoding="utf-8")
             command = ["python3", str(SCRIPT), "--matched-dir", str(matched),
-                       "--audit-dir", str(audit), "--outdir", str(root / "out")]
+                       "--audit-dir", str(audit), "--high-audit-dir", str(high),
+                       "--outdir", str(root / "out")]
             done = subprocess.run(command, capture_output=True, text=True)
             self.assertEqual(done.returncode, 0, done.stderr)
             ET.parse(root / "out/fnuc_integrated_methods.svg")

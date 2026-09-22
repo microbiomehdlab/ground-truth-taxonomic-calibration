@@ -65,7 +65,7 @@ def quartiles(values):
     return tuple(statistics.quantiles(values, n=4, method="inclusive"))
 
 
-def parse_ledger(path):
+def parse_ledger(path, member_dose=MEMBER_DOSE):
     source = rows(path)
     if not LEDGER_REQUIRED <= next(source):
         raise ValueError("transition ledger lacks required fields")
@@ -74,7 +74,7 @@ def parse_ledger(path):
         if (r["analysis_population"] != "community" or r["assembly_arm"] != "original" or
             r["target_label"] != "CRCpanel" or r["cohort"] not in COHORTS or
             r["profiler"] not in PROFILERS or r["contrast"] not in CONTRASTS or
-            not math.isclose(float(r["spike_fraction_target"]), MEMBER_DOSE, rel_tol=.05) or
+            not math.isclose(float(r["spike_fraction_target"]), member_dose, rel_tol=.05) or
             not math.isclose(float(r["q_threshold"]), .05, abs_tol=1e-10)):
             continue
         category = ("target" if r["feature"] == TARGET else
@@ -123,7 +123,7 @@ def parse_ledger(path):
     return detail, summary
 
 
-def parse_endpoints(path):
+def parse_endpoints(path, member_dose=MEMBER_DOSE):
     source = rows(path)
     if not ENDPOINT_REQUIRED <= next(source):
         raise ValueError("paired endpoints lack required fields")
@@ -132,7 +132,7 @@ def parse_endpoints(path):
         if (r["analysis_population"] != "community" or r["assembly_arm"] != "original" or
             r["target_label"] != "Fnuc" or r["cohort"] not in COHORTS or
             r["profiler"] not in PROFILERS or r["condition"] not in CONDITIONS or
-            not math.isclose(float(r["spike_fraction_target"]), MEMBER_DOSE, rel_tol=.05)):
+            not math.isclose(float(r["spike_fraction_target"]), member_dose, rel_tol=.05)):
             continue
         expected = "genome_equivalent" if r["profiler"] == "metaphlan4" else "read_proportional"
         if r["reference_type"] != expected:
@@ -163,7 +163,7 @@ def parse_endpoints(path):
     return result
 
 
-def parse_bystanders(path):
+def parse_bystanders(path, dose_index=1):
     try:
         import duckdb
     except ImportError as error:
@@ -182,11 +182,11 @@ def parse_bystanders(path):
                  quantile_cont(response_delta, 0.75) q3,
                  avg(CASE WHEN response_delta > 0 THEN 1.0 ELSE 0.0 END) positive_fraction
           FROM read_parquet(?)
-          WHERE analysis_population = 'community' AND dose_index = 1
+          WHERE analysis_population = 'community' AND dose_index = ?
             AND NOT is_direct_target AND feature LIKE 'Fusobacterium %'
           GROUP BY cohort, profiler, condition, feature
         """
-        raw = con.execute(query, [str(path)]).fetchall()
+        raw = con.execute(query, [str(path), dose_index]).fetchall()
     finally:
         con.close()
     result = []
@@ -205,12 +205,12 @@ def txt(parts, x, y, value, size=15, color="#22313e", weight="normal", anchor=No
                  f'font-weight="{weight}" fill="{color}"{a}>{html.escape(str(value))}</text>')
 
 
-def draw(path, summary, response, bystanders):
+def draw(path, summary, response, bystanders, member_dose_percent=.001):
     width, height = 1900, 1100
     parts = [f'<svg xmlns="http://www.w3.org/2000/svg" width="{width}" height="{height}" viewBox="0 0 {width} {height}">',
              '<rect width="100%" height="100%" fill="white"/>']
     txt(parts, 28, 46, "Does equal F. nucleatum spiking change disease-biomarker calls?", 29, weight="bold")
-    txt(parts, 28, 76, "0.001% per member in a ten-species community mixture, added across clinical groups · matched baseline versus spiked model · DEVELOPMENT ONLY", 15)
+    txt(parts, 28, 76, f"{member_dose_percent:g}% per member in a ten-species community mixture, added across clinical groups · matched baseline versus spiked model · DEVELOPMENT ONLY", 15)
     txt(parts, 28, 101, "Open dot = baseline effect; filled dot = post-spike effect. A gained call is not a proven biological false positive; q is BH-adjusted.", 14)
     lookup = {(r["cohort"], r["profiler"], r["contrast"]): r for r in summary}
     rec = {(r["cohort"], r["profiler"], r["condition"]): r for r in response}
@@ -290,6 +290,8 @@ def main():
     p.add_argument("--ledger", type=Path, required=True)
     p.add_argument("--endpoints", type=Path, required=True)
     p.add_argument("--paired-features", type=Path)
+    p.add_argument("--member-dose-percent", type=float, choices=(.001, .1), default=.001,
+                   help="community spike dose per species; 0.1%% is approximately 1%% total mixture")
     p.add_argument("--outdir", type=Path, required=True)
     a = p.parse_args()
     for path in (a.ledger, a.endpoints, a.paired_features):
@@ -298,15 +300,20 @@ def main():
     if a.outdir.exists():
         p.error("output exists: " + str(a.outdir))
     try:
-        detail, summary = parse_ledger(a.ledger)
-        response = parse_endpoints(a.endpoints)
-        bystanders = parse_bystanders(a.paired_features) if a.paired_features else []
+        dose_index = 1 if a.member_dose_percent == .001 else 5
+        detail, summary = parse_ledger(a.ledger, a.member_dose_percent / 100)
+        response = parse_endpoints(a.endpoints, a.member_dose_percent / 100)
+        bystanders = parse_bystanders(a.paired_features, dose_index) if a.paired_features else []
         a.outdir.mkdir(parents=True)
         write(a.outdir / "fnuc_call_transition_detail.tsv", CALL_FIELDS, detail)
         write(a.outdir / "fnuc_call_transition_summary.tsv", SUMMARY_FIELDS, summary)
         write(a.outdir / "fnuc_target_condition_response.tsv", RESPONSE_FIELDS, response)
         write(a.outdir / "fnuc_related_species_response.tsv", BYSTANDER_FIELDS, bystanders)
-        draw(a.outdir / "fnuc_spike_biomarker_audit.svg", summary, response, bystanders)
+        draw(a.outdir / "fnuc_spike_biomarker_audit.svg", summary, response, bystanders,
+             a.member_dose_percent)
+        (a.outdir / "dose_metadata.tsv").write_text(
+            f"member_dose_percent\tapprox_total_mix_percent\n{a.member_dose_percent:g}\t{10*a.member_dose_percent:g}\n",
+            encoding="utf-8")
         (a.outdir / "DEVELOPMENT_ONLY.txt").write_text(
             "Spike-induced model-call changes are not proven biological false positives.\n", encoding="utf-8")
         (a.outdir / "SUCCESS").write_text("status\tPASS\n", encoding="utf-8")
