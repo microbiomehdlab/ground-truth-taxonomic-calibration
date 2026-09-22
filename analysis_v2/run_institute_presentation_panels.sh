@@ -29,10 +29,15 @@ apptainer exec --cleanenv --bind "$ROOT:$ROOT" --pwd "$ROOT" "$ANALYSIS_SIF" \
   --baseline "$OUTDIR/baseline_input/baseline_four_taxa_samples.tsv" \
   --endpoints "$ENDPOINTS" \
   --outdir "$OUTDIR/slides"
+apptainer exec --cleanenv --bind "$ROOT:$ROOT" --pwd "$ROOT" "$ANALYSIS_SIF" \
+  Rscript analysis_v2/scripts/plot_three_cohort_quantitative_recovery.R \
+  --endpoints "$ENDPOINTS" --reference-scale read_proportional \
+  --outdir "$OUTDIR/slide4_original_reference_atlas"
 for stem in slide3_baseline_visibility slide4_focused_recovery slide4_metaphlan_reference_comparison slide5_fnuc_detection; do
   test -s "$OUTDIR/slides/$stem.png" || { echo "[ERROR] Missing $stem.png" >&2; exit 1; }
   test -s "$OUTDIR/slides/$stem.pdf" || { echo "[ERROR] Missing $stem.pdf" >&2; exit 1; }
 done
 test -s "$OUTDIR/slides/SUCCESS"
+test -s "$OUTDIR/slide4_original_reference_atlas/SUCCESS"
 printf 'status\tPASS\nanalysis_status\tDEVELOPMENT_ONLY\n' > "$OUTDIR/SUCCESS"
 echo "[PASS] Institute presentation panels: $OUTDIR/slides"

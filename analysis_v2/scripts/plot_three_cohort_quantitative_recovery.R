@@ -11,6 +11,9 @@ value <- function(flag) {
 }
 input <- value("--endpoints")
 outdir <- value("--outdir")
+reference_scale <- if ("--reference-scale" %in% args) value("--reference-scale") else "profiler_scale"
+if (!reference_scale %in% c("profiler_scale", "read_proportional"))
+  stop("--reference-scale must be profiler_scale or read_proportional")
 if (dir.exists(outdir)) stop("Output directory already exists: ", outdir)
 if (!file.exists(input)) stop("Missing endpoints: ", input)
 x <- read.delim(input, check.names = FALSE, stringsAsFactors = FALSE)
@@ -18,6 +21,9 @@ required <- c("cohort", "condition", "analysis_population", "assembly_arm",
               "profiler", "target_label", "spike_fraction_target", "sample_id",
               "reference_type", "observed_abundance_fraction",
               "expected_abundance_profiler_scale")
+if (reference_scale == "read_proportional")
+  required <- c(required, "read_proportional_reference",
+                "baseline_abundance_fraction", "spike_fraction_total")
 missing <- setdiff(required, names(x))
 if (length(missing)) stop("Missing endpoint columns: ", paste(missing, collapse = ", "))
 x <- x[x$analysis_population == "community" & x$assembly_arm == "original", ]
@@ -25,6 +31,17 @@ if (!nrow(x)) stop("No original-assembly community endpoints")
 x$spike_fraction_target <- as.numeric(x$spike_fraction_target)
 x$observed_abundance_fraction <- as.numeric(x$observed_abundance_fraction)
 x$expected_abundance_profiler_scale <- as.numeric(x$expected_abundance_profiler_scale)
+if (reference_scale == "read_proportional") {
+  for (field in c("read_proportional_reference", "baseline_abundance_fraction",
+                  "spike_fraction_total")) x[[field]] <- as.numeric(x[[field]])
+  if (any(!is.finite(x$read_proportional_reference)) ||
+      any(!is.finite(x$baseline_abundance_fraction)) ||
+      any(!is.finite(x$spike_fraction_total)) ||
+      any(abs(x$read_proportional_reference -
+              ((1 - x$spike_fraction_total) * x$baseline_abundance_fraction +
+                 x$spike_fraction_target)) > 1e-8))
+    stop("Read-proportional reference contradicts the original equation")
+}
 if (any(!is.finite(x$spike_fraction_target)) ||
     any(!is.finite(x$observed_abundance_fraction)) ||
     any(!is.finite(x$expected_abundance_profiler_scale)) ||
@@ -57,7 +74,9 @@ group <- function(d) paste(d$cohort, d$condition, d$profiler,
 if (!setequal(group(x), group(contexts))) stop("Incomplete figure context grid")
 x$recovery <- ifelse(x$observed_abundance_fraction > 0,
                      log2(x$observed_abundance_fraction /
-                          x$expected_abundance_profiler_scale), NA_real_)
+                          if (reference_scale == "read_proportional")
+                            x$read_proportional_reference else
+                            x$expected_abundance_profiler_scale), NA_real_)
 summaries <- lapply(split(x, group(x)), function(part) {
   positive <- part$recovery[is.finite(part$recovery)]
   data.frame(cohort = part$cohort[1], condition = part$condition[1],
@@ -73,9 +92,15 @@ if (!nrow(s) || all(s$n_positive == 0)) stop("No positive observations for recov
 dir.create(outdir, recursive = TRUE)
 write.table(s, file.path(outdir, "quantitative_recovery_box_summary.tsv"),
             sep = "\t", quote = FALSE, row.names = FALSE, na = "NA")
+writeLines(c(paste0("reference_scale\t", reference_scale),
+             "read_proportional_equation\tE = (1 - F) b + f",
+             "F\ttotal implanted fraction", "b\tbaseline abundance fraction",
+             "f\timplanted target fraction"),
+           file.path(outdir, "reference_definition.tsv"))
 hashes <- system2("sha256sum",
   c(shQuote(normalizePath(input)),
-    shQuote(normalizePath(file.path(outdir, "quantitative_recovery_box_summary.tsv")))),
+    shQuote(normalizePath(file.path(outdir, "quantitative_recovery_box_summary.tsv"))),
+    shQuote(normalizePath(file.path(outdir, "reference_definition.tsv")))),
   stdout = TRUE, stderr = TRUE)
 if (!is.null(attr(hashes, "status")) && attr(hashes, "status") != 0)
   stop("Could not hash recovery figure inputs")
@@ -104,9 +129,13 @@ p <- ggplot(s, aes(x = x, color = cohort)) +
   scale_color_manual(values = colors) + scale_fill_manual(values = colors) +
   scale_shape_manual(values = shapes) +
   labs(title = "Quantitative recovery is profiler- and taxon-dependent",
-       subtitle = "Community spike-ins: points are medians; shaded boxes span Q1-Q3 across positive samples",
+       subtitle = if (reference_scale == "read_proportional")
+         "Original read-proportional expectation for both profilers; medians and sample Q1-Q3 among positive reports" else
+         "Community spike-ins: points are medians; shaded boxes span Q1-Q3 across positive samples",
        x = "Implanted taxon", y = expression(log[2]("observed / expected")),
-       color = "Cohort", fill = "Cohort", shape = "Condition") +
+       color = "Cohort", fill = "Cohort", shape = "Condition",
+       caption = if (reference_scale == "read_proportional")
+         "Original expectation: E = (1 - F)b + f. Zeros excluded from log ratio and counted in source TSV. Development-only sensitivity." else NULL) +
   theme_bw(base_size = 11) +
   theme(panel.grid.minor = element_blank(), axis.text.x = element_text(angle = 45, hjust = 1),
         legend.position = "bottom")
