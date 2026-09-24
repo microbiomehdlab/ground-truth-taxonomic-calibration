@@ -1,26 +1,23 @@
 # Next actions and execution order
 
 **Purpose:** operational starting point for the next agent.
-**Last updated:** 23 September 2026.
+**Last updated:** 24 September 2026.
 
 ## Current operational checkpoint
 
-- Yachida remains complete and production-sealed.
-- Feng has 152/154 persistent `.verified` markers and 152/154 retained-output
-  receipts. At the last manual check, `SID31874` was running and `SID530697`
-  had been submitted as a targeted retry. Recheck Slurm and persistent state;
-  do not infer current status from this dated note.
-- The 152 completed Feng receipts tested so far point to existing retained
-  files. The definitive seal defect was identified and fixed locally: the
-  production runner creates zero-byte `SUCCESS` sentinels with `touch`, while
-  the audit had incorrectly required nonempty markers. The repaired audit now
-  accepts marker existence, rehashes every retained output, constrains receipt
-  paths to the sample's persistent results/QC roots, invalidates stale seals,
-  and has a passing production-style regression test. Transfer and run it on
-  the cluster after both outstanding samples finish; do not rerun the 152
-  completed samples.
-- Zeller completion and its definitive upstream seal must be re-audited from
-  the frozen 156-sample manifest.
+- All three paper cohorts are complete and production-sealed. Yachida has 201
+  samples, Feng 154, and Zeller 156. The Yachida assembly-sensitivity
+  experiment is also sealed at 360/360 expected profiles.
+- The topology-hardened CRC audits completed on 24 September 2026: Feng job
+  `3097587` and Zeller job `3097588`, both `COMPLETED` with exit code `0:0` and
+  empty error logs. Feng contains 154 baseline, 1,078 community, and 1,800
+  independent profiles. Zeller contains 156 baseline, 1,092 community, and
+  1,800 independent profiles. Every member of both production-seal checksum
+  manifests verified `OK`.
+- Upstream profiling must not be rerun. The next upstream-facing task is to
+  build and review the checksummed evidence package specified in
+  `UPSTREAM_EVIDENCE_PACKAGE_SPEC.md`; definitive downstream execution remains
+  outstanding.
 - The GUTBIOME Control/LR/HR profiling pilot is separate from the paper's
   three-cohort spike benchmark and must not enter definitive paper inputs.
 

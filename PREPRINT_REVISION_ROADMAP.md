@@ -126,9 +126,9 @@ The following components have code, written analysis policies, or development ou
 ### 3.2 Upstream evidence status
 
 - **Yachida:** strict production complete and sealed. It includes 201 baselines, 1,407 community profiles, and 1,800 independent profiles.
-- **Zeller:** strict production was nearly complete at the latest recorded checkpoint; current cluster state must be audited and the cohort sealed.
-- **Feng:** strict production has been submitted through the rolling scheduler. It is not yet a sealed definitive input.
-- **Current three-cohort figures:** development evidence only until Feng and Zeller strict-production outputs replace historical inputs.
+- **Zeller:** strict production is complete and topology-sealed: 156 baselines, 1,092 community profiles, and 1,800 independent profiles.
+- **Feng:** strict production is complete and topology-sealed: 154 baselines, 1,078 community profiles, and 1,800 independent profiles.
+- **Current three-cohort figures:** remain development evidence until the definitive downstream workflow is rebuilt from all three sealed strict-production inputs.
 
 The final manuscript must report the exact completed sample and profile counts from the seals, not from plans, posters, Slurm job totals, or development manifests.
 
@@ -136,7 +136,7 @@ The final manuscript must report the exact completed sample and profile counts f
 
 #### Priority 1 — required for valid final results
 
-1. Complete and seal strict-production Feng and Zeller.
+1. Build and archive the checksummed upstream evidence package from the three completed production seals.
 2. Audit exact profiler versions, databases, reference files, parameters, native abundance fields, and sample/profile counts.
 3. Freeze the taxon identity and alias policy before rebuilding the final response atlas.
 4. Build a single definitive three-cohort canonical input from the three sealed cohort products.

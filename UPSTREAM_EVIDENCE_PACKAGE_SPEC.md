@@ -211,7 +211,10 @@ logs:
 cohort	audit_job_id	audit_date_utc	state	exit_code	samples	seal_sha256	notes
 ```
 
-Known CRC audit jobs at design freeze are Feng `3097585` and Zeller `3097586`.
+The definitive topology-hardened CRC audit jobs are Feng `3097587` and Zeller
+`3097588`, run on 24 September 2026. Both completed with exit code `0:0` and
+empty error logs. Earlier jobs `3097585` and `3097586` used the first hardened
+receipt contract and are superseded by these final topology-aware audits.
 Yachida identifiers must come from retained evidence rather than inference.
 
 ### `source_seal_inventory.tsv`

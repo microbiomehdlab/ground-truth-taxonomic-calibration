@@ -42,7 +42,7 @@ efficiency, or biological presence/absence.
   invalidation locally.
 - [x] Harden the CRC seal to enforce baseline, independent, and community
   profile topology separately and validate retained completion tables.
-- [ ] Transfer the topology-hardened seal to the cluster and reseal Feng and
+- [x] Transfer the topology-hardened seal to the cluster and reseal Feng and
   Zeller without rerunning profiling.
 - [x] Complete and checksum-verify the first Feng and Zeller seals against all
   retained receipt contents.

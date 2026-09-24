@@ -1291,3 +1291,19 @@ subset membership, and records expected and observed counts for every design in
 total profile count while moving one marker from community to baseline and
 proves that both topology checks fail. Feng and Zeller must be resealed with
 this strengthened contract; profiling is not repeated.
+
+## 2026-09-24 — CRC upstream topology seals completed (VERIFIED)
+
+- The topology-aware audits ran against the frozen strict-production outputs
+  without repeating profiling. Feng job `3097587` and Zeller job `3097588`
+  both completed with exit code `0:0` and empty error logs.
+- Feng sealed 154 samples, 154 baseline profiles, 1,078 community profiles,
+  and 1,800 independent profiles. Zeller sealed 156 samples, 156 baseline
+  profiles, 1,092 community profiles, and 1,800 independent profiles. Each
+  cohort contains 30 independent-subset samples.
+- Every entry in each `production_seal.sha256` verified successfully. Together
+  with the previously verified Yachida production seal and 360-profile
+  assembly-sensitivity seal, this closes upstream computation for the paper.
+- The next steps are evidence-package assembly and definitive downstream
+  analysis from these immutable seals. Existing development-only downstream
+  results do not become definitive merely because upstream is now complete.
