@@ -1279,3 +1279,15 @@ before retry. No completed artifact is deleted or recomputed during this resume.
   that same-size content corruption causes SHA-256 failure and invalidates a
   prior seal. Cluster execution against complete Feng and Zeller remains
   required.
+
+**Topology hardening after real cohort completion.** A second review found that
+the CRC seal counted profile `SUCCESS` markers recursively and compared only
+the total of 8 or 68. The total alone could not exclude a missing community
+profile offset by an extra marker in another design. The seal now independently
+requires one baseline, seven community, and zero or 60 independent profiles,
+validates the retained `sample_completion.tsv` against manifest identity and
+subset membership, and records expected and observed counts for every design in
+`sample_flow.tsv` and aggregate counts in `SUCCESS`. The fixture preserves the
+total profile count while moving one marker from community to baseline and
+proves that both topology checks fail. Feng and Zeller must be resealed with
+this strengthened contract; profiling is not repeated.

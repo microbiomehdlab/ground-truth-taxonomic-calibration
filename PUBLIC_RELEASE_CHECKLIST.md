@@ -35,18 +35,18 @@ efficiency, or biological presence/absence.
 
 ## Required before definitive analysis
 
-- [ ] Finish the two outstanding Feng samples and verify 154/154 `.verified`
-  markers and 154/154 retained-output receipts.
+- [x] Finish Feng and verify 154/154 `.verified` markers and retained-output
+  receipts.
 - [x] Repair and regression-test the CRC seal's zero-byte sentinel handling,
   retained-output hashing, persistent-root constraint, and stale-seal
   invalidation locally.
-- [ ] Transfer the repaired seal to the cluster and validate it against all
-  completed Feng receipt contents.
-- [ ] Produce a checksummed Feng upstream seal and sample-flow ledger.
-- [ ] Recount Zeller against its frozen 156-sample manifest, retry only genuine
-  failures, and produce its checksummed upstream seal.
-- [ ] Revalidate the existing Yachida seal and all required assembly-sensitivity
-  evidence without rerunning completed upstream production unnecessarily.
+- [x] Harden the CRC seal to enforce baseline, independent, and community
+  profile topology separately and validate retained completion tables.
+- [ ] Transfer the topology-hardened seal to the cluster and reseal Feng and
+  Zeller without rerunning profiling.
+- [x] Complete and checksum-verify the first Feng and Zeller seals against all
+  retained receipt contents.
+- [x] Revalidate the existing Yachida production and assembly-sensitivity seals.
 - [ ] Freeze and record the final taxon identity and alias policy.
 - [ ] Record exact profiler image, analysis image, database, spike FASTA,
   manifest, and source-commit identities.

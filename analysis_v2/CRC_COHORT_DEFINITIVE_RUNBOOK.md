@@ -27,7 +27,11 @@ echo "$AUDIT_JOB"
 For Zeller, set `COHORT=zeller`, use the `datasets/zellerg` manifests,
 `EXPECTED_SAMPLES=156`, and the Zeller environment. The seal fails if any
 sample lacks verified provenance, its retained-output receipt, top-level
-success, or exactly 8/68 successful native profiles. Production `SUCCESS`
+success, or the exact native-profile topology: one baseline and seven community
+profiles for every sample, plus 60 independent profiles for each member of the
+frozen 30-sample subset. The audit also requires each retained
+`sample_completion.tsv` to agree with the manifest identity, condition, subset
+membership, design-row counts, and expected profile total. Production `SUCCESS`
 sentinels may be zero-byte files created with `touch`; evidence tables must be
 nonempty. The seal independently rehashes every file in every retained-output
 receipt, verifies its byte count, and rejects any retained path inside the

@@ -86,6 +86,26 @@ def verify_receipt(
         return False, 0, f"receipt_read_error:{detail}"
 
 
+def read_completion(path: Path) -> tuple[dict[str, str], str]:
+    """Read the runner's two-column sample-completion contract."""
+    if not nonempty_file(path):
+        return {}, "missing_or_empty_completion_table"
+    try:
+        with path.open(newline="", encoding="utf-8") as handle:
+            rows = list(csv.reader(handle, delimiter="\t"))
+        if not rows or rows[0] != ["field", "value"]:
+            return {}, "invalid_completion_header"
+        values: dict[str, str] = {}
+        for index, row in enumerate(rows[1:], start=2):
+            if len(row) != 2 or not row[0] or row[0] in values:
+                return {}, f"malformed_or_duplicate_completion_row_{index}"
+            values[row[0]] = row[1]
+        return values, ""
+    except (OSError, csv.Error) as error:
+        detail = str(error).replace("\t", " ").replace("\n", " ")
+        return {}, f"completion_read_error:{detail}"
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--cohort", required=True, choices=("feng", "zeller"))
@@ -124,11 +144,39 @@ def main() -> None:
         flow = []
         for row in manifest:
             sample = row["sample_id"]; sample_root = args.results_root / row["study"] / sample
-            expected_profiles = 68 if sample in independent else 8
-            observed_profiles = sum(
-                1 for path in (sample_root / "profiles").rglob("SUCCESS")
-                if marker_exists(path)
+            in_independent = sample in independent
+            expected_baseline = 1
+            expected_independent_profiles = 60 if in_independent else 0
+            expected_community = 7
+            expected_profiles = expected_baseline + expected_independent_profiles + expected_community
+            profile_root = sample_root / "profiles"
+            observed_baseline = sum(
+                1 for path in (profile_root / "baseline").rglob("SUCCESS") if marker_exists(path)
             )
+            observed_independent = sum(
+                1 for path in (profile_root / "independent").rglob("SUCCESS") if marker_exists(path)
+            )
+            observed_community = sum(
+                1 for path in (profile_root / "community").rglob("SUCCESS") if marker_exists(path)
+            )
+            observed_profiles = observed_baseline + observed_independent + observed_community
+            completion, completion_read_error = read_completion(sample_root / "sample_completion.tsv")
+            expected_completion = {
+                "sample_id": sample,
+                "study": row["study"],
+                "condition": row["condition"],
+                "independent_subset": "1" if in_independent else "0",
+                "expected_profiles": str(expected_profiles),
+                "observed_profiles": str(expected_profiles),
+                "community_design_rows": "7",
+                "independent_design_rows": str(expected_independent_profiles),
+            }
+            completion_mismatches = [
+                f"{field}:{completion.get(field, '<missing>')}!={expected}"
+                for field, expected in expected_completion.items()
+                if completion.get(field) != expected
+            ]
+            completion_error = completion_read_error or ";".join(completion_mismatches)
             receipt_ok, receipt_files, receipt_error = verify_receipt(
                 args.state_dir / "samples" / f"{sample}.retained_outputs.tsv",
                 args.scratch_root / sample,
@@ -139,15 +187,26 @@ def main() -> None:
                 "retained_output_receipt": receipt_ok,
                 "input_provenance": nonempty_file(args.state_dir / "samples" / f"{sample}.input_provenance.tsv"),
                 "sample_success": marker_exists(sample_root / "SUCCESS"),
-                "profile_count": observed_profiles == expected_profiles,
+                "baseline_profile_count": observed_baseline == expected_baseline,
+                "independent_profile_count": observed_independent == expected_independent_profiles,
+                "community_profile_count": observed_community == expected_community,
+                "completion_table": not completion_error,
+                "manifest_independent_flag": row["independent_subset"] == ("1" if in_independent else "0"),
             }
             flow.append({"sample_id": sample, "study": row["study"], "condition": row["condition"],
-                         "independent_subset": int(sample in independent), "expected_profiles": expected_profiles,
-                         "observed_profiles": observed_profiles, "retained_output_files": receipt_files,
+                         "independent_subset": int(in_independent),
+                         "expected_baseline_profiles": expected_baseline,
+                         "observed_baseline_profiles": observed_baseline,
+                         "expected_independent_profiles": expected_independent_profiles,
+                         "observed_independent_profiles": observed_independent,
+                         "expected_community_profiles": expected_community,
+                         "observed_community_profiles": observed_community,
+                         "expected_profiles": expected_profiles, "observed_profiles": observed_profiles,
+                         "retained_output_files": receipt_files,
                          **{name: int(ok) for name, ok in checks.items()},
                          "status": "PASS" if all(checks.values()) else "FAIL",
                          "failure_reasons": ";".join(name for name, ok in checks.items() if not ok),
-                         "receipt_error": receipt_error})
+                         "receipt_error": receipt_error, "completion_error": completion_error})
         flow_path = args.outdir / "sample_flow.tsv"
         with flow_path.open("w", newline="", encoding="utf-8") as handle:
             writer = csv.DictWriter(handle, fieldnames=list(flow[0]), delimiter="\t", lineterminator="\n")
@@ -166,7 +225,16 @@ def main() -> None:
         if any(row["status"] != "PASS" for row in flow):
             raise ValueError(f"{sum(row['status'] != 'PASS' for row in flow)} samples are incomplete; see {flow_path}")
         success = args.outdir / "SUCCESS"
-        success.write_text(f"cohort\t{args.cohort}\nsamples\t{len(manifest)}\nindependent_samples\t{len(independent)}\nstatus\tPASS\n", encoding="utf-8")
+        success.write_text(
+            f"cohort\t{args.cohort}\n"
+            f"samples\t{len(manifest)}\n"
+            f"independent_samples\t{len(independent)}\n"
+            f"baseline_profiles\t{len(manifest)}\n"
+            f"independent_profiles\t{len(independent) * 60}\n"
+            f"community_profiles\t{len(manifest) * 7}\n"
+            "status\tPASS\n",
+            encoding="utf-8",
+        )
         artifacts = [flow_path, covariates, args.outdir / "production_manifest.tsv",
                      args.outdir / "production_manifest.independent.tsv", success]
         (args.outdir / "production_seal.sha256").write_text(
