@@ -1307,3 +1307,21 @@ this strengthened contract; profiling is not repeated.
 - The next steps are evidence-package assembly and definitive downstream
   analysis from these immutable seals. Existing development-only downstream
   results do not become definitive merely because upstream is now complete.
+
+## 2026-09-24 — One public upstream seal contract for all cohorts (DECIDED)
+
+- Yachida is not a scientifically weaker or legacy dataset. Its native auditor
+  already enforces per-sample baseline, community, and independent topology,
+  verifies retained-output receipts and hashes, and seals the cohort. It was
+  implemented earlier and emits a different evidence schema from the later
+  shared Feng/Zeller auditor.
+- Publication and reproduction will use one configurable common auditor for
+  Yachida, Feng, and Zeller. Differences such as `Target_Condition` versus
+  `condition`, a fixed versus manifest-provided study name, and optional
+  batching are explicit adapter configuration, not separate scientific logic.
+- The common auditor will revalidate existing outputs and emit identical
+  `production_seal_v2` schemas. It will not recompute profiles or modify the
+  verified native seals, which remain provenance evidence.
+- The upstream evidence package and definitive downstream workflows will
+  consume only the three common v2 seals after fixture review and real-cohort
+  validation. Compatibility will be demonstrated, not asserted.

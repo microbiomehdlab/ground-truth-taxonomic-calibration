@@ -14,10 +14,12 @@
   independent profiles. Zeller contains 156 baseline, 1,092 community, and
   1,800 independent profiles. Every member of both production-seal checksum
   manifests verified `OK`.
-- Upstream profiling must not be rerun. The next upstream-facing task is to
-  build and review the checksummed evidence package specified in
-  `UPSTREAM_EVIDENCE_PACKAGE_SPEC.md`; definitive downstream execution remains
-  outstanding.
+- Upstream profiling must not be rerun. Before evidence-package assembly,
+  implement and run the single public three-cohort validation contract in
+  `UNIFIED_UPSTREAM_SEAL_SPEC.md`. It maps the verified Yachida, Feng, and
+  Zeller outputs into identical `production_seal_v2` schemas while preserving
+  their native seals. Evidence-package assembly and definitive downstream
+  execution remain outstanding until those common seals pass.
 - The GUTBIOME Control/LR/HR profiling pilot is separate from the paper's
   three-cohort spike benchmark and must not enter definitive paper inputs.
 

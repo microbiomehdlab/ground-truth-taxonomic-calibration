@@ -47,6 +47,8 @@ efficiency, or biological presence/absence.
 - [x] Complete and checksum-verify the first Feng and Zeller seals against all
   retained receipt contents.
 - [x] Revalidate the existing Yachida production and assembly-sensitivity seals.
+- [ ] Implement and real-data validate one public `upstream_seal_v2` contract
+  across Yachida, Feng, and Zeller without recomputing profiles.
 - [ ] Freeze and record the final taxon identity and alias policy.
 - [ ] Record exact profiler image, analysis image, database, spike FASTA,
   manifest, and source-commit identities.

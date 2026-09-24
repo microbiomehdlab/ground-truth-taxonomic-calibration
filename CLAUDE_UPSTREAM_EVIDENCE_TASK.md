@@ -1,5 +1,11 @@
 # Claude implementation brief: upstream evidence package
 
+> **BLOCKED PREREQUISITE:** Do not implement this task until the unified
+> three-cohort seal specified in `UNIFIED_UPSTREAM_SEAL_SPEC.md` has been
+> implemented, independently reviewed, and successfully run against all three
+> real cohorts. Then consume the three canonical `production_seal_v2`
+> directories rather than parsing different native seal formats.
+
 Implement the frozen design in `UPSTREAM_EVIDENCE_PACKAGE_SPEC.md`.
 
 ## Scope

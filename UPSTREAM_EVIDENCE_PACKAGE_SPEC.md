@@ -3,6 +3,11 @@
 **Status:** design frozen for implementation review
 **Scope:** sealed Yachida, Feng, Zeller, and Yachida assembly-sensitivity
 evidence only
+
+**Prerequisite:** all three cohorts must first pass the common contract in
+`UNIFIED_UPSTREAM_SEAL_SPEC.md`. This package consumes the resulting three
+`production_seal_v2` directories. Native cohort-specific seals remain
+provenance evidence, not separate scientific input interfaces.
 **Out of scope:** taxonomic re-profiling, downstream model fitting, and any
 change to a scientific estimand
 
@@ -29,9 +34,9 @@ hard-coded Lobo path.
 
 Required inputs:
 
-- Yachida production-seal directory;
-- Feng production-seal directory;
-- Zeller production-seal directory;
+- Yachida `production_seal_v2` directory;
+- Feng `production_seal_v2` directory;
+- Zeller `production_seal_v2` directory;
 - Yachida assembly-sensitivity `experiment_seal` directory;
 - the three frozen production manifests;
 - the three frozen independent-subset manifests;
@@ -41,9 +46,9 @@ Required inputs:
 - repository root or explicit source commit;
 - a new output directory.
 
-Every production seal must contain `SUCCESS` and its checksum manifest. Yachida
-uses `production_seal.sha256`; Feng and Zeller use the same name after the CRC
-seal audit. Assembly sensitivity must contain `SUCCESS` and
+Every production v2 seal must contain the identical canonical member set,
+`SUCCESS` schema, and `production_seal.sha256` contract defined in
+`UNIFIED_UPSTREAM_SEAL_SPEC.md`. Assembly sensitivity must contain `SUCCESS` and
 `experiment_inputs_and_summary.sha256`.
 
 ## 3. Required validation
@@ -72,9 +77,9 @@ The builder must fail before writing final `SUCCESS` if any condition is false.
 - Require every sample status to be `PASS`.
 - Require manifest condition labels to use only Control, Adenoma, and CRC.
 - Compare manifest and seal sample sets exactly, not only their counts.
-- Normalize the documented manifest schema difference explicitly: Yachida uses
-  `Target_Condition`, while Feng and Zeller use `condition`. Reject any other
-  implicit condition-column inference.
+- Require the canonical manifest columns `sample_id`, `condition`, `study`, and
+  `independent_subset` in every v2 seal. Native column-name differences must
+  already have been resolved and audited by the unified seal workflow.
 
 ### Provenance and privacy
 
