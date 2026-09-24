@@ -1,7 +1,32 @@
 # Next actions and execution order
 
 **Purpose:** operational starting point for the next agent.
-**Last updated:** 21 September 2026.
+**Last updated:** 23 September 2026.
+
+## Current operational checkpoint
+
+- Yachida remains complete and production-sealed.
+- Feng has 152/154 persistent `.verified` markers and 152/154 retained-output
+  receipts. At the last manual check, `SID31874` was running and `SID530697`
+  had been submitted as a targeted retry. Recheck Slurm and persistent state;
+  do not infer current status from this dated note.
+- The 152 completed Feng receipts tested so far point to existing retained
+  files. The definitive seal defect was identified and fixed locally: the
+  production runner creates zero-byte `SUCCESS` sentinels with `touch`, while
+  the audit had incorrectly required nonempty markers. The repaired audit now
+  accepts marker existence, rehashes every retained output, constrains receipt
+  paths to the sample's persistent results/QC roots, invalidates stale seals,
+  and has a passing production-style regression test. Transfer and run it on
+  the cluster after both outstanding samples finish; do not rerun the 152
+  completed samples.
+- Zeller completion and its definitive upstream seal must be re-audited from
+  the frozen 156-sample manifest.
+- The GUTBIOME Control/LR/HR profiling pilot is separate from the paper's
+  three-cohort spike benchmark and must not enter definitive paper inputs.
+
+Public-release documentation and deferred metadata/archive work are tracked in
+`PUBLIC_RELEASE_CHECKLIST.md`. That checklist is the concise release-facing
+task list; this file remains the detailed operational handoff.
 
 **Provisional paper figure book (21 September 2026):** Six main figures and
 seven supplementary candidates are inventoried in

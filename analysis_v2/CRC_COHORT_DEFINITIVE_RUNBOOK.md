@@ -10,25 +10,31 @@ cohort has a nested, outcome-independent 30-sample individual-spike subset
 balanced as 10 Control, 10 Adenoma, and 10 CRC. Community spikes use every
 eligible production sample.
 
-After a cohort finishes upstream, create its seal. For Feng:
+After a cohort finishes upstream, create its seal in a compute job because the
+audit rehashes every retained output. For Feng:
 
 ```bash
-source config/feng.strict-production.env
-python3 analysis_v2/scripts/seal_crc_cohort_upstream.py \
-  --cohort feng \
-  --manifest datasets/fengq/manifests/production_manifest.tsv \
-  --independent-manifest datasets/fengq/manifests/production_manifest.independent.tsv \
-  --state-dir "$CRC_STATE_DIR" \
-  --results-root "$PERSISTENT_RESULTS_ROOT" \
-  --expected-samples 154 \
-  --outdir "$CRC_STATE_DIR/production_seal"
+export PROJECT="$PWD"
+export CRC_ENV="$PWD/config/feng.strict-production.env"
+export COHORT=feng
+export PRODUCTION_MANIFEST="$PWD/datasets/fengq/manifests/production_manifest.tsv"
+export INDEPENDENT_MANIFEST="$PWD/datasets/fengq/manifests/production_manifest.independent.tsv"
+export EXPECTED_SAMPLES=154
+AUDIT_JOB="$(sbatch --parsable --export=ALL run_crc_cohort_upstream_audit.sbatch)"
+echo "$AUDIT_JOB"
 ```
 
-For Zeller, use `--cohort zeller`, the `datasets/zellerg` manifests,
-`--expected-samples 156`, and the Zeller environment. The seal fails if any
+For Zeller, set `COHORT=zeller`, use the `datasets/zellerg` manifests,
+`EXPECTED_SAMPLES=156`, and the Zeller environment. The seal fails if any
 sample lacks verified provenance, its retained-output receipt, top-level
-success, or exactly 8/68 successful native profiles. It writes the complete
-sample-flow and covariate-missingness ledgers even when incomplete.
+success, or exactly 8/68 successful native profiles. Production `SUCCESS`
+sentinels may be zero-byte files created with `touch`; evidence tables must be
+nonempty. The seal independently rehashes every file in every retained-output
+receipt, verifies its byte count, and rejects any retained path inside the
+sample's disposable scratch directory or outside that sample's persistent
+results and QC roots. It invalidates an older seal before starting and writes
+the complete sample-flow and covariate-missingness ledgers even when
+incomplete.
 
 Then run a preflight in a new directory:
 

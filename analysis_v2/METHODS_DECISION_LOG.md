@@ -1257,3 +1257,25 @@ check. The maintained runner now passes the generated manifest, asserts its
 schema, and supports `RESUME_RUN_ROOT`. Completed abundance/endpoints are reused,
 while an incomplete response-input directory is moved under `failed_attempts/`
 before retry. No completed artifact is deleted or recomputed during this resume.
+
+## 2026-09-23 — CRC upstream-seal marker and receipt contract
+
+- **Defect:** production creates sample and profile `SUCCESS` sentinels with
+  `touch`, but `seal_crc_cohort_upstream.py` required every marker to be
+  nonempty. Real Feng auditing therefore reported zero successful profiles for
+  152 samples whose persistent `.verified` markers and retained-output receipts
+  existed. The fixture had hidden the mismatch by writing text into markers.
+- **Decision:** sentinel validity is file existence. Evidence tables,
+  provenance, receipts, and manifests must remain nonempty. Existing samples
+  are validated, not rewritten to manufacture a different marker format.
+- **Hardening:** the CRC seal now rehashes every retained file, verifies the
+  recorded byte count, rejects duplicate receipt paths, rejects paths inside
+  disposable sample scratch, and permits paths only under that sample's
+  persistent results or QC root. It invalidates an older `SUCCESS` and checksum
+  before starting and leaves `AUDIT_IN_PROGRESS` after any failed or interrupted
+  audit.
+- **Verification:** the fixture now uses zero-byte production-style markers and
+  a valid retained-output receipt. It passes the successful seal path and proves
+  that same-size content corruption causes SHA-256 failure and invalidates a
+  prior seal. Cluster execution against complete Feng and Zeller remains
+  required.

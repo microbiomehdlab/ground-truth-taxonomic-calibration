@@ -137,11 +137,27 @@ cohorts are complete, all batches are audited, the remaining sensitivity checks
 are resolved, and the paired statistical-analysis specification and downstream
 figures are finalized.
 
-As of the dated operational snapshot in `WORK_HANDOFF.md`, Yachida is complete
-and production-sealed; Zeller strict production is still completing; and Feng
-strict-production completion has not been verified. The existing three-cohort
-downstream package therefore combines sealed Yachida with historical Feng and
-Zeller profiles and must remain `DEVELOPMENT_ONLY`.
+The last manually verified cluster checkpoint was 23 September 2026. Yachida
+is complete and production-sealed. Feng had 152 of 154 persistent verified
+markers and retained-output receipts; `SID31874` was still running and
+`SID530697` had been submitted as a targeted retry. This is a dated checkpoint,
+not a completion claim. Zeller must be recounted from its frozen manifest,
+persistent state, and retained receipts before its status is restated.
+
+The Feng seal audit exposed and the local source now fixes a marker-semantics
+defect. Production creates zero-byte `SUCCESS` sentinels with `touch`, whereas
+the original CRC seal incorrectly required nonempty marker files. The repaired
+seal requires existence for sentinels, retains nonempty requirements for
+evidence tables, independently verifies every retained-output byte count and
+SHA-256, restricts receipt paths to the sample's persistent results/QC roots,
+and invalidates stale seals before auditing. A production-style regression test
+passes locally. The fix still requires cluster transfer and execution against
+the complete cohort; it does not justify recomputing completed samples.
+
+The existing three-cohort downstream package therefore remains
+`DEVELOPMENT_ONLY`. Final revised-paper claims require sealed strict-production
+inputs for all three cohorts and a fresh definitive synthesis. See
+`PUBLIC_RELEASE_CHECKLIST.md` for release gates and deferred metadata tasks.
 
 For CRC rolling production, do not infer missing samples from the absence of an
 array in `squeue`: finished array elements disappear from the live queue, and

@@ -1,10 +1,10 @@
 # Ground-truth taxonomic calibration workflow
 
-This repository contains the complete computational workflow for the
-accompanying CRC-biomarker evaluation study: public-read acquisition,
-controlled spike construction, taxonomic profiling, quantitative recovery,
-MaAsLin2 biomarker analysis, artefact filtering, calibratability analysis, and
-manuscript Figures 2–7. It supports the two profilers used in the paper:
+This repository contains the computational workflow for the accompanying
+CRC-biomarker evaluation study: public-read acquisition, controlled spike
+construction, taxonomic profiling, paired quantitative recovery, measurement-
+response analysis, and downstream biomarker-robustness evaluation. It supports
+the two profilers used in the paper:
 
 - MetaPhlAn 4
 - Kraken2 with Bracken
@@ -19,6 +19,18 @@ For a clean end-to-end route through the repository, start with
 [`REPRODUCING.md`](REPRODUCING.md). It distinguishes frozen publication paths,
 machine-specific configuration, validation gates, generated evidence, and
 legacy compatibility entry points.
+
+The current publication analysis is the paired `analysis_v2` workflow. Start
+with [`analysis_v2/README.md`](analysis_v2/README.md), then use the Yachida and
+CRC-cohort definitive runbooks. The root-level `original_unpaired_q010` entry
+points reproduce the historical preprint analysis only; they are retained for
+provenance and are not the route to the revised definitive results.
+
+Repository preparation for public release is tracked in
+[`PUBLIC_RELEASE_CHECKLIST.md`](PUBLIC_RELEASE_CHECKLIST.md). Until its
+definitive cohort, synthesis, source-data, and archive gates pass, this is a
+reproducible workflow under final qualification rather than a frozen
+reproduction package for the revised paper.
 
 For the current working state—including the scientific changes from the
 preprint, live upstream qualification, transferred output directories, known
@@ -70,6 +82,7 @@ workflows/
 R/                            reusable downstream R functions
 scripts/                      analysis/plot entry points and repository checks
 containers/                   downstream MaAsLin2 analysis environment
+analysis_v2/                  paired definitive analysis and reporting workflow
 examples/                     small manifest and taxon-alias examples
 tests/                        dependency-free workflow smoke tests
 *.sh and *.sbatch             top-level staging, validation, and run entry points
@@ -88,10 +101,14 @@ are intentionally excluded from Git.
 | `taxonomy/run_profiling.sh` | Submit taxonomic profiling for a sample manifest |
 | `stage_required_inputs.sh` | Stage completed profiler outputs for analysis |
 | `preflight_all.sh` | Validate the integrated upstream and downstream workflow |
-| `run_original_unpaired_q010_cluster.sbatch` | Submit the complete statistical analysis and figure regeneration |
-| `run_publication_original_unpaired_q010.sh` | Run the same downstream workflow inside an allocated job |
-| `rerun_current_figures_only.sh` | Regenerate manuscript Figures 2–7 from a completed run without repeating upstream analyses |
-| `rerun_supplementary_figures_only.sh` | Regenerate Supplementary Figures B1–B14 and, when database-audit inputs are supplied, Supplementary Table A7 |
+| `run_yachida_definitive_analysis.sbatch` | Run the fail-closed paired analysis for sealed Yachida inputs |
+| `run_crc_cohort_definitive_analysis.sbatch` | Run the paired framework separately for sealed Feng or Zeller inputs |
+| `analysis_v2/run_three_cohort_definitive_synthesis.sh` | Combine only three sealed definitive cohort packages |
+| `analysis_v2/run_three_cohort_publication_report.sh` | Build final overview outputs and provenance from definitive synthesis |
+| `run_original_unpaired_q010_cluster.sbatch` | Reproduce the historical preprint analysis only |
+| `run_publication_original_unpaired_q010.sh` | Run the historical unpaired workflow inside an allocated job |
+| `rerun_current_figures_only.sh` | Regenerate historical preprint Figures 2–7 from a completed legacy run |
+| `rerun_supplementary_figures_only.sh` | Regenerate historical supplementary figures from a completed legacy run |
 | `transfer_analysis_to_cluster.sh` | Transfer the reviewed analysis code and staged inputs |
 
 `R/` and `scripts/` intentionally have different roles: files under `R/`

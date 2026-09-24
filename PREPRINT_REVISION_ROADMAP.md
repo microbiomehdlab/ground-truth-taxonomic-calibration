@@ -6,6 +6,12 @@
 **Source manuscript reviewed:** bioRxiv version 1, DOI 10.64898/2026.08.02.742082
 **Important evidence warning:** unless explicitly stated otherwise, current three-cohort downstream results are `DEVELOPMENT_ONLY`. They combine definitive Yachida output with historical Feng and Zeller output. Final estimates and figures must be regenerated from sealed strict-production outputs for all three cohorts.
 
+**Operational update, 23 September 2026:** the release-facing remaining-work
+list is maintained in `PUBLIC_RELEASE_CHECKLIST.md`, while live cluster work is
+tracked in `NEXT_ACTIONS.md`. At the last manual checkpoint Feng had 152/154
+verified receipts, with two samples still in active completion/retry. This
+checkpoint does not alter the `DEVELOPMENT_ONLY` evidence warning above.
+
 ### Evidence update: profiler-scale correction
 
 The sealed Yachida development propagation established that the abundance-scale
