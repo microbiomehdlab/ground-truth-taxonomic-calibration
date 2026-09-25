@@ -42,9 +42,9 @@ Frozen expectations:
 
 | Cohort | Samples | Conditions | Baseline | Community | Independent |
 |---|---:|---|---:|---:|---:|
-| Yachida | 201 | 67/67/67 | 201 | 1,407 | 1,800 |
-| Feng | 154 | frozen manifest counts | 154 | 1,078 | 1,800 |
-| Zeller | 156 | frozen manifest counts | 156 | 1,092 | 1,800 |
+| Yachida | 201 | `Control=67,Adenoma=67,CRC=67` | 201 | 1,407 | 1,800 |
+| Feng | 154 | `Control=61,Adenoma=47,CRC=46` | 154 | 1,078 | 1,800 |
+| Zeller | 156 | `Control=61,Adenoma=42,CRC=53` | 156 | 1,092 | 1,800 |
 
 ## 3. Configuration, not cohort-specific scientific logic
 
@@ -131,6 +131,88 @@ the checksum are created only after all validation succeeds.
 Native format differences are allowed only in the adapter/parser layer. All
 cohorts must pass the same retained-output, topology, identity, and canonical
 schema checks.
+
+## 5a. Observed sealed Yachida manifest headers (inspected 25 September 2026)
+
+The sealed production manifest has 29 columns with no duplicates, and carries
+`age`, `sex`, `bmi`, `batch_id` and one set of `selection_rank`,
+`selection_hash` and `selection_seed`.
+
+The sealed independent manifest has 26 columns. It carries `age`, `sex` and
+`bmi`; it carries **no** `batch_id` or other batch field; and it carries
+**exactly two occurrences each** of `selection_rank`, `selection_hash` and
+`selection_seed`. The first occurrence is inherited from the pilot selection;
+the second was appended by the independent-subset selection step.
+
+This has three consequences for the contract.
+
+**Yachida covariates.** The audited covariates are `age`, `sex`, `bmi` and
+`batch_id`, all demonstrably present in the production manifest.
+
+**Production-only batch fields.** Required columns are split. The production
+manifest requires `sample_id`, `Target_Condition`, `age`, `sex`, `bmi` and
+`batch_id`. The independent manifest requires `sample_id`,
+`Target_Condition`, `age`, `sex` and `bmi`, and must **not** be required to
+carry `batch_id`, `batch_hash`, `batch_position`, `batch_size`, `batch_seed`,
+`processing_order` or any other production-only batch field. Every column the
+two manifests share must still agree exactly, row by row.
+
+**Strict historical-independent header adapter.** The sealed independent
+manifest is checksummed and must remain byte-identical; it is never rewritten.
+It is instead read positionally and translated by occurrence, and only when the
+Yachida adapter explicitly selects the
+`yachida_historical_duplicate_selection` schema. That schema accepts **exactly
+two formats and nothing else**.
+
+*Format A — the historical sealed header.* `selection_rank`, `selection_hash`
+and `selection_seed` each appear exactly twice, and are translated by
+occurrence:
+
+| Occurrence | Source column | Canonical name |
+|---|---|---|
+| first | `selection_rank` | `pilot_selection_rank` |
+| first | `selection_hash` | `pilot_selection_hash` |
+| first | `selection_seed` | `pilot_selection_seed` |
+| second | `selection_rank` | `independent_selection_rank` |
+| second | `selection_hash` | `independent_selection_hash` |
+| second | `selection_seed` | `independent_selection_seed` |
+
+*Format B — the corrected header the migrated selector emits.* Exactly one
+`pilot_selection_rank`/`pilot_selection_hash`/`pilot_selection_seed` triplet and
+exactly one `independent_selection_rank`/`independent_selection_hash`/
+`independent_selection_seed` triplet, and **no** bare `selection_*` column. No
+translation is needed; the names are already unambiguous.
+
+Everything else is refused, including:
+
+- a single bare `selection_rank`/`selection_hash`/`selection_seed` triplet,
+  whose provenance is ambiguous;
+- three or more occurrences of a bare field, or an incomplete duplicated
+  triplet;
+- a partial `pilot_*` or partial `independent_*` triplet;
+- a mixture of bare and prefixed selection fields;
+- missing pilot provenance or missing independent provenance;
+- any duplicated field outside the exact historical triplet.
+
+This is a narrowly specified translation of one checksummed historical format
+into an unambiguous canonical representation. It is **not** general tolerance of
+duplicate headers: production manifests always reject duplicates, and Feng and
+Zeller independent manifests always reject duplicates. In both accepted formats
+the pilot values must agree with the production manifest's own selection values,
+the independent values are preserved in the canonical independent manifest, and
+the canonical header must be unique. Byte-identity checks against the native
+seal and the authoritative manifests are always performed on the original
+unmodified bytes.
+
+**Corrected future selector output.** The duplication originated in
+`scripts/select_samples_deterministically.py`, which appended
+`selection_rank`, `selection_hash` and `selection_seed` even when those names
+already existed. It now preserves existing non-colliding behaviour exactly, and
+on a collision fails unless the caller supplies explicit provenance prefixes
+(`--existing-selection-prefix pilot`, `--new-selection-prefix independent`).
+The Yachida reproduction command uses those prefixes. The unified auditor
+accepts both the historical sealed manifest through the strict adapter and a
+newly reproduced prefixed manifest.
 
 ## 6. Public entry points
 

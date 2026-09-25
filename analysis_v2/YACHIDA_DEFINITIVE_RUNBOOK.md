@@ -42,6 +42,14 @@ experiment.
 
 ## Exact Lobo launch sequence
 
+The native audit below produces Yachida's source seal and is unchanged. The
+public, cross-cohort upstream workflow that consumes it is
+`UNIFIED_UPSTREAM_SEAL.md`, run through
+`analysis_v2/run_cohort_upstream_audit.sbatch`; it emits the canonical
+`production_seal_v2` layout shared with Feng and Zeller. Its frozen
+expectations for Yachida are 201 samples and
+`EXPECTED_CONDITIONS="Control=67,Adenoma=67,CRC=67"`.
+
 After all upstream sample jobs finish, submit the production audit from the
 project root. A valid audit has `SUCCESS` and `production_seal.sha256` and no
 `AUDIT_IN_PROGRESS`. Any failed, cancelled, or interrupted audit invalidates

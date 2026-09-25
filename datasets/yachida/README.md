@@ -58,8 +58,23 @@ python3 scripts/select_samples_deterministically.py \
   --manifest work/yachida/metadata/pilot_67_per_condition.tsv \
   --output work/yachida/metadata/independent_10_per_condition.tsv \
   --per-condition 10 \
-  --selection-seed ground-truth-taxonomic-calibration-yachida-independent-v1
+  --selection-seed ground-truth-taxonomic-calibration-yachida-independent-v1 \
+  --existing-selection-prefix pilot \
+  --new-selection-prefix independent
 ```
+
+The two prefixes are required here because the pilot manifest already carries
+`selection_rank`, `selection_hash` and `selection_seed`. The originally sealed
+independent manifest was produced before the selector had them, so it holds
+each of those three names **twice**: the first occurrence is the inherited
+pilot value and the second is the independent-subset value. That sealed file is
+checksummed and is never rewritten; the unified upstream auditor reads it
+through an explicit occurrence-based adapter
+(`analysis_v2/UNIFIED_UPSTREAM_SEAL.md`). Reproducing the selection today emits
+`pilot_selection_*` and `independent_selection_*` instead, so the header is
+unambiguous. Row selection is identical either way; only the column names
+differ. Without the prefixes the selector now fails rather than appending a
+duplicate column.
 
 This selects 10 Control, 10 Adenoma, and 10 CRC samples from within the frozen
 201-sample pilot. The recommended first analysis uses all 201 samples for

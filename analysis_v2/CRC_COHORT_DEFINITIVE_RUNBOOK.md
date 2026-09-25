@@ -10,6 +10,16 @@ cohort has a nested, outcome-independent 30-sample individual-spike subset
 balanced as 10 Control, 10 Adenoma, and 10 CRC. Community spikes use every
 eligible production sample.
 
+The public upstream workflow for all three cohorts is
+`UNIFIED_UPSTREAM_SEAL.md`, run through
+`analysis_v2/run_cohort_upstream_audit.sbatch`. It consumes the native seal
+created below as immutable provenance and emits the canonical
+`production_seal_v2` layout that the evidence package and definitive downstream
+workflows take as input. The native audit below is still how that source seal
+is produced, and it remains unchanged. The frozen condition counts the unified
+workflow requires are `Control=61,Adenoma=47,CRC=46` for Feng's 154 samples and
+`Control=61,Adenoma=42,CRC=53` for Zeller's 156.
+
 After a cohort finishes upstream, create its seal in a compute job because the
 audit rehashes every retained output. For Feng:
 

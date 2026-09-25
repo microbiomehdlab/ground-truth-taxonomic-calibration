@@ -4,6 +4,177 @@ This tracked log records decisions that affect manuscript methods or
 interpretation. Generated run directories preserve the corresponding inputs,
 diagnostics, provenance, and checksums.
 
+## 2026-09-25 — Unified upstream cohort seal implemented (code only)
+
+**DECIDED** in `UNIFIED_UPSTREAM_SEAL_SPEC.md` (frozen 24 September 2026) and
+now implemented: one configurable auditor validates Yachida, Feng and Zeller
+against the same scientific and integrity contract and emits one canonical
+`production_seal_v2` layout. Public entry points are
+`analysis_v2/scripts/seal_cohort_upstream.py`,
+`analysis_v2/run_cohort_upstream_audit.sbatch`,
+`analysis_v2/tests/test_unified_upstream_seal.py` and
+`analysis_v2/UNIFIED_UPSTREAM_SEAL.md`.
+
+- **Validation and interface migration only.** No profile is recomputed, no
+  retained output is rewritten, and no native seal is modified. The native
+  auditors `datasets/yachida/audit_production.py` and
+  `analysis_v2/scripts/seal_crc_cohort_upstream.py` are untouched and keep
+  producing the source seals this workflow consumes.
+- **Source seals are immutable provenance.** Every checksum in the native seal
+  is verified before it is trusted, its success sentinel is required, an
+  `AUDIT_IN_PROGRESS` marker is rejected, and its manifest copies must be
+  byte-identical to the authoritative manifests. The seal is only ever read;
+  fixture case 17 proves byte identity after both success and failure.
+- **Scientific contract is identical for every cohort** and is not relaxed for
+  Yachida: per-sample topology is checked component by component (one baseline,
+  seven community, sixty independent for subset members, zero otherwise), never
+  by total alone; retained outputs are rehashed and confined to that sample's
+  permitted results or QC roots and outside disposable scratch; identity,
+  condition, subset membership and completion metadata must agree exactly. The
+  frozen counts and the 30-sample 10/10/10 subset are unchanged.
+- **Cohort differences are adapter configuration at the boundary only:**
+  condition column (`Target_Condition` versus `condition`), fixed study value
+  versus study column, optional `batch_id`, whether completion tables carry a
+  study field, audited covariates, and the native seal's logical member names.
+  Nothing is discovered by search; ambiguous study configuration, unknown
+  cohorts, missing columns, duplicate fields and unsafe paths are refused.
+- **Ordering and atomicity.** Publication authority is invalidated before any
+  work, ledgers are written even on failure so the failure is auditable, and
+  the checksum manifest is written before the `SUCCESS` it covers. Every file
+  is created atomically.
+- **Canonical manifests** normalize `sample_id`, `condition`, `study` and
+  `independent_subset` and preserve original columns under collision-safe
+  `source_<name>` aliases; the independent manifest must be an exact
+  row-consistent subset. Feng's native audit job `3097587` and Zeller's
+  `3097588` are recorded in the source-seal inventory; no Yachida job
+  identifier is inferred and the field stays blank.
+- **Standard library only**, with postponed annotation evaluation for the
+  cluster's older Python.
+
+**Status: not executed against real cohort outputs.** Only the synthetic
+fixture suite has run (25 tests at the time of this entry, covering all 18
+frozen cases, plus mutation checks; see the 2026-09-25 addendum below for the
+corrected suite). Per the specification's acceptance gate, the workflow is complete only
+after the suite passes on the cluster, Codex reviews it, all three real cohorts
+seal and verify, counts agree with the native evidence, and no source seal or
+profile changed. `UPSTREAM_EVIDENCE_PACKAGE_SPEC.md` remains unimplemented and
+must not be started before that gate closes.
+
+**2026-09-25 addendum — Codex review corrections (code only).** Seven defects in
+the first implementation were corrected; the scientific design, frozen counts
+and canonical schemas are unchanged.
+
+1. **Path safety precedes every side effect.** Overlap between `--outdir` and
+   the native seal — equality, outdir inside seal, or seal inside outdir — is
+   now rejected in `resolve_paths` before `mkdir`, before any stale authority
+   is deleted, and before any write. Previously the directory could be created
+   and authority removed before the check ran.
+2. **Covariate auditing reads the original values.** Audited fields are
+   resolved through the explicit original-to-canonical mapping and named for a
+   real column of `production_manifest.tsv`. A covariate whose name collides
+   with a canonical one (for example a manifest `condition` column) is reported
+   as `source_<name>` from its own values instead of being shadowed by the
+   normalized column. Yachida audits `batch_id`, which its frozen manifest
+   actually carries; no age/sex/bmi fields are invented. **Superseded by
+   addendum 2 below:** the inspected manifest does carry `age`, `sex` and
+   `bmi`, and all four are audited.
+3. **Independent-manifest selection provenance is supported.** The independent
+   manifest no longer has to repeat the production header exactly. Extra
+   deterministic-selection columns are allowed and preserved collision-safely;
+   every column needed for identity and scientific metadata must be present,
+   and every shared column must match the production row exactly. Sample
+   identity and subset nesting are unchanged.
+4. **Interrupted temporaries are recoverable, not fatal.** Only `<member>.tmp`
+   siblings of known seal members are recognized; those are removed before a
+   new audit, any other unexpected file still fails closed, and stale
+   `SUCCESS`/checksum are still dropped before validation.
+5. **The native SUCCESS is validated semantically**, not merely checksummed,
+   through explicit per-cohort schema adapters (`yachida_dataset` and
+   `cohort_profiles`). Identity, sample count, independent count, profile
+   totals, condition counts where present, and `PASS` status must agree with
+   the selected cohort and the explicit expectations. No format is inferred.
+6. **Source-seal immutability is reverified before authority is granted.**
+   Immediately before the unified checksum and `SUCCESS` are written, the seal
+   must still have no `AUDIT_IN_PROGRESS`, the same verified inventory, and the
+   same byte-identical manifest copies. A seal that changes mid-audit cannot be
+   sealed over.
+7. **Frozen condition counts are recorded** and cross-checked whenever the run
+   is at production scale: Yachida `Control=67,Adenoma=67,CRC=67`; Feng
+   `Control=61,Adenoma=47,CRC=46`; Zeller `Control=61,Adenoma=42,CRC=53`.
+
+**Atomicity is stated accurately.** The implementation provides per-member
+atomic replacement plus fail-closed authority ordering, not whole-directory
+atomicity; the documentation no longer implies otherwise.
+
+Fixture suite: 54 tests, still covering all 18 frozen cases, with mutation
+checks confirming each corrected gate is load-bearing. **Still not executed
+against real cohort outputs**; the acceptance gate is unchanged.
+
+
+**2026-09-25 addendum 2 — corrected against the inspected sealed Yachida
+headers.** The real manifests were read: the production manifest has 29 unique
+columns including `age`, `sex`, `bmi`, `batch_id` and one selection triplet; the
+independent manifest has 26 columns including `age`, `sex`, `bmi`, **no** batch
+field, and `selection_rank`/`selection_hash`/`selection_seed` **twice** each.
+
+- **Yachida covariates are `age`, `sex`, `bmi` and `batch_id`.** The earlier
+  claim that `batch_id` was the only known Yachida metadata field is withdrawn.
+- **Required columns are split.** Production-only batch provenance
+  (`batch_id`, `batch_hash`, `batch_position`, `batch_size`, `batch_seed`,
+  `processing_order`) is required in the production manifest only. Shared
+  columns must still agree exactly, row by row.
+- **A strict occurrence-based adapter reads the historical duplicated header.**
+  Selected only by the Yachida adapter, it maps the first
+  `selection_rank`/`hash`/`seed` to `pilot_selection_*` and the second to
+  `independent_selection_*`. The sealed file is read positionally and never
+  rewritten; byte-identity checks use the original bytes. This is a narrow
+  translation of one checksummed historical format, not tolerance of duplicate
+  headers: production manifests, and Feng/Zeller independent manifests, still
+  reject duplicates, and any other duplicate, a lone or triple occurrence, an
+  incomplete triplet, or an occupied translation target all fail. Pilot values
+  must equal the production manifest's selection values; independent values are
+  preserved canonically.
+- **The selector no longer creates the ambiguity.**
+  `scripts/select_samples_deterministically.py` keeps its exact output when
+  there is no collision, and on a collision fails unless
+  `--existing-selection-prefix` and `--new-selection-prefix` are given. The
+  Yachida reproduction command now passes `pilot` and `independent`. Row
+  selection is unchanged, proven by test.
+- **Authority is invalidated before the output directory is judged**, so a run
+  refused for an unexpected member still revokes a stale `SUCCESS`, and the
+  unexpected file is preserved for the operator.
+- **Native SUCCESS topology fields are required, not optionally inspected**, for
+  both documented schemas; a missing field fails even when the file checksums.
+
+Fixture suites: `test_unified_upstream_seal.py` 75 tests and
+`test_independent_selection_audit.py` 7 tests. **Still not executed against real
+cohort outputs**; the acceptance gate is unchanged.
+
+
+**2026-09-25 addendum 3 — two specification inconsistencies closed.**
+
+1. **A single bare selection triplet is now refused.** Under
+   `yachida_historical_duplicate_selection` exactly two independent-manifest
+   formats are accepted: (A) the historical sealed header, with the bare
+   triplet exactly twice each, translated by occurrence to `pilot_selection_*`
+   and `independent_selection_*`; and (B) the corrected selector's header, with
+   exactly one `pilot_*` triplet and one `independent_*` triplet and no bare
+   `selection_*` column. A lone bare triplet, a partial `pilot_*` or
+   `independent_*` triplet, a mixture of bare and prefixed fields, missing
+   pilot or independent provenance, and any duplicate outside the exact
+   historical triplet are all refused. Earlier, a single bare triplet was
+   accepted with ambiguous provenance.
+2. **The stale Yachida adapter comment is gone.** The verified production
+   manifest carries `age`, `sex`, `bmi` and `batch_id`, the adapter audits all
+   four, and the code comment now says so. The contradicted sentence in
+   addendum 1 is marked superseded in place rather than rewritten.
+
+Fixture suites: `test_unified_upstream_seal.py` 82 tests and
+`test_independent_selection_audit.py` 7 tests, with mutation checks confirming
+the new format rules are load-bearing. **Still not executed against real cohort
+outputs.**
+
+
 ## 2026-09-21 — Three-cohort recoverability figure, code-only
 
 A three-panel successor to the old two-cohort biomarker-recoverability figure

@@ -172,6 +172,19 @@ canonical analysis table from it. A previously staged canonical table may be
 supplied explicitly. Set `PREFLIGHT_ONLY=1` to build/validate the table and
 exercise every readiness gate without fitting models.
 
+## Unified upstream cohort seal
+
+`UNIFIED_UPSTREAM_SEAL.md` documents the one public upstream workflow for all
+three paper cohorts. `scripts/seal_cohort_upstream.py`, driven by
+`run_cohort_upstream_audit.sbatch`, validates Yachida, Feng and Zeller against
+the same scientific and integrity contract and emits the same
+`production_seal_v2` layout. Cohort differences are boundary configuration, not
+separate scientific logic. It consumes the verified native seals as immutable
+provenance and never modifies them, recomputes a profile, or rewrites a
+retained output. The native auditors remain available for provenance.
+`tests/test_unified_upstream_seal.py` covers the 18 frozen fixture cases plus the Codex-review corrections. The
+workflow has not yet been executed against real cohort outputs.
+
 ## Feng, Zeller, and three-cohort execution
 
 `CRC_COHORT_DEFINITIVE_RUNBOOK.md` documents the shared fail-closed framework
