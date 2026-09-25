@@ -139,31 +139,41 @@ fail closed.
 ### The historical Yachida independent header
 
 The sealed Yachida independent manifest holds `selection_rank`,
-`selection_hash` and `selection_seed` **twice**: the first occurrence is the
-pilot value it inherited, the second was appended by the independent-subset
-selection step. That file is checksummed and is never rewritten.
+`selection_hash` and `selection_seed` **twice**. Both copies hold the **same
+independent-selection value**: the historical selector overwrote the inherited
+values in its row dictionary before writing, while still listing the triplet
+twice in `fieldnames`, so `csv.DictWriter` emitted the new value into both
+columns. The pilot provenance is therefore *not present in the sealed file at
+all* — it survives only in the production manifest. (An earlier version of this
+document claimed the first occurrence was the pilot value; the real cluster
+audit disproved that and it is withdrawn.) The sealed file is checksummed and
+is never rewritten.
 
 The Yachida adapter's `yachida_historical_duplicate_selection` schema accepts
 **exactly two formats**:
 
 | Format | Header | Handling |
 |---|---|---|
-| A, historical sealed | the bare triplet exactly twice each | read positionally and translated by occurrence: first → `pilot_selection_*`, second → `independent_selection_*` |
-| B, corrected selector | exactly one `pilot_selection_*` triplet and one `independent_selection_*` triplet, no bare `selection_*` | already unambiguous, used as written |
+| A, historical sealed | the bare triplet exactly twice each | read positionally; the two copies must be identical on every row and are the independent provenance. The canonical output takes `independent_selection_*` from them and reconstructs `pilot_selection_*` from the matching production row |
+| B, corrected selector | exactly one `pilot_selection_*` triplet and one `independent_selection_*` triplet, no bare `selection_*` | already unambiguous, used as written; `pilot_selection_*` must equal the production `selection_*` |
+
+Under Format A the production manifest must itself carry the bare selection
+triplet, or the pilot provenance cannot be reconstructed and the audit fails.
 
 Everything else is refused: a **single bare triplet** (ambiguous provenance),
-three or more occurrences, an incomplete duplicated triplet, a partial `pilot_*`
-or `independent_*` triplet, a mixture of bare and prefixed selection fields,
-missing pilot or missing independent provenance, and any duplicated field
-outside the exact historical triplet.
+three or more occurrences, an incomplete duplicated triplet, **two historical
+copies that disagree on any row**, a partial `pilot_*` or `independent_*`
+triplet, a mixture of bare and prefixed selection fields, missing pilot or
+missing independent provenance, and any duplicated field outside the exact
+historical triplet.
 
 This is a narrowly specified translation of one known checksummed format into
 an unambiguous canonical representation — **not** tolerance of duplicate
 headers. Production manifests always reject duplicates, and Feng and Zeller
-independent manifests always reject duplicates. In both accepted formats the
-pilot values must equal the production manifest's own selection values, the
-independent values are preserved in the canonical copy, and the canonical
-header is unique. Byte-identity checks against the native seal and the
+independent manifests always reject duplicates. Both accepted formats yield a
+canonical copy with an unambiguous pilot and independent triplet and a unique
+header: Format B's pilot values are verified against the production manifest,
+Format A's are reconstructed from it. Byte-identity checks against the native seal and the
 authoritative manifests always use the original unmodified bytes.
 
 `scripts/select_samples_deterministically.py` no longer creates this ambiguity.

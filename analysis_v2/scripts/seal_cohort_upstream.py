@@ -148,10 +148,11 @@ SOURCE_SUCCESS_SCHEMAS = ("yachida_dataset", "cohort_profiles")
 #   yachida_historical_duplicate_selection -- accepts exactly two formats and
 #       nothing else:
 #         A. the historical sealed header, carrying selection_rank,
-#            selection_hash and selection_seed exactly twice each. The
-#            checksummed file is never rewritten, so it is read positionally and
-#            translated by occurrence: first -> pilot_selection_*, second ->
-#            independent_selection_*.
+#            selection_hash and selection_seed exactly twice each. The old
+#            selector overwrote the inherited values before writing, so BOTH
+#            copies hold the independent-selection value and must be identical
+#            on every row; pilot provenance survives only in the production
+#            manifest and is reconstructed from it.
 #         B. the corrected header the migrated selector now emits, carrying
 #            exactly one pilot_selection_* triplet and exactly one
 #            independent_selection_* triplet and no bare selection_* column.
@@ -165,6 +166,9 @@ HISTORICAL_DUPLICATE_FIELDS = ("selection_rank", "selection_hash",
                                "selection_seed")
 HISTORICAL_FIRST_PREFIX = "pilot"
 HISTORICAL_SECOND_PREFIX = "independent"
+# Internal name for the second physical copy of a historical field. It is
+# validated against the first copy and then dropped; it never reaches output.
+HISTORICAL_COPY_PREFIX = "__historical_duplicate_"
 
 
 class SealError(Exception):
@@ -265,17 +269,27 @@ def raw_header(path: Path):
 
 
 def translate_historical_independent_header(path: Path, header):
-    """Translate the one documented duplicated Yachida header by occurrence.
+    """Classify the Yachida independent header and plan its translation.
 
-    The sealed independent manifest was produced by running the deterministic
-    selector over a manifest that already carried pilot selection provenance,
-    so it holds `selection_rank`, `selection_hash` and `selection_seed` twice:
-    the first occurrence is the inherited pilot value, the second is the
-    independent-subset value. The file is checksummed and is never rewritten,
-    so it is read positionally and renamed into unambiguous canonical names.
+    Evidence from the historical selector (confirmed on the real sealed
+    manifest, 25 September 2026): it built each selected row as
+    ``{**row, "selection_rank": new, "selection_hash": new,
+    "selection_seed": new}``, which **overwrote** the inherited pilot values in
+    the dictionary, while its `fieldnames` list still carried the original
+    triplet plus the appended one. `csv.DictWriter` therefore wrote the same new
+    value into *both* occurrences. The two historical copies are consequently
+    duplicate copies of the **independent** selection provenance; the pilot
+    provenance survives only in the production manifest.
 
-    Returns the translated header plus the production column each translated
-    name must be compared against.
+    Returns four values:
+
+    * ``positional`` -- one name per physical column, used to read rows. The
+      first occurrence of a duplicated field becomes
+      ``independent_selection_<field>`` and the second a reserved internal
+      name that is validated and then dropped.
+    * ``canonical`` -- the unambiguous output header.
+    * ``provenance`` -- translated name -> production column it must equal.
+    * ``historical`` -- whether Format A was recognised.
     """
     counts = {}
     for name in header:
@@ -309,13 +323,13 @@ def translate_historical_independent_header(path: Path, header):
     if all(total == 1 for total in pilot.values()) and all(
             total == 1 for total in independent.values()) and not any(
             bare.values()):
-        # Format B: already unambiguous, as the corrected selector emits. A
-        # `pilot_<field>` column carries the same inherited provenance the
-        # historical first occurrence does, so it is verified the same way.
+        # Format B: the corrected selector writes both provenances explicitly,
+        # so `pilot_<field>` is a real inherited value and is verified against
+        # the production manifest.
         provenance = dict(
             ("%s_%s" % (HISTORICAL_FIRST_PREFIX, field), field)
             for field in HISTORICAL_DUPLICATE_FIELDS)
-        return list(header), provenance
+        return list(header), list(header), provenance, False
 
     if not all(total == 2 for total in bare.values()):
         if prefixed_present:
@@ -332,34 +346,48 @@ def translate_historical_independent_header(path: Path, header):
             "%s mixes the historical duplicated selection triplet with "
             "prefixed selection fields; observed %s" % (path.name, summary))
 
-    translated = []
-    provenance = {}
+    # Format A. Neither raw occurrence is pilot provenance, so neither is
+    # labelled as such; both are independent provenance and must agree.
+    positional = []
     seen = {}
     for name in header:
         if name in HISTORICAL_DUPLICATE_FIELDS:
             occurrence = seen.get(name, 0)
             seen[name] = occurrence + 1
-            prefix = (HISTORICAL_FIRST_PREFIX if occurrence == 0
-                      else HISTORICAL_SECOND_PREFIX)
-            renamed = "%s_%s" % (prefix, name)
+            renamed = ("%s_%s" % (HISTORICAL_SECOND_PREFIX, name)
+                       if occurrence == 0
+                       else "%s%s" % (HISTORICAL_COPY_PREFIX, name))
             if renamed in header:
                 raise SealError(
                     "%s already contains %s, so the historical selection "
                     "triplet cannot be translated unambiguously"
                     % (path.name, renamed))
-            translated.append(renamed)
-            # The pilot occurrence is the production manifest's own value.
-            if occurrence == 0:
-                provenance[renamed] = name
+            positional.append(renamed)
         else:
-            translated.append(name)
-    duplicates = sorted({name for name in translated
-                         if translated.count(name) > 1})
+            positional.append(name)
+    duplicates = sorted({name for name in positional
+                         if positional.count(name) > 1})
     if duplicates:
         raise SealError(
             "%s cannot be translated to a unique header; duplicate(s): %s"
             % (path.name, ", ".join(duplicates)))
-    return translated, provenance
+    plain = [name for name in positional
+             if not name.startswith(HISTORICAL_COPY_PREFIX)
+             and name not in ["%s_%s" % (HISTORICAL_SECOND_PREFIX, field)
+                              for field in HISTORICAL_DUPLICATE_FIELDS]]
+    canonical = plain + [
+        "%s_%s" % (HISTORICAL_FIRST_PREFIX, field)
+        for field in HISTORICAL_DUPLICATE_FIELDS] + [
+        "%s_%s" % (HISTORICAL_SECOND_PREFIX, field)
+        for field in HISTORICAL_DUPLICATE_FIELDS]
+    for name in canonical:
+        if canonical.count(name) > 1:
+            raise SealError(
+                "%s cannot be translated to a unique header; duplicate(s): %s"
+                % (path.name, name))
+    # Pilot provenance is reconstructed from the production manifest, so there
+    # is nothing in this file to compare it against.
+    return positional, canonical, {}, True
 
 
 def read_independent_table(path: Path, adapter):
@@ -374,10 +402,11 @@ def read_independent_table(path: Path, adapter):
             raise SealError(
                 "%s has duplicate column(s): %s"
                 % (path.name, ", ".join(duplicates)))
-        translated, provenance = list(header), {}
+        positional, canonical, provenance, historical = (
+            list(header), list(header), {}, False)
     elif schema == "yachida_historical_duplicate_selection":
-        translated, provenance = translate_historical_independent_header(
-            path, header)
+        positional, canonical, provenance, historical = (
+            translate_historical_independent_header(path, header))
     else:
         raise SealError("unknown independent header schema %r" % schema)
     rows = []
@@ -387,14 +416,29 @@ def read_independent_table(path: Path, adapter):
         for number, values in enumerate(reader, start=2):
             if not values:
                 continue
-            if len(values) != len(translated):
+            if len(values) != len(positional):
                 raise SealError(
                     "%s line %d has %d field(s) but the header has %d"
-                    % (path.name, number, len(values), len(translated)))
-            rows.append(dict(zip(translated, values)))
+                    % (path.name, number, len(values), len(positional)))
+            row = dict(zip(positional, values))
+            if historical:
+                # The two historical copies are the same independent value
+                # written twice. Any disagreement means the file is not the
+                # documented format and is refused.
+                for field in HISTORICAL_DUPLICATE_FIELDS:
+                    kept = "%s_%s" % (HISTORICAL_SECOND_PREFIX, field)
+                    copy = "%s%s" % (HISTORICAL_COPY_PREFIX, field)
+                    if row[kept] != row.pop(copy):
+                        raise SealError(
+                            "%s line %d: the two historical %s columns differ "
+                            "(%r versus %r); both must hold the same "
+                            "independent-selection value"
+                            % (path.name, number, field, row[kept],
+                               values[positional.index(copy)]))
+            rows.append(row)
     if not rows:
         raise SealError("%s has no data rows" % path.name)
-    return translated, rows, provenance
+    return canonical, rows, provenance, historical
 
 
 def read_key_value(path: Path, label: str):
@@ -899,8 +943,8 @@ def audit(args, adapter, paths, outdir: Path):
                          args.expected_independent, expected_conditions)
 
     header, rows = read_table(manifest_path)
-    independent_header, independent_manifest_rows, independent_provenance = (
-        read_independent_table(independent_path, adapter))
+    (independent_header, independent_manifest_rows, independent_provenance,
+     historical_independent) = read_independent_table(independent_path, adapter)
     condition_column = adapter["condition_column"]
     study_column = adapter["study_column"]
     production_required = ["sample_id", condition_column]
@@ -968,8 +1012,25 @@ def audit(args, adapter, paths, outdir: Path):
     # provenance columns the production manifest does not have. Every shared
     # production column must still agree exactly, row by row.
     production_by_id = {row["sample_id"]: row for row in rows}
-    # A translated pilot column is compared against the production column it
-    # was inherited from, so the historical first occurrence is still verified.
+    if historical_independent:
+        # The sealed file holds no pilot provenance at all, so the canonical
+        # pilot triplet is reconstructed from the production manifest row.
+        missing_pilot = [field for field in HISTORICAL_DUPLICATE_FIELDS
+                         if field not in header]
+        if missing_pilot:
+            raise SealError(
+                "%s lacks the pilot selection column(s) %s needed to "
+                "reconstruct the historical independent manifest's provenance"
+                % (manifest_path.name, ", ".join(missing_pilot)))
+        for row in independent_manifest_rows:
+            source = production_by_id.get(row["sample_id"])
+            if source is None:
+                continue
+            for field in HISTORICAL_DUPLICATE_FIELDS:
+                row["%s_%s" % (HISTORICAL_FIRST_PREFIX, field)] = source[field]
+    # A prefixed pilot column is compared against the production column it was
+    # inherited from. Under Format A the pilot triplet is derived from that
+    # same row, so there is nothing separate to compare.
     comparable = []
     for name in independent_header:
         origin = independent_provenance.get(name, name)

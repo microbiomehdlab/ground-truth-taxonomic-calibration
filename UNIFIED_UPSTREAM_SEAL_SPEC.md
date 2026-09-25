@@ -141,8 +141,22 @@ The sealed production manifest has 29 columns with no duplicates, and carries
 The sealed independent manifest has 26 columns. It carries `age`, `sex` and
 `bmi`; it carries **no** `batch_id` or other batch field; and it carries
 **exactly two occurrences each** of `selection_rank`, `selection_hash` and
-`selection_seed`. The first occurrence is inherited from the pilot selection;
-the second was appended by the independent-subset selection step.
+`selection_seed`.
+
+**Corrected 25 September 2026 from the real cluster audit.** An earlier reading
+of this document said the first occurrence was inherited pilot provenance and
+the second was the independent value. That is wrong, and the real audit proved
+it with
+`independent manifest row for SAMD00114820 has pilot_selection_hash='005f0f...'
+but the production manifest has selection_hash='350ac4...'`. The historical
+selector built each selected row as
+`{**row, "selection_rank": new, "selection_hash": new, "selection_seed": new}`,
+which **overwrote** the inherited values in the dictionary, while its
+`fieldnames` list still carried the original triplet plus the appended one.
+`csv.DictWriter` therefore wrote the same new value into *both* occurrences.
+**Both historical copies are duplicate copies of the independent-selection
+provenance, and the pilot provenance survives only in the production
+manifest.**
 
 This has three consequences for the contract.
 
@@ -159,29 +173,37 @@ two manifests share must still agree exactly, row by row.
 
 **Strict historical-independent header adapter.** The sealed independent
 manifest is checksummed and must remain byte-identical; it is never rewritten.
-It is instead read positionally and translated by occurrence, and only when the
-Yachida adapter explicitly selects the
+It is instead read positionally, and only when the
 `yachida_historical_duplicate_selection` schema. That schema accepts **exactly
 two formats and nothing else**.
 
 *Format A — the historical sealed header.* `selection_rank`, `selection_hash`
-and `selection_seed` each appear exactly twice, and are translated by
-occurrence:
+and `selection_seed` each appear exactly twice. Neither raw occurrence is pilot
+provenance: both hold the independent-selection value and **must be identical on
+every row**, and any disagreement fails closed. The canonical independent
+manifest is then assembled as:
 
-| Occurrence | Source column | Canonical name |
-|---|---|---|
-| first | `selection_rank` | `pilot_selection_rank` |
-| first | `selection_hash` | `pilot_selection_hash` |
-| first | `selection_seed` | `pilot_selection_seed` |
-| second | `selection_rank` | `independent_selection_rank` |
-| second | `selection_hash` | `independent_selection_hash` |
-| second | `selection_seed` | `independent_selection_seed` |
+| Canonical column | Source |
+|---|---|
+| `independent_selection_rank` | the duplicated historical value |
+| `independent_selection_hash` | the duplicated historical value |
+| `independent_selection_seed` | the duplicated historical value |
+| `pilot_selection_rank` | `selection_rank` of the matching production row |
+| `pilot_selection_hash` | `selection_hash` of the matching production row |
+| `pilot_selection_seed` | `selection_seed` of the matching production row |
+
+The production manifest must therefore carry the bare selection triplet, or the
+pilot provenance cannot be reconstructed and the audit fails. Because the pilot
+triplet is *derived* from the production row rather than read from the sealed
+file, there is nothing separate in Format A to compare it against.
 
 *Format B — the corrected header the migrated selector emits.* Exactly one
 `pilot_selection_rank`/`pilot_selection_hash`/`pilot_selection_seed` triplet and
 exactly one `independent_selection_rank`/`independent_selection_hash`/
 `independent_selection_seed` triplet, and **no** bare `selection_*` column. No
-translation is needed; the names are already unambiguous.
+translation is needed; the names are already unambiguous, and here
+`pilot_selection_*` is a genuine inherited value that **must equal** the
+matching production-manifest `selection_*` value.
 
 Everything else is refused, including:
 
@@ -189,6 +211,7 @@ Everything else is refused, including:
   whose provenance is ambiguous;
 - three or more occurrences of a bare field, or an incomplete duplicated
   triplet;
+- two historical copies of a field that disagree on any row;
 - a partial `pilot_*` or partial `independent_*` triplet;
 - a mixture of bare and prefixed selection fields;
 - missing pilot provenance or missing independent provenance;
@@ -198,9 +221,9 @@ This is a narrowly specified translation of one checksummed historical format
 into an unambiguous canonical representation. It is **not** general tolerance of
 duplicate headers: production manifests always reject duplicates, and Feng and
 Zeller independent manifests always reject duplicates. In both accepted formats
-the pilot values must agree with the production manifest's own selection values,
-the independent values are preserved in the canonical independent manifest, and
-the canonical header must be unique. Byte-identity checks against the native
+the canonical output carries an unambiguous pilot and independent triplet and a
+unique header; under Format B the pilot values are verified against the
+production manifest, and under Format A they are reconstructed from it. Byte-identity checks against the native
 seal and the authoritative manifests are always performed on the original
 unmodified bytes.
 

@@ -207,12 +207,24 @@ class Fixture:
         if duplicate_selection is None:
             duplicate_selection = self.config["historical_duplicate_selection"]
         if duplicate_selection:
-            # The independent-subset selection step appended its own triplet.
+            # Reproduce the real historical selector: it overwrote the
+            # inherited values in the row dict before writing, and its
+            # fieldnames listed the triplet twice, so csv.DictWriter emitted
+            # the SAME independent value into both occurrences. The pilot
+            # values survive only in the production manifest.
             for _ in range(occurrences - 1):
                 for name in duplicate_fields:
                     columns.append((name, [
                         self.independent_selection_value(name, position)
                         for position in range(len(subset))]))
+            for name in duplicate_fields:
+                if name not in SELECTION_TRIPLET:
+                    continue
+                for index, (column, values) in enumerate(columns):
+                    if column == name:
+                        columns[index] = (column, [
+                            self.independent_selection_value(name, position)
+                            for position in range(len(subset))])
         if independent_extra:
             for name in independent_extra:
                 columns.append((name, ["%s_%d" % (name, position)
@@ -1458,7 +1470,27 @@ class HistoricalYachidaHeaderTest(SealFixtureTestCase):
         for field in ("age", "sex", "bmi"):
             self.assertIn(field, production)
 
-    def test_duplicated_triplet_is_translated_by_occurrence(self):
+    def test_both_historical_copies_hold_the_independent_value(self):
+        """The old selector overwrote the inherited values before writing."""
+        fixture = self.fixture(cohort="yachida")
+        header = self.independent_header(fixture)
+        with fixture.independent_manifest.open(encoding="utf-8") as handle:
+            handle.readline()
+            row = handle.readline().rstrip("\n").split("\t")
+        for field in SELECTION_TRIPLET:
+            first = header.index(field)
+            second = len(header) - 1 - header[::-1].index(field)
+            self.assertNotEqual(first, second)
+            self.assertEqual(row[first], row[second],
+                             "both historical copies must be identical")
+            self.assertTrue(row[first].startswith("independent_"), field)
+        # The pilot value exists only in the production manifest.
+        production_header, production_rows = read_tsv(fixture.manifest)
+        self.assertEqual(production_rows[0]["selection_hash"],
+                         "pilot_selection_hash_0")
+        self.assertNotIn("pilot_selection_hash_0", row)
+
+    def test_canonical_output_reconstructs_pilot_provenance(self):
         fixture = self.fixture(cohort="yachida")
         outdir = self.seal_ok(fixture)
         header, rows = read_tsv(outdir / "production_manifest.independent.tsv")
@@ -1470,52 +1502,73 @@ class HistoricalYachidaHeaderTest(SealFixtureTestCase):
             self.assertEqual(header.count("independent_%s" % field), 1)
         self.assertEqual(len(header), len(set(header)),
                          "the canonical header must be unambiguous")
-        # First occurrence is the inherited pilot value; second is this step's.
+        # Pilot provenance is reconstructed from the production manifest row;
+        # the independent triplet is the historical duplicated value.
+        _, production_rows = read_tsv(fixture.manifest)
+        production = {row["sample_id"]: row for row in production_rows}
+        for row in rows:
+            source = production[row["sample_id"]]
+            for field in SELECTION_TRIPLET:
+                self.assertEqual(row["pilot_%s" % field], source[field], field)
+                self.assertTrue(
+                    row["independent_%s" % field].startswith("independent_"),
+                    field)
+                self.assertNotEqual(row["pilot_%s" % field],
+                                    row["independent_%s" % field], field)
         self.assertEqual(rows[0]["pilot_selection_rank"],
                          "pilot_selection_rank_0")
         self.assertEqual(rows[0]["independent_selection_rank"],
                          "independent_selection_rank_0")
-        self.assertEqual(rows[0]["pilot_selection_seed"],
-                         "pilot_selection_seed_0")
-        self.assertEqual(rows[0]["independent_selection_seed"],
-                         "independent_selection_seed_0")
         # The sealed file itself is untouched and still duplicated.
         self.assertEqual(
             self.independent_header(fixture).count("selection_rank"), 2)
 
-    def test_pilot_values_must_match_the_production_manifest(self):
-        fixture = self.fixture(cohort="yachida")
-        # Corrupt only the FIRST occurrence, the inherited pilot value.
+    def corrupt_occurrence(self, fixture, field, which):
         lines = fixture.independent_manifest.read_text(
             encoding="utf-8").rstrip("\n").split("\n")
         header = lines[0].split("\t")
-        position = header.index("selection_hash")
+        if which == "first":
+            position = header.index(field)
+        else:
+            position = len(header) - 1 - header[::-1].index(field)
         row = lines[1].split("\t")
         row[position] = "tampered"
         lines[1] = "\t".join(row)
         fixture.independent_manifest.write_text(
             "\n".join(lines) + "\n", encoding="utf-8")
         fixture.write_source_seal()
-        message = self.seal_fails(fixture, "but the production manifest has")
-        self.assertIn("pilot_selection_hash='tampered'", message)
 
-    def test_second_occurrence_is_not_compared_to_production(self):
-        """The independent value is new provenance, not an inherited one."""
+    def test_changing_the_first_historical_copy_fails(self):
+        """Neither raw copy is pilot provenance; they must simply agree."""
         fixture = self.fixture(cohort="yachida")
-        lines = fixture.independent_manifest.read_text(
-            encoding="utf-8").rstrip("\n").split("\n")
-        header = lines[0].split("\t")
-        position = len(header) - 1 - header[::-1].index("selection_seed")
-        row = lines[1].split("\t")
-        row[position] = "a-different-independent-seed"
-        lines[1] = "\t".join(row)
-        fixture.independent_manifest.write_text(
-            "\n".join(lines) + "\n", encoding="utf-8")
+        self.corrupt_occurrence(fixture, "selection_hash", "first")
+        message = self.seal_fails(
+            fixture, "the two historical selection_hash columns differ")
+        self.assertIn("tampered", message)
+
+    def test_changing_the_second_historical_copy_fails(self):
+        fixture = self.fixture(cohort="yachida")
+        self.corrupt_occurrence(fixture, "selection_seed", "second")
+        message = self.seal_fails(
+            fixture, "the two historical selection_seed columns differ")
+        self.assertIn("tampered", message)
+
+    def test_every_historical_field_is_cross_checked(self):
+        for field in SELECTION_TRIPLET:
+            for which in ("first", "second"):
+                fixture = self.fixture(cohort="yachida")
+                self.corrupt_occurrence(fixture, field, which)
+                self.seal_fails(
+                    fixture, "the two historical %s columns differ" % field)
+
+    def test_production_must_still_carry_the_pilot_triplet(self):
+        """Format A's pilot provenance has nowhere else to come from."""
+        fixture = self.fixture(cohort="yachida")
+        header, rows = read_tsv(fixture.manifest)
+        header = [name for name in header if name != "selection_hash"]
+        write_tsv(fixture.manifest, header, rows)
         fixture.write_source_seal()
-        outdir = self.seal_ok(fixture)
-        _, rows = read_tsv(outdir / "production_manifest.independent.tsv")
-        self.assertEqual(rows[0]["independent_selection_seed"],
-                         "a-different-independent-seed")
+        self.seal_fails(fixture, "lacks the pilot selection column(s)")
 
     PREFIXED = tuple("pilot_%s" % field for field in SELECTION_TRIPLET) + tuple(
         "independent_%s" % field for field in SELECTION_TRIPLET)

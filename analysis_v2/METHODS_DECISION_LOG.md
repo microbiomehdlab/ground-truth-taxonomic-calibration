@@ -126,7 +126,9 @@ field, and `selection_rank`/`selection_hash`/`selection_seed` **twice** each.
 - **A strict occurrence-based adapter reads the historical duplicated header.**
   Selected only by the Yachida adapter, it maps the first
   `selection_rank`/`hash`/`seed` to `pilot_selection_*` and the second to
-  `independent_selection_*`. The sealed file is read positionally and never
+  `independent_selection_*`. **Superseded by addendum 4 below:** both copies
+  hold the independent value; pilot provenance comes from the production
+  manifest. The sealed file is read positionally and never
   rewritten; byte-identity checks use the original bytes. This is a narrow
   translation of one checksummed historical format, not tolerance of duplicate
   headers: production manifests, and Feng/Zeller independent manifests, still
@@ -157,7 +159,8 @@ cohort outputs**; the acceptance gate is unchanged.
    `yachida_historical_duplicate_selection` exactly two independent-manifest
    formats are accepted: (A) the historical sealed header, with the bare
    triplet exactly twice each, translated by occurrence to `pilot_selection_*`
-   and `independent_selection_*`; and (B) the corrected selector's header, with
+   and `independent_selection_*` (**that occurrence model is superseded by
+   addendum 4 below**); and (B) the corrected selector's header, with
    exactly one `pilot_*` triplet and one `independent_*` triplet and no bare
    `selection_*` column. A lone bare triplet, a partial `pilot_*` or
    `independent_*` triplet, a mixture of bare and prefixed fields, missing
@@ -173,6 +176,45 @@ Fixture suites: `test_unified_upstream_seal.py` 82 tests and
 `test_independent_selection_audit.py` 7 tests, with mutation checks confirming
 the new format rules are load-bearing. **Still not executed against real cohort
 outputs.**
+
+
+**2026-09-25 addendum 4 — historical Yachida Format A corrected from the real
+cluster audit.** The run failed with
+`independent manifest row for SAMD00114820 has pilot_selection_hash='005f0f...'
+but the production manifest has selection_hash='350ac4...'`, disproving the
+occurrence model recorded in addendum 2 and 3.
+
+**Root cause.** The historical selector built each selected row as
+`{**row, "selection_rank": new, "selection_hash": new, "selection_seed": new}`,
+overwriting the inherited pilot values in the dictionary, while its `fieldnames`
+list still carried the original triplet plus the appended one. `csv.DictWriter`
+wrote the same new value into **both** occurrences. Reproduced locally in
+isolation before changing any code.
+
+**Corrected model.** Under Format A the two occurrences are duplicate copies of
+the **independent** selection provenance, not pilot-then-independent. The
+adapter now requires each field to occur exactly twice **and to be identical on
+every row**, treats the shared value as `independent_selection_*`, and
+reconstructs `pilot_selection_*` from the matching production-manifest row.
+Neither raw occurrence is labelled pilot provenance. Any disagreement between
+the two copies fails closed, and a production manifest lacking the bare triplet
+fails because the pilot provenance would be unrecoverable.
+
+**Unchanged.** Format B (one explicit `pilot_selection_*` triplet, one
+`independent_selection_*` triplet, no bare fields) still applies and still
+verifies its pilot values against the production manifest. All strict rejection
+rules for partial, mixed, excessive, missing or unrelated duplicate fields are
+preserved.
+
+Every claim that the first historical occurrence is inherited pilot provenance
+is withdrawn here and in `UNIFIED_UPSTREAM_SEAL_SPEC.md`,
+`analysis_v2/UNIFIED_UPSTREAM_SEAL.md` and `datasets/yachida/README.md`.
+
+Fixture suites: `test_unified_upstream_seal.py` 85 tests, with the historical
+fixture now reproducing the real old selector (production pilot values differ
+from the independent values; both duplicate copies equal the independent
+value), and `test_independent_selection_audit.py` 7 tests. **Still not executed
+against real cohort outputs.**
 
 
 ## 2026-09-21 — Three-cohort recoverability figure, code-only

@@ -66,15 +66,21 @@ python3 scripts/select_samples_deterministically.py \
 The two prefixes are required here because the pilot manifest already carries
 `selection_rank`, `selection_hash` and `selection_seed`. The originally sealed
 independent manifest was produced before the selector had them, so it holds
-each of those three names **twice**: the first occurrence is the inherited
-pilot value and the second is the independent-subset value. That sealed file is
-checksummed and is never rewritten; the unified upstream auditor reads it
-through an explicit occurrence-based adapter
-(`analysis_v2/UNIFIED_UPSTREAM_SEAL.md`). Reproducing the selection today emits
-`pilot_selection_*` and `independent_selection_*` instead, so the header is
-unambiguous. Row selection is identical either way; only the column names
-differ. Without the prefixes the selector now fails rather than appending a
-duplicate column.
+each of those three names **twice** — and, because the old code overwrote the
+inherited values in the row dictionary before writing while still listing the
+triplet twice in `fieldnames`, `csv.DictWriter` put the **same
+independent-selection value into both occurrences**. The inherited pilot
+provenance is therefore absent from that sealed file and survives only in the
+production manifest. That sealed file is checksummed and is never rewritten;
+the unified upstream auditor requires the two copies to agree, treats them as
+the independent provenance, and reconstructs the pilot triplet from the
+production manifest (`analysis_v2/UNIFIED_UPSTREAM_SEAL.md`).
+
+Reproducing the selection today emits `pilot_selection_*` and
+`independent_selection_*` as separate columns, so both provenances are retained
+and the header is unambiguous. Row selection is identical either way; only the
+column names and the retained provenance differ. Without the prefixes the
+selector now fails rather than appending a duplicate column.
 
 This selects 10 Control, 10 Adenoma, and 10 CRC samples from within the frozen
 201-sample pilot. The recommended first analysis uses all 201 samples for
