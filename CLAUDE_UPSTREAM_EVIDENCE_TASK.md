@@ -1,10 +1,17 @@
 # Claude implementation brief: upstream evidence package
 
-> **BLOCKED PREREQUISITE:** Do not implement this task until the unified
-> three-cohort seal specified in `UNIFIED_UPSTREAM_SEAL_SPEC.md` has been
-> implemented, independently reviewed, and successfully run against all three
-> real cohorts. Then consume the three canonical `production_seal_v2`
-> directories rather than parsing different native seal formats.
+> **PREREQUISITE SATISFIED (28 September 2026).** The unified three-cohort
+> seal in `UNIFIED_UPSTREAM_SEAL_SPEC.md` is implemented, independently
+> reviewed, and has run successfully against all three real cohorts with the
+> same public auditor and schema: Yachida job **3097679** (201 samples, 30
+> independent), Feng job **3097680** (154, 30) and Zeller job **3097681**
+> (156, 30), each COMPLETED 0:0, each verifying every `production_seal.sha256`
+> member, each with an empty error log and `PASS`, and each using the identical
+> seven-member layout, `sample_flow.tsv` schema, `covariate_audit.tsv` schema
+> and canonical manifest core. A separate cross-cohort verification confirmed
+> all three share the unified upstream interface. This task therefore consumes
+> the three canonical `production_seal_v2` directories and never parses the
+> native seal formats.
 
 Implement the frozen design in `UPSTREAM_EVIDENCE_PACKAGE_SPEC.md`.
 

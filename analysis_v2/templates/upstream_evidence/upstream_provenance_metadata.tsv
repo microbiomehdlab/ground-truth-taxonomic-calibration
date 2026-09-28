@@ -1,0 +1,23 @@
+category	asset_id	name	version_or_release	sha256	availability	notes
+source_code	repository	ground-truth-taxonomic-calibration at <FULL_40_CHAR_COMMIT>	<FULL_40_CHAR_COMMIT>	<SHA256_OF_SOURCE_ARCHIVE>	public	The name or notes must contain the exact commit passed to the builder.
+container_upstream	upstream_sif	<UPSTREAM_IMAGE_NAME>	<IMAGE_TAG_OR_DATE>	<SHA256_OF_IMAGE>	on_request	Image is not copied into the package.
+container_analysis	analysis_sif	<ANALYSIS_IMAGE_NAME>	<IMAGE_TAG_OR_DATE>	<SHA256_OF_ANALYSIS_IMAGE>	on_request	Must equal the runner's --analysis-image-sha256.
+database_kraken2	kraken2_db	<KRAKEN2_DB_NAME>	<DB_RELEASE>	<SHA256_OF_DB_CHECKSUM_INVENTORY>	public	For a directory, hash a committed checksum inventory, not directory metadata.
+database_metaphlan	metaphlan_db	<METAPHLAN_DB_NAME>	<DB_RELEASE>	<SHA256_OF_DB_CHECKSUM_INVENTORY>	public	For a directory, hash a committed checksum inventory, not directory metadata.
+host_reference	host_genome	<HOST_REFERENCE_NAME>	<ASSEMBLY_ACCESSION>	<SHA256_OF_REFERENCE>	public	Used for host read removal.
+spike_reference	Bfrag	<TAXON_NAME> assembly	<ASSEMBLY_ACCESSION>	<SHA256_OF_FASTA>	public	One row per implanted target; asset_id is the panel label.
+spike_reference	Csym	<TAXON_NAME> assembly	<ASSEMBLY_ACCESSION>	<SHA256_OF_FASTA>	public	<NOTES_OR_NONE>
+spike_reference	Dpne	<TAXON_NAME> assembly	<ASSEMBLY_ACCESSION>	<SHA256_OF_FASTA>	public	<NOTES_OR_NONE>
+spike_reference	Fnuc	<TAXON_NAME> assembly	<ASSEMBLY_ACCESSION>	<SHA256_OF_FASTA>	public	<NOTES_OR_NONE>
+spike_reference	Hhat	<TAXON_NAME> assembly	<ASSEMBLY_ACCESSION>	<SHA256_OF_FASTA>	public	<NOTES_OR_NONE>
+spike_reference	Pmic	<TAXON_NAME> assembly	<ASSEMBLY_ACCESSION>	<SHA256_OF_FASTA>	public	<NOTES_OR_NONE>
+spike_reference	Pana	<TAXON_NAME> assembly	<ASSEMBLY_ACCESSION>	<SHA256_OF_FASTA>	public	<NOTES_OR_NONE>
+spike_reference	Psto	<TAXON_NAME> assembly	<ASSEMBLY_ACCESSION>	<SHA256_OF_FASTA>	public	<NOTES_OR_NONE>
+spike_reference	Porp	<TAXON_NAME> assembly	<ASSEMBLY_ACCESSION>	<SHA256_OF_FASTA>	public	<NOTES_OR_NONE>
+spike_reference	Pint	<TAXON_NAME> assembly	<ASSEMBLY_ACCESSION>	<SHA256_OF_FASTA>	public	<NOTES_OR_NONE>
+upstream_parameter	read_length	read_length	<FROZEN_VALUE>	not_a_file	documented	Parameters are settings, not files; sha256 is the sentinel not_a_file.
+upstream_parameter	bracken_threshold	bracken_threshold	<FROZEN_VALUE>	not_a_file	documented	<NOTES_OR_NONE>
+upstream_parameter	profiler_threads	profiler_threads	<FROZEN_VALUE>	not_a_file	documented	<NOTES_OR_NONE>
+upstream_parameter	spike_fractions	spike_fractions	<FROZEN_VALUE>	not_a_file	documented	<NOTES_OR_NONE>
+upstream_parameter	pool_coverage	pool_coverage	<FROZEN_VALUE>	not_a_file	documented	<NOTES_OR_NONE>
+upstream_parameter	seeds	seeds	<FROZEN_VALUE>	not_a_file	documented	<NOTES_OR_NONE>

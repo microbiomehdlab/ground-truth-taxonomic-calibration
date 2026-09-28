@@ -1,7 +1,23 @@
 # Next actions and execution order
 
 **Purpose:** operational starting point for the next agent.
-**Last updated:** 24 September 2026.
+**Last updated:** 28 September 2026.
+
+## Upstream evidence package (28 September 2026)
+
+The unified-seal prerequisite is **satisfied**: Yachida job `3097679`, Feng
+`3097680` and Zeller `3097681` each `COMPLETED 0:0` under the same public
+auditor and schema, with every `production_seal.sha256` member verified, empty
+error logs and `PASS`. A separate cross-cohort check confirmed all three share
+the unified upstream interface.
+
+`analysis_v2/UPSTREAM_EVIDENCE_PACKAGE.md` documents the evidence package built
+from those three `production_seal_v2` seals plus the sealed
+assembly-sensitivity experiment. The builder, figure, container runner and a
+35-test fixture suite exist and pass locally. **No real-data package has been
+built.** Next: Codex review, then a containerized cluster run into a new
+directory, then checksum verification and manual review of the figure and its
+source data. Generated packages stay outside Git for later Zenodo deposition.
 
 ## Current operational checkpoint
 

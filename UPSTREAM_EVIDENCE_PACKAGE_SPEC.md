@@ -59,6 +59,14 @@ The builder must fail before writing final `SUCCESS` if any condition is false.
 
 - Verify every checksum listed by each source seal.
 - Reject absolute or parent-traversal member names in checksum manifests.
+- Require each `production_seal_v2` to hold exactly the seven documented
+  regular files and no subdirectory, and require its `production_seal.sha256`
+  to cover exactly the other six: an omitted or additional entry fails.
+- Require the assembly seal's `SUCCESS` to be covered by
+  `experiment_inputs_and_summary.sha256`, and require every non-checksum
+  regular member to appear in that manifest.
+- Verify every packaged projection or exact copy independently, from inside
+  its own directory, before granting `SUCCESS`.
 - Require the cohort identity and expected sample count in each `SUCCESS` file.
 - Require no `AUDIT_IN_PROGRESS` beside any production seal.
 - Reject duplicate sample identifiers within or across cohorts.
@@ -78,8 +86,26 @@ The builder must fail before writing final `SUCCESS` if any condition is false.
 - Require manifest condition labels to use only Control, Adenoma, and CRC.
 - Compare manifest and seal sample sets exactly, not only their counts.
 - Require the canonical manifest columns `sample_id`, `condition`, `study`, and
-  `independent_subset` in every v2 seal. Native column-name differences must
-  already have been resolved and audited by the unified seal workflow.
+  `independent_subset` to be the **first four, in that order**, in both
+  canonical manifests. Native column-name differences must already have been
+  resolved and audited by the unified seal workflow.
+- Cross-check `sample_id`, `condition`, `study` and `independent_subset` for
+  every sample between `sample_flow.tsv` and the canonical production manifest.
+- Require the independent manifest's sample set to equal exactly the production
+  rows flagged `independent_subset=1`.
+- For every sample require expected baseline 1, expected community 7, expected
+  independent 60 for subset members and 0 otherwise, observed equal to expected
+  for each design, `expected_profiles` and `observed_profiles` equal to the
+  component sums, every boolean audit field 1, `status` `PASS`, and
+  `failure_reasons`, `receipt_error`, `completion_error` and `provenance_error`
+  all blank. Aggregate totals alone are insufficient: an offset-preserving pair
+  of per-sample errors must still fail.
+- Require `input_provenance_mode` to be exactly
+  `sealed_manifest_and_qc_receipt` for Yachida and `state_file` for Feng and
+  Zeller.
+- Validate `source_seal_inventory.tsv` against its exact schema, requiring a
+  valid SHA-256, a positive integer byte count and `VERIFIED` status on every
+  row.
 
 ### Provenance and privacy
 
@@ -119,6 +145,36 @@ Required categories:
 If an asset is a directory, its `sha256` must identify a committed checksum
 inventory rather than an ad hoc hash of directory metadata.
 
+Additional requirements:
+
+- `asset_id` values are unique, and an undocumented category is refused.
+- `source_code`, `container_upstream`, `container_analysis`,
+  `database_kraken2`, `database_metaphlan`, `host_reference` and
+  `spike_reference` rows require a nonblank 64-character hexadecimal SHA-256.
+- **Checksum policy for `upstream_parameter`:** those rows record frozen
+  settings rather than files, so their `sha256` must be the documented
+  sentinel `not_a_file`. A blank cell is refused, making the policy explicit
+  rather than silent.
+- A `source_code` row must identify the exact 40-character commit supplied to
+  the builder.
+- One `spike_reference` row per implanted target in the validated spike panel.
+- The frozen parameter names `read_length`, `bracken_threshold`,
+  `profiler_threads`, `spike_fractions`, `pool_coverage` and `seeds` must all
+  be present.
+- The `container_analysis` digest must equal the analysis-container SHA-256
+  the runner passes as `--analysis-image-sha256`, which is also recorded in
+  `provenance/build_parameters.tsv`.
+
+The spike panel and taxon-alias inputs are parsed and validated, not copied
+blindly. The frozen alias file is comma-delimited, so it is parsed by its real
+delimiter and rewritten as a genuine tab-delimited
+`zenodo/taxon_aliases.tsv`. The panel must carry ten unique implanted targets
+with nonblank taxon and assembly identities and positive numeric weights.
+
+Templates for the two manually authored inputs live in
+`analysis_v2/templates/upstream_evidence/`. They contain schemas and
+placeholders, never invented hashes.
+
 ## 5. Package layout
 
 ```text
@@ -147,7 +203,7 @@ upstream_evidence_<UTC timestamp>/
 │   ├── upstream_provenance_metadata.tsv
 │   ├── audit_ledger.tsv
 │   └── source_seal_inventory.tsv
-├── source_seals/
+├── source_seal_projections/          # default; see section 5a
 │   ├── yachida/
 │   ├── feng/
 │   ├── zeller/
@@ -162,6 +218,36 @@ upstream_evidence_<UTC timestamp>/
 Only compact source-seal files are copied. Any source path recorded internally
 during the build must be converted to a logical identifier in release-facing
 outputs.
+
+## 5a. Packaged seal copies (corrected 28 September 2026)
+
+A packaged directory must never carry a checksum manifest it cannot satisfy.
+The default privacy-safe output is therefore an explicitly named **projection**,
+not something presented as a source seal:
+
+```text
+source_seal_projections/<component>/
+├── README.md                              states this is NOT the original seal
+├── projection.sha256                      covers exactly the files present
+├── original_source_seal_inventory.tsv     every original member, SHA-256, bytes
+└── <release-safe projected or copied members>
+```
+
+- The original `production_seal.sha256` / `experiment_inputs_and_summary.sha256`
+  is **not** copied into a projection, because it indexes members the
+  projection does not contain.
+- Original hashes stay available through
+  `zenodo/source_seal_inventory.tsv` and `provenance/input_checksums.tsv`, and
+  now also through each projection's own inventory.
+- `projection.sha256` must verify from inside the projection directory, and
+  must cover every file there.
+
+When `--include-individual-covariates` is explicitly approved with a recorded
+`--redistribution-review`, a complete **byte-identical** seal is copied to
+`source_seals/<component>/` instead. It must contain every original member, and
+its original checksum manifest must verify unchanged from that directory;
+nothing else is added beside it. The two semantics are never mixed in one
+package.
 
 ## 6. Required tables
 
@@ -216,11 +302,21 @@ logs:
 cohort	audit_job_id	audit_date_utc	state	exit_code	samples	seal_sha256	notes
 ```
 
-The definitive topology-hardened CRC audit jobs are Feng `3097587` and Zeller
-`3097588`, run on 24 September 2026. Both completed with exit code `0:0` and
-empty error logs. Earlier jobs `3097585` and `3097586` used the first hardened
-receipt contract and are superseded by these final topology-aware audits.
-Yachida identifiers must come from retained evidence rather than inference.
+The unified `upstream_seal_v2` audits this package consumes are Yachida
+`3097679`, Feng `3097680` and Zeller `3097681`, each `COMPLETED` with exit code
+`0:0` and an empty error log. Those identifiers are frozen in the builder and
+overridable only through explicit `--<cohort>-audit-job` arguments, so an
+arbitrary job identifier is never silently accepted as released provenance.
+The ledger must carry exactly one row per cohort, with no unknown or duplicate
+cohort, `state=COMPLETED`, `exit_code=0:0`, `samples` equal to the frozen
+cohort size, a numeric job identifier, a valid explicit UTC date, and a
+`seal_sha256` equal to the actual SHA-256 of that cohort's
+`production_seal.sha256`. The registry's `source_audit_job` comes only from
+this validated ledger.
+
+The earlier topology-hardened CRC audits were Feng `3097587` and Zeller
+`3097588` on 24 September 2026; they are the native-seal provenance recorded in
+each v2 seal's inventory, not the unified audits this package validates.
 
 ### `source_seal_inventory.tsv`
 
@@ -281,9 +377,18 @@ the image checksum, and never mutate source seals.
 - Refuse an existing nonempty final output directory.
 - Write no final `SUCCESS` until every validation and plot has passed.
 - Generate `MANIFEST.tsv` with relative path, bytes, SHA-256, media type, and
-  release role for every archived file except the final checksum files.
-- Generate `SHA256SUMS` from relative paths.
+  release role for every archived file except `MANIFEST.tsv` and
+  `SHA256SUMS`; the final `SUCCESS` declaration is evidence and must be
+  included.
+- Generate `SHA256SUMS` from relative paths, covering `MANIFEST.tsv`,
+  `SUCCESS`, and every other archived file except `SHA256SUMS` itself.
 - Recheck `SHA256SUMS` before atomically promoting the package.
+- The builder itself, not only the shell wrapper, must snapshot every
+  authoritative source seal and revalidate it immediately before granting
+  `SUCCESS`, detecting changed, removed and newly added files and an
+  `AUDIT_IN_PROGRESS` appearing during the build. The wrapper compares
+  complete before/after inventories for the same reason: checking the original
+  list alone would miss an added file.
 - `SUCCESS` must record package version, source commit, three cohort sizes,
   assembly-sensitivity profile count, file count, and status `PASS`.
 

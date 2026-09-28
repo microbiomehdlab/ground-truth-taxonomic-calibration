@@ -278,6 +278,163 @@ The evidence above comes from job 3097676 and the direct provenance audit that
 André ran; the acceptance gate is unchanged.
 
 
+## 2026-09-28 — upstream evidence package implemented (code only)
+
+**Prerequisite satisfied.** All three cohorts passed the common
+`upstream_seal_v2` contract with the same public auditor and schema: Yachida
+Slurm job **3097679** (201 samples, 30 independent), Feng **3097680** (154, 30)
+and Zeller **3097681** (156, 30). Each COMPLETED 0:0, verified every
+`production_seal.sha256` member, produced an empty error log, reported `PASS`,
+and used the identical seven-member layout, `sample_flow.tsv` schema,
+`covariate_audit.tsv` schema and canonical manifest core (`sample_id`,
+`condition`, `study`, `independent_subset`). A separate cross-cohort
+verification confirmed all three share the unified upstream interface. The
+`BLOCKED PREREQUISITE` banner in `CLAUDE_UPSTREAM_EVIDENCE_TASK.md` is replaced
+accordingly.
+
+**DECIDED and implemented:** `UPSTREAM_EVIDENCE_PACKAGE_SPEC.md`, as
+`analysis_v2/scripts/build_upstream_evidence_package.py`,
+`analysis_v2/scripts/plot_upstream_evidence.R`,
+`analysis_v2/run_upstream_evidence_package.sh`,
+`analysis_v2/tests/test_upstream_evidence_package.py` and
+`analysis_v2/UPSTREAM_EVIDENCE_PACKAGE.md`.
+
+- **Scientific input is the three `production_seal_v2` directories only**, plus
+  the sealed Yachida assembly-sensitivity experiment. The three native seal
+  formats are never parsed; they are provenance already indexed by each v2
+  seal. Every authoritative path is an explicit named argument.
+- **Validation before any output is sealed:** every source-seal checksum
+  verified with absolute and `..` member names rejected; each `SUCCESS`
+  required to declare the `upstream_seal_v2` contract, the right cohort, `PASS`
+  and the frozen counts; no `AUDIT_IN_PROGRESS`; cohort sizes exactly
+  201/154/156; sample **sets** compared exactly against the frozen manifests;
+  no duplicate identifier within or across cohorts; only Control/Adenoma/CRC;
+  the canonical four manifest columns; the common `sample_flow.tsv` and
+  `covariate_audit.tsv` schemas; every sample row `PASS`; per-design totals of
+  201/1,407/1,800, 154/1,078/1,800 and 156/1,092/1,800 summed from the
+  per-sample ledgers and cross-checked against `SUCCESS`; and assembly
+  sensitivity at 30 samples, 2 arms, 6 fractions, 360/360.
+- **Privacy.** No raw reads, host-cleaned reads, databases, container images,
+  scratch files or scheduler logs are copied. Individual age, sex and BMI are
+  withheld by default: the manifests copied under `source_seals/` are projected
+  to the canonical four columns (**superseded by the addendum below:** the
+  default output is now `source_seal_projections/`), and releasing individual
+  covariates requires
+  both `--include-individual-covariates` and a recorded
+  `--redistribution-review` reference. No product may contain a
+  cluster-absolute path; the whole staged tree is screened, with URLs excluded
+  so legitimate asset locations survive. Provenance metadata is screened for
+  credentials and private keys, and a full 40-character commit is required.
+- **Atomicity.** Everything is staged in `<outdir>.incomplete`; a nonempty
+  final directory or a leftover staging directory is refused; any failure
+  removes the staging directory; `MANIFEST.tsv` and `SHA256SUMS` are written
+  only after all validation and the figure pass, `SHA256SUMS` is rechecked
+  entry by entry, and only then is the package atomically promoted. `SUCCESS`
+  is written last.
+- **`zenodo/cohort_registry.tsv`** is the machine-readable, release-safe cohort
+  index: cohort, study, samples, independent samples, the three profile totals,
+  seal contract, seal status, input-provenance mode and source audit job. It
+  carries no cluster path.
+- **The figure derives every value from the exported
+  `figure_source_data.tsv`**, so it cannot disagree with the released tables.
+  Panels compose with `patchwork`, `gridExtra` or base `grid`, so the figure
+  does not depend on an optional package.
+
+**Tests.** `analysis_v2/tests/test_upstream_evidence_package.py`, 35 tests
+covering all 15 specification cases plus wrong or duplicate cohort identity,
+mismatched sample sets, wrong topology, non-PASS rows, schema drift, malformed
+and unsafe checksum members, unexpected condition labels, a short commit,
+credentials in provenance, audit-ledger coverage, registry contents, default
+covariate withholding, manifest/checksum coverage, staging cleanup and a
+preserved pre-existing staging directory. The suite uses production-scale
+cohort sizes, so the frozen counts are genuinely exercised. Mutation-checked:
+removing the checksum verification, the sample-set comparison, the topology
+check, the sample-status check, the overwrite guard, the absolute-path screen
+or the staging cleanup each breaks a named test.
+
+**Status: no real-data package has been built.** Per the specification's
+definition of done, the work is complete only after Codex review, cluster
+execution, verification of every package checksum, and manual review of the
+figure and its source data. Generated packages stay outside Git.
+
+
+**2026-09-28 addendum — release-integrity corrections after Codex review.**
+Eight defects were corrected; the scientific estimands and frozen counts are
+unchanged.
+
+1. **Packaged seal copies no longer misrepresent themselves.** The first
+   implementation copied `production_seal.sha256` verbatim while omitting the
+   two manifest members it indexes, so that directory could not pass its own
+   checksum manifest and must not have been presented as a source seal; the
+   assembly copy had the same defect. The default output is now an explicitly
+   named projection under `source_seal_projections/<component>/`, carrying only
+   release-safe members, a `README.md` stating it is **not** the original seal,
+   its own `projection.sha256` covering exactly the files present, and an
+   `original_source_seal_inventory.tsv` of every original member's SHA-256 and
+   size. An original manifest is never copied where it could not verify. With
+   `--include-individual-covariates` plus a recorded `--redistribution-review`,
+   a complete byte-identical seal is copied to `source_seals/<component>/`
+   instead, with every original member, its original manifest verifying
+   unchanged, and nothing else added beside it. The two semantics are never
+   mixed. The builder verifies every packaged copy from inside its own
+   directory before granting `SUCCESS`.
+2. **Exact seal membership.** Each `production_seal_v2` must hold exactly the
+   seven documented regular files and no subdirectory, and its checksum
+   manifest must cover exactly the other six: an omitted or additional entry
+   fails. The assembly seal's `SUCCESS` must be checksummed and every
+   non-checksum member represented.
+3. **Canonical and per-sample validation.** The canonical four columns must be
+   first and in order in both manifests; `sample_id`, `condition`, `study` and
+   `independent_subset` are cross-checked per sample between the ledger and the
+   manifest; the independent manifest must equal exactly the rows flagged
+   `independent_subset=1`; and every sample's per-design expected and observed
+   counts, component sums, boolean audit fields, `PASS` status, blank error
+   fields and `input_provenance_mode` are checked individually, so an
+   offset-preserving pair of errors that leaves the cohort total correct still
+   fails. `source_seal_inventory.tsv` is validated against its exact schema.
+4. **Audit ledger validated semantically.** Exactly one row per cohort, no
+   unknown or duplicate cohort, `COMPLETED`, `0:0`, the frozen cohort size, a
+   numeric job identifier equal to the expected unified audit job (Yachida
+   3097679, Feng 3097680, Zeller 3097681, overridable per cohort), a valid
+   explicit UTC stamp, and `seal_sha256` equal to that cohort's actual
+   `production_seal.sha256`. The registry's `source_audit_job` comes only from
+   this validated ledger.
+5. **Provenance metadata.** Unique `asset_id`s, documented categories only,
+   real 64-character digests for file-backed assets, a `source_code` row naming
+   the supplied commit, one `spike_reference` per implanted target, and the six
+   frozen parameter names. **Documented checksum policy:** an
+   `upstream_parameter` row records a setting rather than a file, so its
+   `sha256` must be the sentinel `not_a_file`; a blank cell is refused.
+6. **Panel and alias inputs are parsed, not copied.** The frozen alias file is
+   comma-delimited, so copying it to `taxon_aliases.tsv` produced a falsely
+   labelled file. It is now read by its real delimiter, schema-validated and
+   rewritten as genuine TSV. The spike panel is validated for ten unique
+   targets, nonblank taxon and assembly identities and positive weights.
+7. **The analysis-container checksum is recorded and enforced.** The runner
+   passes it as `--analysis-image-sha256`; it is written to
+   `provenance/build_parameters.tsv` and must equal the `container_analysis`
+   digest.
+8. **Mid-build source mutation.** The builder itself snapshots every
+   authoritative seal and revalidates before granting `SUCCESS`, detecting
+   changed, removed and newly added files and an `AUDIT_IN_PROGRESS` appearing
+   mid-run. The shell runner now compares complete before/after inventories,
+   because checking the original list alone could not detect an added file.
+
+Templates for the two manually authored inputs are tracked at
+`analysis_v2/templates/upstream_evidence/` — schemas and placeholders, never
+invented hashes — and deliberately not inside the untracked
+`analysis_v2/inputs/` directory.
+
+Tests: `analysis_v2/tests/test_upstream_evidence_package.py`, 81 tests. The
+demonstrations Codex asked for all hold: every packaged projection verifies
+independently with `sha256sum -c`; the alias output contains 42 tabs and zero
+commas; a wrong ledger seal digest fails; an aggregate-preserving per-sample
+topology corruption fails while the cohort total is still 1,078; and a file
+added to a seal during the build prevents `SUCCESS` and leaves no package.
+
+**Still no real-data package has been built.**
+
+
 ## 2026-09-21 — Three-cohort recoverability figure, code-only
 
 A three-panel successor to the old two-cohort biomarker-recoverability figure

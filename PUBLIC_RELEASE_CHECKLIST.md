@@ -47,7 +47,13 @@ efficiency, or biological presence/absence.
 - [x] Complete and checksum-verify the first Feng and Zeller seals against all
   retained receipt contents.
 - [x] Revalidate the existing Yachida production and assembly-sensitivity seals.
-- [ ] Implement and real-data validate one public `upstream_seal_v2` contract
+- [x] Implement and real-data validate one public `upstream_seal_v2` contract
+  for all three cohorts. Yachida job 3097679, Feng job 3097680 and Zeller job
+  3097681 each COMPLETED 0:0 with every checksum verified, an empty error log
+  and `PASS`; a cross-cohort check confirmed the shared interface.
+- [ ] Build and review the upstream evidence package from those three seals
+  (`analysis_v2/UPSTREAM_EVIDENCE_PACKAGE.md`). Code and fixture tests exist;
+  no real-data package has been built yet.
   across Yachida, Feng, and Zeller without recomputing profiles.
 - [ ] Freeze and record the final taxon identity and alias policy.
 - [ ] Record exact profiler image, analysis image, database, spike FASTA,

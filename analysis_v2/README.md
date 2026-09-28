@@ -172,6 +172,24 @@ canonical analysis table from it. A previously staged canonical table may be
 supplied explicitly. Set `PREFLIGHT_ONLY=1` to build/validate the table and
 exercise every readiness gate without fitting models.
 
+## Upstream evidence package
+
+`UPSTREAM_EVIDENCE_PACKAGE.md` documents the immutable, checksummed evidence
+index built from the three `production_seal_v2` seals and the sealed Yachida
+assembly-sensitivity experiment. `scripts/build_upstream_evidence_package.py`,
+driven by `run_upstream_evidence_package.sh`, validates seal integrity, exact
+sample identities, profile topology, the independent-subset balance and the
+assembly experiment, then emits manuscript supplementary products, a
+release-facing `zenodo/` directory including `cohort_registry.tsv`, compact
+source-seal copies, build provenance, `MANIFEST.tsv`, `SHA256SUMS` and
+`SUCCESS`. `scripts/plot_upstream_evidence.R` draws the four-panel
+completeness figure strictly from the exported figure source data. Raw reads,
+databases, containers, scratch and scheduler logs are never copied, individual
+covariates are withheld by default, and no cluster-absolute path reaches a
+release product. `tests/test_upstream_evidence_package.py` covers the 15
+specification cases and the additional fail-closed gates. No real-data package
+has been built yet.
+
 ## Unified upstream cohort seal
 
 `UNIFIED_UPSTREAM_SEAL.md` documents the one public upstream workflow for all
