@@ -25,6 +25,7 @@ import argparse
 import csv
 import hashlib
 import os
+import re
 import sys
 from collections import Counter
 from pathlib import Path
@@ -60,6 +61,10 @@ SAMPLE_FLOW_FIELDS = [
     "expected_community_profiles", "observed_community_profiles",
     "expected_profiles", "observed_profiles", "retained_output_files",
     "verified_marker", "retained_output_receipt", "input_provenance",
+    # The provenance contract this cohort was audited against, and the precise
+    # reason it failed. Both are present for every cohort, so the schema stays
+    # common, and sample_flow.tsv is covered by production_seal.sha256.
+    "input_provenance_mode", "provenance_error",
     "sample_success",
     "baseline_profile_count", "independent_profile_count",
     "community_profile_count",
@@ -107,6 +112,7 @@ ADAPTERS = {
                                     "batch_size", "batch_seed",
                                     "processing_order"),
         "independent_header_schema": "yachida_historical_duplicate_selection",
+        "input_provenance_mode": "sealed_manifest_and_qc_receipt",
         "seal_manifest_member": "pilot_batched.tsv",
         "seal_independent_member": "independent_10_per_condition.tsv",
         "source_success_schema": "yachida_dataset",
@@ -121,6 +127,7 @@ ADAPTERS = {
         "covariates": ("age", "sex", "bmi"),
         "production_only_columns": (),
         "independent_header_schema": "unique",
+        "input_provenance_mode": "state_file",
         "seal_manifest_member": "production_manifest.tsv",
         "seal_independent_member": "production_manifest.independent.tsv",
         "source_success_schema": "cohort_profiles",
@@ -135,6 +142,7 @@ ADAPTERS = {
         "covariates": ("age", "sex", "bmi"),
         "production_only_columns": (),
         "independent_header_schema": "unique",
+        "input_provenance_mode": "state_file",
         "seal_manifest_member": "production_manifest.tsv",
         "seal_independent_member": "production_manifest.independent.tsv",
         "source_success_schema": "cohort_profiles",
@@ -162,6 +170,25 @@ SOURCE_SUCCESS_SCHEMAS = ("yachida_dataset", "cohort_profiles")
 #       selected translation of one known format, not tolerance of duplicate
 #       headers in general.
 INDEPENDENT_HEADER_SCHEMAS = ("unique", "yachida_historical_duplicate_selection")
+
+# Input-provenance contract. Two cohort lifecycles recorded the same evidence
+# differently, so the contract is selected explicitly per cohort. There is no
+# automatic fallback between them: a cohort configured for one mode fails if
+# that mode's evidence is absent, whatever the other mode would have found.
+#   state_file                      -- the newer Feng/Zeller lifecycle writes
+#       state/samples/<sample>.input_provenance.tsv.
+#   sealed_manifest_and_qc_receipt  -- legacy Yachida predates that file and
+#       instead carries the FASTQ source provenance in its checksummed
+#       production manifest, plus two retained QC tables whose paths, sizes and
+#       SHA-256 digests the receipt verification already proves.
+INPUT_PROVENANCE_MODES = ("state_file", "sealed_manifest_and_qc_receipt")
+SEALED_PROVENANCE_FIELDS = ("fastq1_url", "fastq2_url", "fastq1_md5",
+                            "fastq2_md5", "fastq1_bytes", "fastq2_bytes")
+SEALED_PROVENANCE_MD5_FIELDS = ("fastq1_md5", "fastq2_md5")
+SEALED_PROVENANCE_BYTE_FIELDS = ("fastq1_bytes", "fastq2_bytes")
+SEALED_PROVENANCE_QC_FILES = ("metashotgunprep_provenance.tsv",
+                              "paired_fastq_integrity.tsv")
+MD5_PATTERN = re.compile(r"\A[0-9a-fA-F]{32}\Z")
 HISTORICAL_DUPLICATE_FIELDS = ("selection_rank", "selection_hash",
                                "selection_seed")
 HISTORICAL_FIRST_PREFIX = "pilot"
@@ -719,45 +746,106 @@ def reverify_source_seal(seal_root: Path, adapter, manifest: Path,
 
 # ------------------------------------------------------ retained outputs
 def verify_receipt(receipt: Path, scratch: Path, permitted):
-    """Rehash every retained output and enforce the permitted roots."""
+    """Rehash every retained output and enforce the permitted roots.
+
+    Also returns the resolved paths it accepted, so a provenance adapter can
+    test membership against exactly the paths this verification covered rather
+    than re-resolving them independently.
+    """
     if not nonempty_file(receipt):
-        return False, 0, "missing_or_empty_receipt"
+        return False, 0, "missing_or_empty_receipt", frozenset()
     try:
         with receipt.open(newline="", encoding="utf-8") as handle:
             reader = csv.DictReader(handle, delimiter="\t")
             if reader.fieldnames != ["path", "sha256", "bytes"]:
-                return False, 0, "invalid_receipt_header"
+                return False, 0, "invalid_receipt_header", frozenset()
             rows = list(reader)
         if not rows:
-            return False, 0, "empty_receipt"
+            return False, 0, "empty_receipt", frozenset()
         seen = set()
         for index, row in enumerate(rows, start=2):
             raw = row.get("path", "")
             if not raw or not row.get("sha256") or not row.get("bytes"):
-                return False, len(rows), "malformed_receipt_row_%d" % index
+                return False, len(rows), "malformed_receipt_row_%d" % index, frozenset(seen)
             path = Path(raw).resolve()
             if path in seen:
-                return False, len(rows), "duplicate_receipt_path_%d" % index
+                return False, len(rows), "duplicate_receipt_path_%d" % index, frozenset(seen)
             seen.add(path)
             if contains(scratch, path):
-                return False, len(rows), "retained_output_inside_scratch_%d" % index
+                return False, len(rows), "retained_output_inside_scratch_%d" % index, frozenset(seen)
             if not any(contains(root, path) for root in permitted):
                 return False, len(rows), (
-                    "retained_output_outside_sample_roots_%d" % index)
+                    "retained_output_outside_sample_roots_%d" % index), \
+                    frozenset(seen)
             if not nonempty_file(path):
-                return False, len(rows), "missing_or_empty_output_%d" % index
+                return False, len(rows), "missing_or_empty_output_%d" % index, frozenset(seen)
             try:
                 expected_bytes = int(row["bytes"])
             except ValueError:
-                return False, len(rows), "invalid_bytes_%d" % index
+                return False, len(rows), "invalid_bytes_%d" % index, frozenset(seen)
             if expected_bytes <= 0 or path.stat().st_size != expected_bytes:
-                return False, len(rows), "size_mismatch_%d" % index
+                return False, len(rows), "size_mismatch_%d" % index, frozenset(seen)
             if digest(path) != row["sha256"]:
-                return False, len(rows), "sha256_mismatch_%d" % index
-        return True, len(rows), ""
+                return False, len(rows), "sha256_mismatch_%d" % index, frozenset(seen)
+        return True, len(rows), "", frozenset(seen)
     except (OSError, csv.Error) as error:
         detail = str(error).replace("\t", " ").replace("\n", " ")
-        return False, 0, "receipt_read_error:%s" % detail
+        return False, 0, "receipt_read_error:%s" % detail, frozenset()
+
+
+def check_input_provenance(mode, sample, row, state_dir: Path,
+                           qc_sample_root: Path, receipt_ok, receipt_paths):
+    """Validate the cohort's configured input-provenance contract.
+
+    Returns ``(ok, error)``. The error names the exact missing or invalid
+    field or file, so a failure is never an unexplained boolean. The two modes
+    are equally strict and never substitute for one another.
+    """
+    if mode == "state_file":
+        path = state_dir / "samples" / ("%s.input_provenance.tsv" % sample)
+        if not nonempty_file(path):
+            return False, "missing_or_empty_state_input_provenance:%s" % path.name
+        return True, ""
+    if mode != "sealed_manifest_and_qc_receipt":
+        raise SealError("unknown input-provenance mode %r" % mode)
+
+    errors = []
+    values = {}
+    for field in SEALED_PROVENANCE_FIELDS:
+        value = (row.get(field) or "").strip()
+        if not value:
+            errors.append("missing_manifest_field:%s" % field)
+        else:
+            values[field] = value
+    for field in SEALED_PROVENANCE_MD5_FIELDS:
+        value = values.get(field)
+        if value is not None and not MD5_PATTERN.match(value):
+            errors.append("invalid_md5:%s" % field)
+    for field in SEALED_PROVENANCE_BYTE_FIELDS:
+        value = values.get(field)
+        if value is None:
+            continue
+        try:
+            size = int(value)
+        except ValueError:
+            errors.append("non_integer_bytes:%s" % field)
+            continue
+        if size <= 0:
+            errors.append("non_positive_bytes:%s" % field)
+
+    for name in SEALED_PROVENANCE_QC_FILES:
+        path = qc_sample_root / name
+        if not nonempty_file(path):
+            errors.append("missing_or_empty_qc_file:%s" % name)
+            continue
+        if path.resolve() not in receipt_paths:
+            errors.append("qc_file_absent_from_receipt:%s" % name)
+    if not receipt_ok:
+        # The sealed contract rests on the receipt having proven the recorded
+        # size and digest of those QC files, so an unverified receipt cannot
+        # support it.
+        errors.append("retained_output_receipt_not_verified")
+    return (not errors), ";".join(errors)
 
 
 def read_completion(path: Path):
@@ -873,6 +961,8 @@ def build_adapter(args):
         adapter["source_success_schema"] = args.source_success_schema
     if args.independent_header_schema:
         adapter["independent_header_schema"] = args.independent_header_schema
+    if args.input_provenance_mode:
+        adapter["input_provenance_mode"] = args.input_provenance_mode
     if args.production_only_column is not None:
         adapter["production_only_columns"] = tuple(args.production_only_column)
     if args.source_audit_job is not None:
@@ -892,6 +982,11 @@ def build_adapter(args):
             "unknown --independent-header-schema %r; expected one of %s"
             % (adapter["independent_header_schema"],
                ", ".join(INDEPENDENT_HEADER_SCHEMAS)))
+    if adapter["input_provenance_mode"] not in INPUT_PROVENANCE_MODES:
+        raise SealError(
+            "unknown --input-provenance-mode %r; expected one of %s"
+            % (adapter["input_provenance_mode"],
+               ", ".join(INPUT_PROVENANCE_MODES)))
     return adapter
 
 
@@ -1052,6 +1147,12 @@ def audit(args, adapter, paths, outdir: Path):
         independent_header, independent_manifest_rows, study_of, condition_of,
         independent)
 
+    provenance_mode = adapter["input_provenance_mode"]
+    if provenance_mode not in INPUT_PROVENANCE_MODES:
+        raise SealError(
+            "unknown input-provenance mode %r; expected one of %s"
+            % (provenance_mode, ", ".join(INPUT_PROVENANCE_MODES)))
+
     flow = []
     for row in rows:
         sample = row["sample_id"]
@@ -1089,17 +1190,20 @@ def audit(args, adapter, paths, outdir: Path):
         ]
         completion_error = completion_read_error or ";".join(mismatches)
 
-        receipt_ok, receipt_files, receipt_error = verify_receipt(
+        qc_sample_root = qc_root / study / sample
+        receipt_ok, receipt_files, receipt_error, receipt_paths = verify_receipt(
             state_dir / "samples" / ("%s.retained_outputs.tsv" % sample),
             scratch_root / sample,
-            (sample_root, qc_root / study / sample),
+            (sample_root, qc_sample_root),
         )
+        provenance_ok, provenance_error = check_input_provenance(
+            provenance_mode, sample, row, state_dir, qc_sample_root,
+            receipt_ok, receipt_paths)
         checks = {
             "verified_marker": nonempty_file(
                 state_dir / "samples" / ("%s.verified" % sample)),
             "retained_output_receipt": receipt_ok,
-            "input_provenance": nonempty_file(
-                state_dir / "samples" / ("%s.input_provenance.tsv" % sample)),
+            "input_provenance": provenance_ok,
             "sample_success": marker_exists(sample_root / SUCCESS_NAME),
             "baseline_profile_count": observed_baseline == BASELINE_PER_SAMPLE,
             "independent_profile_count": (
@@ -1129,6 +1233,8 @@ def audit(args, adapter, paths, outdir: Path):
             "failure_reasons": ";".join(
                 name for name in SAMPLE_CHECKS if not checks[name]),
             "receipt_error": receipt_error, "completion_error": completion_error,
+            "input_provenance_mode": provenance_mode,
+            "provenance_error": provenance_error,
         }
         for name in SAMPLE_CHECKS:
             record[name] = int(checks[name])
@@ -1214,6 +1320,11 @@ def parse_args(argv=None):
     parser.add_argument("--source-seal-independent-member")
     parser.add_argument("--source-success-schema",
                         choices=list(SOURCE_SUCCESS_SCHEMAS))
+    parser.add_argument("--input-provenance-mode",
+                        choices=list(INPUT_PROVENANCE_MODES),
+                        help="state_file (Feng/Zeller) or "
+                             "sealed_manifest_and_qc_receipt (legacy Yachida). "
+                             "There is no automatic fallback between them.")
     parser.add_argument("--independent-header-schema",
                         choices=list(INDEPENDENT_HEADER_SCHEMAS),
                         help="unique (default for Feng/Zeller) or the strict "

@@ -24,8 +24,8 @@ For every manifest sample, require:
 - exactly sixty independent profiles when the sample belongs to the frozen
   independent subset, otherwise zero;
 - a sample-level success sentinel;
-- a nonempty verified marker, retained-output receipt, input-provenance table,
-  and sample-completion table;
+- a nonempty verified marker, retained-output receipt, and sample-completion
+  table, plus the cohort's configured input-provenance evidence (§5b);
 - exact agreement between manifest identity, condition, independent-subset
   membership, expected topology, observed topology, and completion metadata;
 - every retained output exists, is nonempty, has the recorded byte count and
@@ -53,7 +53,8 @@ for manifests, seals, or cohort roots is allowed. Configuration must cover the
 cohort identifier; production and independent manifests; native source seal;
 state, results, QC, scratch, and output roots; expected sample and condition
 counts; condition-column name; study-column name or fixed study value; optional
-batch-column name; and whether source completion tables contain a study field.
+batch-column name; whether source completion tables contain a study field; and
+the input-provenance mode (§5b).
 
 Yachida uses `Target_Condition`, a fixed study value of `YachidaS_2019`, and an
 optional `batch_id`. Feng and Zeller use `condition` and `study`. These are
@@ -87,7 +88,8 @@ expected_baseline_profiles observed_baseline_profiles
 expected_independent_profiles observed_independent_profiles
 expected_community_profiles observed_community_profiles
 expected_profiles observed_profiles retained_output_files
-verified_marker retained_output_receipt input_provenance sample_success
+verified_marker retained_output_receipt input_provenance
+input_provenance_mode provenance_error sample_success
 baseline_profile_count independent_profile_count community_profile_count
 completion_table manifest_independent_flag status failure_reasons
 receipt_error completion_error
@@ -131,6 +133,55 @@ the checksum are created only after all validation succeeds.
 Native format differences are allowed only in the adapter/parser layer. All
 cohorts must pass the same retained-output, topology, identity, and canonical
 schema checks.
+
+## 5b. Input-provenance contract (corrected 28 September 2026)
+
+Two cohort lifecycles recorded the same evidence differently, so the contract
+is an **explicit adapter setting** with no automatic fallback. A cohort
+configured for one mode fails if that mode's evidence is absent, whatever the
+other mode would have found.
+
+| Mode | Cohorts | Evidence |
+|---|---|---|
+| `state_file` | Feng, Zeller | nonempty `state/samples/<sample>.input_provenance.tsv` |
+| `sealed_manifest_and_qc_receipt` | Yachida | sealed manifest FASTQ provenance plus two receipt-verified QC tables |
+
+**Evidence for the Yachida adapter.** Unified audit job **3097676** reached
+complete sample validation and then failed **all 201 samples on
+`input_provenance` alone** — the sample-flow summary was literally
+`201 input_provenance`. Every other per-sample check passed for 201/201:
+`verified_marker`, `retained_output_receipt`, `sample_success`,
+`baseline_profile_count`, `independent_profile_count`,
+`community_profile_count`, `completion_table` and
+`manifest_independent_flag`. Legacy Yachida has no
+`state/samples/<sample>.input_provenance.tsv`; that file belongs to the newer
+Feng/Zeller lifecycle. A direct audit of Yachida's own sealed provenance
+reported **samples checked 201, problems 0**.
+
+`sealed_manifest_and_qc_receipt` requires, per sample, **all** of:
+
+1. nonempty `fastq1_url`, `fastq2_url`, `fastq1_md5`, `fastq2_md5`,
+   `fastq1_bytes` and `fastq2_bytes` in the checksummed production-manifest
+   row;
+2. each MD5 exactly 32 hexadecimal characters;
+3. each byte count a positive integer;
+4. nonempty `<qc_root>/<study>/<sample>/metashotgunprep_provenance.tsv` and
+   `<qc_root>/<study>/<sample>/paired_fastq_integrity.tsv`;
+5. both of those exact resolved paths present in that sample's
+   `retained_outputs.tsv`;
+6. a passing receipt verification, which is what proves the recorded size and
+   SHA-256 of those two files.
+
+This is a compatibility adapter for two equivalent historical provenance
+contracts, **not a relaxation of provenance checking**. Nothing is inferred
+from whatever files happen to exist, no similarly named file elsewhere is
+accepted, and no `input_provenance.tsv` is ever created, copied or synthesised.
+
+`sample_flow.tsv` keeps its boolean `input_provenance` field, meaning the
+configured contract passed, and gains two columns present for every cohort:
+`input_provenance_mode` (`state_file` or `sealed_manifest_and_qc_receipt`) and
+`provenance_error`, which names the exact missing or invalid field or file.
+Both travel inside `sample_flow.tsv`, which `production_seal.sha256` covers.
 
 ## 5a. Observed sealed Yachida manifest headers (inspected 25 September 2026)
 

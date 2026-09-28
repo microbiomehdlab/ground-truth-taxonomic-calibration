@@ -217,6 +217,67 @@ value), and `test_independent_selection_audit.py` 7 tests. **Still not executed
 against real cohort outputs.**
 
 
+## 2026-09-28 — cohort-specific input-provenance adapter
+
+**Evidence.** The corrected Yachida unified audit, Slurm job **3097676**,
+reached complete sample validation and then failed **all 201 samples on
+`input_provenance` alone**; the sample-flow summary was literally
+`201 input_provenance`. For 201/201 samples every other check passed:
+`verified_marker`, `retained_output_receipt`, `sample_success`,
+`baseline_profile_count`, `independent_profile_count`,
+`community_profile_count`, `completion_table` and
+`manifest_independent_flag`. Legacy Yachida simply has no
+`state/samples/<sample>.input_provenance.tsv` — that file was introduced with
+the newer Feng/Zeller lifecycle. A direct audit of Yachida's own sealed
+provenance reported **samples checked 201, problems 0**.
+
+**DECIDED.** Input provenance becomes an explicit adapter setting with two
+modes and **no automatic fallback in either direction**. A cohort configured
+for one mode fails if that mode's evidence is absent, whatever the other mode
+would have found; forcing the wrong mode with `--input-provenance-mode` fails
+rather than quietly adapting.
+
+- `state_file` (Feng, Zeller) — unchanged: a nonempty
+  `state/samples/<sample>.input_provenance.tsv`.
+- `sealed_manifest_and_qc_receipt` (Yachida) — per sample, all of: nonempty
+  `fastq1_url`, `fastq2_url`, `fastq1_md5`, `fastq2_md5`, `fastq1_bytes`,
+  `fastq2_bytes` in the checksummed production-manifest row; each MD5 exactly
+  32 hexadecimal characters; each byte count a positive integer; nonempty
+  `metashotgunprep_provenance.tsv` and `paired_fastq_integrity.tsv` under the
+  persistent per-sample QC root; both of those exact resolved paths present in
+  that sample's `retained_outputs.tsv`; and a passing receipt verification,
+  which is what proves those two files' recorded size and SHA-256. The receipt
+  verifier now returns the resolved paths it accepted, so membership is tested
+  against exactly the paths it covered rather than re-resolved independently.
+
+**This is a compatibility adapter for two equivalent historical provenance
+contracts, not a relaxation of provenance checking.** Nothing is inferred from
+whichever files happen to exist, no similarly named file elsewhere is accepted,
+and no `input_provenance.tsv` is created, copied or synthesised. No native
+seal, receipt, manifest, QC file or profile output is modified.
+
+**Reporting.** `sample_flow.tsv` keeps its boolean `input_provenance` field,
+meaning the configured contract passed, and gains `input_provenance_mode` and
+`provenance_error` for every cohort, so the schema stays common across Yachida,
+Feng and Zeller and the mode is checksummed inside `production_seal.sha256`.
+`provenance_error` names the exact missing or invalid field or file rather than
+collapsing failures into an unexplained boolean.
+
+**Tests.** `analysis_v2/tests/test_unified_upstream_seal.py` 101 tests,
+including Yachida sealing with no state file, and failures for missing or blank
+URL/MD5/bytes, malformed MD5, non-integer, zero and negative byte counts,
+missing or empty QC tables, a QC table present but absent from the receipt,
+receipt digest and size corruption, Feng/Zeller missing their state file, both
+no-fallback directions, a forced wrong mode, common output schema and the
+reported mode per cohort. Mutation-checked: removing the fallback guard, the
+MD5 format check, the receipt-membership check, the byte-count check, or the
+receipt-verified requirement each breaks a named test.
+
+**Status: still not executed against real cohort outputs from this checkout.**
+The evidence above comes from job 3097676 and the direct provenance audit that
+André ran; the acceptance gate is unchanged.
+
+
 ## 2026-09-21 — Three-cohort recoverability figure, code-only
 
 A three-panel successor to the old two-cohort biomarker-recoverability figure

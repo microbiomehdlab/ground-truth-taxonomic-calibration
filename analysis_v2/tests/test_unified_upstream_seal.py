@@ -21,6 +21,20 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[2]
 AUDITOR = ROOT / "analysis_v2/scripts/seal_cohort_upstream.py"
 
+EXPECTED_SAMPLE_FLOW_FIELDS = [
+    "sample_id", "study", "condition", "independent_subset",
+    "batch_id",
+    "expected_baseline_profiles", "observed_baseline_profiles",
+    "expected_independent_profiles", "observed_independent_profiles",
+    "expected_community_profiles", "observed_community_profiles",
+    "expected_profiles", "observed_profiles", "retained_output_files",
+    "verified_marker", "retained_output_receipt", "input_provenance",
+    "input_provenance_mode", "provenance_error", "sample_success",
+    "baseline_profile_count", "independent_profile_count",
+    "community_profile_count",
+    "completion_table", "manifest_independent_flag", "status",
+    "failure_reasons", "receipt_error", "completion_error",
+]
 SEAL_MEMBERS = [
     "sample_flow.tsv", "covariate_audit.tsv", "production_manifest.tsv",
     "production_manifest.independent.tsv", "source_seal_inventory.tsv",
@@ -28,6 +42,11 @@ SEAL_MEMBERS = [
 ]
 CONDITIONS = ("Control", "Adenoma", "CRC")
 SELECTION_TRIPLET = ("selection_rank", "selection_hash", "selection_seed")
+# Legacy Yachida's sealed input-provenance contract.
+FASTQ_FIELDS = ("fastq1_url", "fastq2_url", "fastq1_md5", "fastq2_md5",
+                "fastq1_bytes", "fastq2_bytes")
+SEALED_QC_FILES = ("metashotgunprep_provenance.tsv",
+                   "paired_fastq_integrity.tsv")
 COMMUNITY_PER_SAMPLE = 7
 INDEPENDENT_PER_SUBSET_SAMPLE = 60
 
@@ -43,8 +62,16 @@ COHORTS = {
         # Batch provenance is production-only; the sealed 26-column
         # independent manifest has none of it.
         "independent_drop": ("batch_id",),
-        # And its selection triplet appears twice: pilot, then independent.
+        # Its selection triplet appears twice, but both copies hold the
+        # independent-selection values: the old selector overwrote the
+        # inherited values before writing. Pilot provenance survives only in
+        # the production manifest.
         "historical_duplicate_selection": True,
+        # Legacy Yachida predates state/samples/<sample>.input_provenance.tsv.
+        "input_provenance_mode": "sealed_manifest_and_qc_receipt",
+        "fastq_provenance": True,
+        "qc_files": SEALED_QC_FILES,
+        "state_provenance_file": False,
         "completion_has_study": False,
         "seal_manifest_member": "pilot_batched.tsv",
         "seal_independent_member": "independent_10_per_condition.tsv",
@@ -59,6 +86,10 @@ COHORTS = {
         "covariates": ("age", "sex", "bmi"),
         "independent_drop": (),
         "historical_duplicate_selection": False,
+        "input_provenance_mode": "state_file",
+        "fastq_provenance": False,
+        "qc_files": ("qc_report.txt",),
+        "state_provenance_file": True,
         "completion_has_study": True,
         "seal_manifest_member": "production_manifest.tsv",
         "seal_independent_member": "production_manifest.independent.tsv",
@@ -73,6 +104,10 @@ COHORTS = {
         "covariates": ("age", "sex", "bmi"),
         "independent_drop": (),
         "historical_duplicate_selection": False,
+        "input_provenance_mode": "state_file",
+        "fastq_provenance": False,
+        "qc_files": ("qc_report.txt",),
+        "state_provenance_file": True,
         "completion_has_study": True,
         "seal_manifest_member": "production_manifest.tsv",
         "seal_independent_member": "production_manifest.independent.tsv",
@@ -149,6 +184,8 @@ class Fixture:
         else:
             # Pilot selection provenance, as the real manifest carries it.
             fields.extend(SELECTION_TRIPLET)
+        if self.config["fastq_provenance"]:
+            fields.extend(FASTQ_FIELDS)
         return fields
 
     def manifest_row(self, sample):
@@ -177,7 +214,20 @@ class Fixture:
         else:
             for name in SELECTION_TRIPLET:
                 row[name] = "pilot_%s_%d" % (name, number)
+        if self.config["fastq_provenance"]:
+            row.update(self.fastq_provenance(number))
         return row
+
+    def fastq_provenance(self, number):
+        """The sealed FASTQ source provenance the production manifest holds."""
+        return {
+            "fastq1_url": "https://example.invalid/%s_1.fastq.gz" % number,
+            "fastq2_url": "https://example.invalid/%s_2.fastq.gz" % number,
+            "fastq1_md5": "%032x" % (0xA1 + number),
+            "fastq2_md5": "%032x" % (0xB2 + number),
+            "fastq1_bytes": str(1000 + number),
+            "fastq2_bytes": str(2000 + number),
+        }
 
     def independent_selection_value(self, name, position):
         return "independent_%s_%d" % (name, position)
@@ -185,14 +235,19 @@ class Fixture:
     def write_manifests(self, independent_extra=None, independent_drop=(),
                         independent_overrides=None, duplicate_selection=None,
                         duplicate_fields=SELECTION_TRIPLET, occurrences=2,
-                        extra_shared=None):
+                        extra_shared=None, field_overrides=None,
+                        drop_fields=()):
         """Write both manifests, reproducing the real Yachida asymmetry.
 
         The independent manifest is written positionally so the documented
         historical duplicated header can be reproduced exactly.
         """
-        fields = self.manifest_fields()
+        fields = [name for name in self.manifest_fields()
+                  if name not in drop_fields]
         rows = [self.manifest_row(sample) for sample in self.samples]
+        if field_overrides:
+            for row in rows:
+                row.update(field_overrides)
         if extra_shared:
             for name, values in extra_shared.items():
                 fields = fields + [name]
@@ -257,8 +312,9 @@ class Fixture:
 
     def write_receipt(self, sample, payloads=None, mutate=None):
         if payloads is None:
-            payloads = [self.sample_root(sample) / "sample_completion.tsv",
-                        self.qc_root(sample) / "qc_report.txt"]
+            payloads = [self.sample_root(sample) / "sample_completion.tsv"]
+            payloads += [self.qc_root(sample) / name
+                         for name in self.config["qc_files"]]
         rows = []
         for payload in payloads:
             rows.append({"path": str(payload), "sha256": sha256_file(payload),
@@ -312,10 +368,14 @@ class Fixture:
                     marker.touch()
             qc_root = self.qc_root(sample)
             qc_root.mkdir(parents=True, exist_ok=True)
-            (qc_root / "qc_report.txt").write_text(
-                "sample\t%s\nstatus\tPASS\n" % sample, encoding="utf-8")
+            for name in self.config["qc_files"]:
+                (qc_root / name).write_text(
+                    "sample\t%s\nstatus\tPASS\n" % sample, encoding="utf-8")
             (self.scratch / sample).mkdir(parents=True, exist_ok=True)
-            for suffix in ("verified", "input_provenance.tsv"):
+            markers = ["verified"]
+            if self.config["state_provenance_file"]:
+                markers.append("input_provenance.tsv")
+            for suffix in markers:
                 (self.state / "samples" / ("%s.%s" % (sample, suffix))).write_text(
                     "status\tPASS\n", encoding="utf-8")
             self.write_completion(sample)
@@ -509,6 +569,8 @@ class UnifiedSealTestCase(SealFixtureTestCase):
                 line.split("\t")[0] for line in
                 (outdir / "SUCCESS").read_text().rstrip("\n").split("\n")]
             shape = (members, flow_header, covariate_header, success_fields)
+            # Not merely equal across cohorts: exactly the documented order.
+            self.assertEqual(flow_header, EXPECTED_SAMPLE_FLOW_FIELDS, cohort)
             if reference is None:
                 reference = shape
                 self.assertEqual(members, sorted(SEAL_MEMBERS))
@@ -1823,6 +1885,252 @@ class NativeSuccessCompletenessTest(SealFixtureTestCase):
             lines.append(line)
         self.reseal_with(fixture, "\n".join(lines) + "\n")
         self.seal_fails(fixture, "conditions lacks Adenoma")
+
+
+# ------------------------------------- cohort-specific input provenance
+class InputProvenanceModeTest(SealFixtureTestCase):
+    """Two equivalent historical provenance contracts, selected explicitly.
+
+    Real-cluster evidence (Yachida unified audit job 3097676): 201/201 samples
+    passed every other check and 201/201 failed only `input_provenance`,
+    because legacy Yachida predates
+    `state/samples/<sample>.input_provenance.tsv`. A direct audit of its sealed
+    manifest and retained QC provenance found 201 samples checked, 0 problems.
+    """
+
+    def flow_rows(self, outdir):
+        _, rows = read_tsv(outdir / "sample_flow.tsv")
+        return {row["sample_id"]: row for row in rows}
+
+    def provenance_failure(self, fixture, needle):
+        message = self.seal_fails(fixture, "sample(s) are incomplete")
+        rows = self.flow_rows(fixture.outdir)
+        sample = fixture.samples[0]
+        self.assertIn("input_provenance", rows[sample]["failure_reasons"])
+        self.assertIn(needle, rows[sample]["provenance_error"])
+        return rows[sample]
+
+    def yachida(self, **kwargs):
+        fixture = self.fixture(cohort="yachida")
+        if kwargs:
+            fixture.write_manifests(**kwargs)
+            fixture.write_source_seal()
+        return fixture
+
+    # ------------------------------------------------------------- case 1
+    def test_yachida_seals_without_a_state_provenance_file(self):
+        fixture = self.yachida()
+        for sample in fixture.samples:
+            self.assertFalse(
+                (fixture.state / "samples"
+                 / ("%s.input_provenance.tsv" % sample)).exists(),
+                "the legacy cohort must not need the newer state file")
+        outdir = self.seal_ok(fixture)
+        rows = self.flow_rows(outdir)
+        for sample in fixture.samples:
+            self.assertEqual(rows[sample]["input_provenance"], "1")
+            self.assertEqual(rows[sample]["provenance_error"], "")
+            self.assertEqual(rows[sample]["input_provenance_mode"],
+                             "sealed_manifest_and_qc_receipt")
+
+    # ------------------------------------------------------------- case 2
+    def test_missing_or_blank_fastq_url_fails(self):
+        for field in ("fastq1_url", "fastq2_url"):
+            blank = self.yachida(field_overrides={field: ""})
+            self.provenance_failure(blank, "missing_manifest_field:%s" % field)
+            absent = self.yachida(drop_fields=(field,))
+            self.provenance_failure(absent, "missing_manifest_field:%s" % field)
+
+    # ------------------------------------------------------------- case 3
+    def test_missing_or_blank_md5_fails(self):
+        for field in ("fastq1_md5", "fastq2_md5"):
+            blank = self.yachida(field_overrides={field: "   "})
+            self.provenance_failure(blank, "missing_manifest_field:%s" % field)
+            absent = self.yachida(drop_fields=(field,))
+            self.provenance_failure(absent, "missing_manifest_field:%s" % field)
+
+    # ------------------------------------------------------------- case 4
+    def test_malformed_md5_fails(self):
+        # Surrounding whitespace is stripped before validation, so the
+        # malformed cases are genuinely malformed values.
+        for value in ("abc", "z" * 32, "a" * 31, "a" * 33, "a" * 16 + "-" * 16):
+            fixture = self.yachida(field_overrides={"fastq1_md5": value})
+            self.provenance_failure(fixture, "invalid_md5:fastq1_md5")
+
+    def test_whitespace_padded_md5_is_stripped_then_accepted(self):
+        self.seal_ok(self.yachida(field_overrides={"fastq1_md5": " %s " % ("a" * 32)}))
+
+    def test_uppercase_md5_is_accepted(self):
+        self.seal_ok(self.yachida(field_overrides={"fastq1_md5": "A" * 32}))
+
+    # ------------------------------------------------------------- case 5
+    def test_invalid_byte_counts_fail(self):
+        for field in ("fastq1_bytes", "fastq2_bytes"):
+            self.provenance_failure(
+                self.yachida(drop_fields=(field,)),
+                "missing_manifest_field:%s" % field)
+            self.provenance_failure(
+                self.yachida(field_overrides={field: ""}),
+                "missing_manifest_field:%s" % field)
+            self.provenance_failure(
+                self.yachida(field_overrides={field: "many"}),
+                "non_integer_bytes:%s" % field)
+            self.provenance_failure(
+                self.yachida(field_overrides={field: "1.5"}),
+                "non_integer_bytes:%s" % field)
+            for value in ("0", "-1"):
+                self.provenance_failure(
+                    self.yachida(field_overrides={field: value}),
+                    "non_positive_bytes:%s" % field)
+
+    # --------------------------------------------------------- cases 6, 7
+    def test_missing_or_empty_qc_provenance_file_fails(self):
+        for name in SEALED_QC_FILES:
+            removed = self.fixture(cohort="yachida")
+            (removed.qc_root(removed.samples[0]) / name).unlink()
+            self.provenance_failure(removed, "missing_or_empty_qc_file:%s" % name)
+
+            emptied = self.fixture(cohort="yachida")
+            (emptied.qc_root(emptied.samples[0]) / name).write_text(
+                "", encoding="utf-8")
+            self.provenance_failure(emptied, "missing_or_empty_qc_file:%s" % name)
+
+    # ------------------------------------------------------------- case 8
+    def test_qc_file_absent_from_the_receipt_fails(self):
+        for name in SEALED_QC_FILES:
+            fixture = self.fixture(cohort="yachida")
+            sample = fixture.samples[0]
+            kept = [fixture.sample_root(sample) / "sample_completion.tsv"]
+            kept += [fixture.qc_root(sample) / other
+                     for other in SEALED_QC_FILES if other != name]
+            fixture.write_receipt(sample, payloads=kept)
+            # The file itself is present and intact; only the receipt omits it.
+            self.assertTrue((fixture.qc_root(sample) / name).is_file())
+            row = self.provenance_failure(
+                fixture, "qc_file_absent_from_receipt:%s" % name)
+            self.assertEqual(row["retained_output_receipt"], "1",
+                             "the receipt itself is still valid")
+
+    # ------------------------------------------------------------- case 9
+    def test_receipt_corruption_also_fails_provenance(self):
+        def corrupt_digest(rows):
+            rows[-1]["sha256"] = "0" * 64
+            return rows
+
+        digest_broken = self.fixture(cohort="yachida")
+        digest_broken.write_receipt(digest_broken.samples[0],
+                                    mutate=corrupt_digest)
+        row = self.provenance_failure(
+            digest_broken, "retained_output_receipt_not_verified")
+        self.assertEqual(row["retained_output_receipt"], "0")
+        self.assertIn("sha256_mismatch", row["receipt_error"])
+
+        def corrupt_size(rows):
+            rows[-1]["bytes"] = int(rows[-1]["bytes"]) + 1
+            return rows
+
+        size_broken = self.fixture(cohort="yachida")
+        size_broken.write_receipt(size_broken.samples[0], mutate=corrupt_size)
+        row = self.provenance_failure(
+            size_broken, "retained_output_receipt_not_verified")
+        self.assertIn("size_mismatch", row["receipt_error"])
+
+    # ------------------------------------------------------------ case 10
+    def test_state_file_cohorts_still_require_their_state_file(self):
+        for cohort in ("feng", "zeller"):
+            fixture = self.fixture(cohort=cohort)
+            sample = fixture.samples[0]
+            (fixture.state / "samples"
+             / ("%s.input_provenance.tsv" % sample)).unlink()
+            row = self.provenance_failure(
+                fixture, "missing_or_empty_state_input_provenance")
+            self.assertEqual(row["input_provenance_mode"], "state_file")
+
+            emptied = self.fixture(cohort=cohort)
+            (emptied.state / "samples"
+             / ("%s.input_provenance.tsv" % emptied.samples[0])).write_text("")
+            self.provenance_failure(
+                emptied, "missing_or_empty_state_input_provenance")
+
+    # ------------------------------------------------------------ case 11
+    def test_no_automatic_fallback_from_sealed_to_state_file(self):
+        """A Yachida state file cannot rescue a broken sealed contract."""
+        fixture = self.yachida(field_overrides={"fastq1_md5": "nonsense"})
+        for sample in fixture.samples:
+            (fixture.state / "samples"
+             / ("%s.input_provenance.tsv" % sample)).write_text(
+                "status\tPASS\n", encoding="utf-8")
+        self.provenance_failure(fixture, "invalid_md5:fastq1_md5")
+
+    def test_no_automatic_fallback_from_state_file_to_sealed(self):
+        """Feng's sealed-style evidence cannot rescue a missing state file."""
+        fixture = self.fixture(cohort="feng")
+        sample = fixture.samples[0]
+        (fixture.state / "samples"
+         / ("%s.input_provenance.tsv" % sample)).unlink()
+        for name in SEALED_QC_FILES:
+            (fixture.qc_root(sample) / name).write_text(
+                "status\tPASS\n", encoding="utf-8")
+        fixture.write_receipt(sample, payloads=[
+            fixture.sample_root(sample) / "sample_completion.tsv",
+            fixture.qc_root(sample) / "qc_report.txt"]
+            + [fixture.qc_root(sample) / name for name in SEALED_QC_FILES])
+        self.provenance_failure(
+            fixture, "missing_or_empty_state_input_provenance")
+
+    def test_mode_is_not_inferred_from_available_evidence(self):
+        """Forcing the wrong mode fails rather than quietly adapting."""
+        fixture = self.fixture(cohort="yachida")
+        self.seal_fails(fixture, "sample(s) are incomplete",
+                        extra=["--input-provenance-mode", "state_file"])
+        rows = self.flow_rows(fixture.outdir)
+        self.assertEqual(rows[fixture.samples[0]]["input_provenance_mode"],
+                         "state_file")
+        self.assertIn("missing_or_empty_state_input_provenance",
+                      rows[fixture.samples[0]]["provenance_error"])
+
+    # -------------------------------------------------------- cases 12, 13
+    def test_schema_is_common_and_the_mode_is_reported_per_cohort(self):
+        expected = {"yachida": "sealed_manifest_and_qc_receipt",
+                    "feng": "state_file", "zeller": "state_file"}
+        reference = None
+        for cohort in ("yachida", "feng", "zeller"):
+            outdir = self.seal_ok(self.fixture(cohort=cohort))
+            header, rows = read_tsv(outdir / "sample_flow.tsv")
+            # The exact documented order, not just presence or cross-cohort
+            # equality: the two provenance columns sit immediately after
+            # input_provenance and before sample_success.
+            self.assertEqual(header, EXPECTED_SAMPLE_FLOW_FIELDS, cohort)
+            position = header.index("input_provenance")
+            self.assertEqual(header[position + 1], "input_provenance_mode")
+            self.assertEqual(header[position + 2], "provenance_error")
+            self.assertEqual(header[position + 3], "sample_success")
+            if reference is None:
+                reference = header
+            else:
+                self.assertEqual(header, reference, cohort)
+            self.assertEqual(
+                sorted(item.name for item in outdir.iterdir()),
+                sorted(SEAL_MEMBERS), cohort)
+            self.assertTrue(
+                all(row["input_provenance_mode"] == expected[cohort]
+                    for row in rows), cohort)
+            self.assertTrue(all(row["provenance_error"] == "" for row in rows))
+            # The mode travels inside a checksummed member.
+            listed = {}
+            for line in (outdir / "production_seal.sha256").read_text(
+                    encoding="utf-8").splitlines():
+                recorded, name = line.split()
+                listed[name] = recorded
+            self.assertEqual(listed["sample_flow.tsv"],
+                             sha256_file(outdir / "sample_flow.tsv"))
+
+    def test_an_unknown_mode_is_refused(self):
+        fixture = self.fixture(cohort="yachida")
+        command = fixture.command(["--input-provenance-mode", "invented"])
+        done = subprocess.run(command, text=True, capture_output=True)
+        self.assertNotEqual(done.returncode, 0)
+        self.assertIn("--input-provenance-mode", done.stdout + done.stderr)
 
 
 if __name__ == "__main__":

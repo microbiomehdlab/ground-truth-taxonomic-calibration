@@ -76,6 +76,24 @@ the unified upstream auditor requires the two copies to agree, treats them as
 the independent provenance, and reconstructs the pilot triplet from the
 production manifest (`analysis_v2/UNIFIED_UPSTREAM_SEAL.md`).
 
+### Input provenance
+
+Yachida predates `state/samples/<sample>.input_provenance.tsv`, which the newer
+Feng/Zeller lifecycle writes. Its equivalent, already sealed, contract is the
+FASTQ source provenance in the checksummed production manifest (`fastq1_url`,
+`fastq2_url`, `fastq1_md5`, `fastq2_md5`, `fastq1_bytes`, `fastq2_bytes`) plus
+two retained QC tables, `metashotgunprep_provenance.tsv` and
+`paired_fastq_integrity.tsv`, whose paths, sizes and SHA-256 digests the
+retained-output receipt already proves.
+
+The unified upstream auditor selects that contract explicitly through its
+`sealed_manifest_and_qc_receipt` input-provenance mode; there is no automatic
+fallback in either direction. Unified audit job 3097676 made this concrete: all
+201 samples passed every other check and all 201 failed only on
+`input_provenance`, while a direct audit of the sealed manifest and QC
+provenance found 201 samples checked and 0 problems. Do not create, copy or
+synthesise `input_provenance.tsv` files for this cohort.
+
 Reproducing the selection today emits `pilot_selection_*` and
 `independent_selection_*` as separate columns, so both provenances are retained
 and the header is unambiguous. Row selection is identical either way; only the

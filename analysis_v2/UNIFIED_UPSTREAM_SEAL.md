@@ -33,7 +33,8 @@ For every manifest sample:
   sixty independent profiles when the sample is in the frozen independent
   subset (otherwise exactly zero);
 - a sample-level success sentinel, and a nonempty verified marker,
-  retained-output receipt, input-provenance table and sample-completion table;
+  retained-output receipt and sample-completion table;
+- the cohort's configured input-provenance evidence (see below);
 - exact agreement between manifest identity, condition, subset membership,
   expected topology, observed topology and completion metadata;
 - every retained output exists, is nonempty, matches its recorded byte count
@@ -79,6 +80,7 @@ explicitly. Cohort differences are boundary settings only:
 | Production-only columns | batch provenance | none |
 | Independent header schema | `yachida_historical_duplicate_selection` | `unique` |
 | Native SUCCESS schema | `yachida_dataset` | `cohort_profiles` |
+| Input-provenance mode | `sealed_manifest_and_qc_receipt` | `state_file` |
 | Seal manifest member | `pilot_batched.tsv` | `production_manifest.tsv` |
 | Seal subset member | `independent_10_per_condition.tsv` | `production_manifest.independent.tsv` |
 | Native audit job | not recorded | Feng `3097587`, Zeller `3097588` |
@@ -135,6 +137,50 @@ both, and every column the two share must hold exactly the same value row by
 row. A missing required column, an altered shared value, an unexpected
 duplicate header, or a sample that is not nested in the production manifest all
 fail closed.
+
+### Input provenance: two equivalent historical contracts
+
+The two cohort lifecycles recorded the same evidence differently, so the
+contract is an explicit adapter setting selected per cohort. **There is no
+automatic fallback**: a cohort configured for one mode fails if that mode's
+evidence is absent, whatever the other mode would have found. `--input-
+provenance-mode` can override it, and forcing the wrong mode fails rather than
+quietly adapting.
+
+`state_file` (Feng, Zeller) requires a nonempty
+`state/samples/<sample>.input_provenance.tsv`, exactly as before.
+
+`sealed_manifest_and_qc_receipt` (legacy Yachida) requires, per sample, all of:
+
+1. nonempty `fastq1_url`, `fastq2_url`, `fastq1_md5`, `fastq2_md5`,
+   `fastq1_bytes`, `fastq2_bytes` in the checksummed production-manifest row;
+2. each MD5 exactly 32 hexadecimal characters;
+3. each byte count a positive integer;
+4. nonempty `<qc_root>/<study>/<sample>/metashotgunprep_provenance.tsv` and
+   `<qc_root>/<study>/<sample>/paired_fastq_integrity.tsv`;
+5. both of those exact resolved paths listed in that sample's
+   `retained_outputs.tsv`;
+6. a passing receipt verification, which is what proves those two files'
+   recorded size and SHA-256.
+
+Why: unified audit job **3097676** passed every other check for 201/201 Yachida
+samples and failed 201/201 on `input_provenance` alone, because legacy Yachida
+predates the newer state file. A direct audit of its own sealed provenance
+reported 201 samples checked and 0 problems. This is a compatibility adapter
+for two equivalent historical contracts, **not a relaxation of provenance
+checking**: no similarly named file elsewhere is accepted, and no
+`input_provenance.tsv` is ever created, copied or synthesised.
+
+`sample_flow.tsv` keeps the boolean `input_provenance` field and adds
+`input_provenance_mode` and `provenance_error` for every cohort, so the schema
+stays common and the mode is checksummed along with the rest of the table.
+`provenance_error` names the exact missing or invalid field or file, for
+example `missing_manifest_field:fastq1_md5`, `invalid_md5:fastq1_md5`,
+`non_positive_bytes:fastq2_bytes`,
+`missing_or_empty_qc_file:paired_fastq_integrity.tsv`,
+`qc_file_absent_from_receipt:metashotgunprep_provenance.tsv`,
+`retained_output_receipt_not_verified` or
+`missing_or_empty_state_input_provenance:<sample>.input_provenance.tsv`.
 
 ### The historical Yachida independent header
 
