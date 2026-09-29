@@ -35,10 +35,12 @@ comparators, not the primary inference.
 
 `STATISTICAL_ANALYSIS_PLAN.md` is the prespecified analysis specification.
 `ANALYSIS_POLICY.tsv` freezes its cross-cutting zero, transformation,
-pseudocount, threshold, and multiplicity rules in machine-readable form. No
-definitive v2 model should be fitted and no manuscript figure should be
-replaced until the final upstream input manifests are sealed. Development with
-synthetic fixtures is allowed before then.
+pseudocount, threshold, and multiplicity rules in machine-readable form. The final upstream manifests are sealed under one common contract, and the
+checksum-verified evidence package is complete. Definitive downstream work may
+now consume only those three `production_seal_v2` inputs; development products
+remain non-authoritative. The upstream method record is
+`UPSTREAM_METHODS_FOR_MANUSCRIPT.md`, with implementation details in
+`UNIFIED_UPSTREAM_SEAL.md` and `UPSTREAM_EVIDENCE_PACKAGE.md`.
 
 Incomplete historical native Feng/Zeller profiles can also be used strictly
 for integration and figure development through
@@ -186,9 +188,9 @@ source-seal copies, build provenance, `MANIFEST.tsv`, `SHA256SUMS` and
 completeness figure strictly from the exported figure source data. Raw reads,
 databases, containers, scratch and scheduler logs are never copied, individual
 covariates are withheld by default, and no cluster-absolute path reaches a
-release product. `tests/test_upstream_evidence_package.py` covers the 15
-specification cases and the additional fail-closed gates. No real-data package
-has been built yet.
+release product. `tests/test_upstream_evidence_package.py` covers the 15 specification cases and
+the additional fail-closed gates. Real-data job `3097746` built and independently
+verified the `PASS` package described in `UPSTREAM_EVIDENCE_PACKAGE.md`.
 
 ## Unified upstream cohort seal
 

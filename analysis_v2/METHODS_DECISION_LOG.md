@@ -1768,3 +1768,18 @@ this strengthened contract; profiling is not repeated.
 - Release inventories label it `AUDITED_UNSEALED` with
   `not_covered_by_historical_manifest` rather than representing it as covered
   by the historical checksum. Source directories remain immutable.
+
+## 2026-09-29 — Upstream documentation synchronized for manuscript drafting
+
+- The verified real-data state is now reflected in the root navigation,
+  reproduction guide, release checklist, operational actions, unified-seal
+  manual, evidence-package manual, and revision roadmap.
+- `UPSTREAM_METHODS_FOR_MANUSCRIPT.md` is the single manuscript-facing source
+  for the upstream design, cohort flow, spike construction, profiling, sealing,
+  assembly sensitivity, reproducibility, and interpretation limits.
+- Upstream computation and evidence assembly are complete; downstream modelling,
+  final figures/source data, manual evidence-figure review, clean-clone testing,
+  and Zenodo deposition remain separate tasks.
+- `scripts/check_repository.sh` still fails because multiple tracked historical
+  runbooks and handoffs contain host-specific absolute paths. This is a public-
+  release cleanup blocker, not an upstream-method or evidence-integrity failure.

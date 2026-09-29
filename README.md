@@ -65,6 +65,25 @@ The repository does not redistribute raw reads, profiler databases, or
 generated results. Users obtain or generate those external inputs as described
 below.
 
+### Definitive upstream validation and evidence
+
+The publication upstream route is the shared three-cohort contract, not the
+historical cohort-specific seal formats. Run or verify it through
+[`analysis_v2/UNIFIED_UPSTREAM_SEAL.md`](analysis_v2/UNIFIED_UPSTREAM_SEAL.md),
+then assemble release evidence through
+[`analysis_v2/UPSTREAM_EVIDENCE_PACKAGE.md`](analysis_v2/UPSTREAM_EVIDENCE_PACKAGE.md).
+The clean reproduction map is [`REPRODUCING.md`](REPRODUCING.md), and the
+manuscript-facing upstream method record is
+[`analysis_v2/UPSTREAM_METHODS_FOR_MANUSCRIPT.md`](analysis_v2/UPSTREAM_METHODS_FOR_MANUSCRIPT.md).
+
+The frozen real-data checkpoint is 511 samples across Yachida, Feng and Zeller,
+with 511 baseline, 3,577 community and 5,400 independent profiles. All three
+`upstream_seal_v2` directories and the 360-profile assembly-sensitivity
+experiment passed. Evidence-package job `3097746` produced a checksum-verifying
+`PASS` package from source commit
+`9df9ae7dce670ec83fbbfbb709c10a0bb51c4947`. Generated data remain outside
+Git and are intended for the supplementary/Zenodo release.
+
 ## Repository layout
 
 ```text

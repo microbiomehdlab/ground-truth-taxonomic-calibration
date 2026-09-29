@@ -131,39 +131,24 @@ will accept it for cross-cohort synthesis.
 
 ## Current qualification
 
-The repository contains reproducible upstream production and audit components,
-but a fully frozen paper reproduction is not yet claimed until all three final
-cohorts are complete, all batches are audited, the remaining sensitivity checks
-are resolved, and the paired statistical-analysis specification and downstream
-figures are finalized.
+The upstream paper cohorts are complete under one public validation contract.
+Yachida contains 201 samples (67 Control, 67 Adenoma, 67 CRC), Feng contains
+154 (61 Control, 47 Adenoma, 46 CRC), and Zeller contains 156 (61 Control, 42
+Adenoma, 53 CRC). Each cohort has one baseline and seven community profiles per
+sample plus 60 independent profiles for a nested subset of 30 samples balanced
+10 per condition. The resulting topology is 511 baseline, 3,577 community and
+5,400 independent profiles.
 
-The last manually verified cluster checkpoint was 23 September 2026. Yachida
-is complete and production-sealed. Feng had 152 of 154 persistent verified
-markers and retained-output receipts; `SID31874` was still running and
-`SID530697` had been submitted as a targeted retry. This is a dated checkpoint,
-not a completion claim. Zeller must be recounted from its frozen manifest,
-persistent state, and retained receipts before its status is restated.
+The common `upstream_seal_v2` audits completed as Yachida job `3097679`, Feng
+job `3097680`, and Zeller job `3097681`; every checksum verified and every seal
+reports `PASS`. The assembly-choice experiment independently reports 360/360
+profiles. The immutable upstream evidence package was built by job `3097746`
+at source commit `9df9ae7dce670ec83fbbfbb709c10a0bb51c4947`; it contains 56 files, 57
+verified checksum entries, and a top-level `PASS`. See
+`analysis_v2/UPSTREAM_EVIDENCE_PACKAGE.md` and
+`analysis_v2/UPSTREAM_METHODS_FOR_MANUSCRIPT.md`.
 
-The Feng seal audit exposed and the local source now fixes a marker-semantics
-defect. Production creates zero-byte `SUCCESS` sentinels with `touch`, whereas
-the original CRC seal incorrectly required nonempty marker files. The repaired
-seal requires existence for sentinels, retains nonempty requirements for
-evidence tables, independently verifies every retained-output byte count and
-SHA-256, restricts receipt paths to the sample's persistent results/QC roots,
-and invalidates stale seals before auditing. A production-style regression test
-passes locally. The fix still requires cluster transfer and execution against
-the complete cohort; it does not justify recomputing completed samples.
-
-The existing three-cohort downstream package therefore remains
-`DEVELOPMENT_ONLY`. Final revised-paper claims require sealed strict-production
-inputs for all three cohorts and a fresh definitive synthesis. See
-`PUBLIC_RELEASE_CHECKLIST.md` for release gates and deferred metadata tasks.
-
-For CRC rolling production, do not infer missing samples from the absence of an
-array in `squeue`: finished array elements disappear from the live queue, and
-dependency-blocked elements may be compacted. Establish state from the frozen
-manifest, the rolling `jobs.tsv`, `sacct`, persistent `.staged`/`.verified`
-markers, and retained-output receipts. If a later generation is unnecessarily
-idle, the bounded operator procedure in `datasets/CRC_ROLLING_PRODUCTION.md`
-may release eligible **download tasks only**. Compute jobs must remain gated on
-successful download and staging.
+This closes upstream computation, validation and evidence assembly. It does
+not make the full revised study release-ready: definitive downstream cohort
+analyses, three-cohort synthesis, final figures/source data, clean-clone
+validation, manual evidence-package review, and archive deposition remain.

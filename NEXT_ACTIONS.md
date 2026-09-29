@@ -1,9 +1,9 @@
 # Next actions and execution order
 
 **Purpose:** operational starting point for the next agent.
-**Last updated:** 28 September 2026.
+**Last updated:** 29 September 2026.
 
-## Upstream evidence package (28 September 2026)
+## Upstream evidence package (verified 29 September 2026)
 
 The unified-seal prerequisite is **satisfied**: Yachida job `3097679`, Feng
 `3097680` and Zeller `3097681` each `COMPLETED 0:0` under the same public
@@ -13,11 +13,11 @@ the unified upstream interface.
 
 `analysis_v2/UPSTREAM_EVIDENCE_PACKAGE.md` documents the evidence package built
 from those three `production_seal_v2` seals plus the sealed
-assembly-sensitivity experiment. The builder, figure, container runner and a
-35-test fixture suite exist and pass locally. **No real-data package has been
-built.** Next: Codex review, then a containerized cluster run into a new
-directory, then checksum verification and manual review of the figure and its
-source data. Generated packages stay outside Git for later Zenodo deposition.
+assembly-sensitivity experiment. The builder, figure and container runner were exercised on the real seals.
+Job `3097746` completed `0:0` and produced a checksum-verifying `PASS` package
+at source commit `9df9ae7dce670ec83fbbfbb709c10a0bb51c4947`. Upstream computation and
+evidence assembly are closed. Next: manually review the packaged figure/source
+tables, retain the package for Zenodo, and begin definitive downstream work. Generated packages stay outside Git for later Zenodo deposition.
 
 ## Current operational checkpoint
 
@@ -30,18 +30,21 @@ source data. Generated packages stay outside Git for later Zenodo deposition.
   independent profiles. Zeller contains 156 baseline, 1,092 community, and
   1,800 independent profiles. Every member of both production-seal checksum
   manifests verified `OK`.
-- Upstream profiling must not be rerun. Before evidence-package assembly,
-  implement and run the single public three-cohort validation contract in
-  `UNIFIED_UPSTREAM_SEAL_SPEC.md`. It maps the verified Yachida, Feng, and
-  Zeller outputs into identical `production_seal_v2` schemas while preserving
-  their native seals. Evidence-package assembly and definitive downstream
-  execution remain outstanding until those common seals pass.
+- Upstream profiling must not be rerun. The single public three-cohort
+  validation contract has passed for Yachida, Feng and Zeller, and the verified
+  evidence package was built by job `3097746`. Definitive downstream execution
+  is now the next computational phase.
 - The GUTBIOME Control/LR/HR profiling pilot is separate from the paper's
   three-cohort spike benchmark and must not enter definitive paper inputs.
 
 Public-release documentation and deferred metadata/archive work are tracked in
 `PUBLIC_RELEASE_CHECKLIST.md`. That checklist is the concise release-facing
 task list; this file remains the detailed operational handoff.
+
+The read-only `scripts/check_repository.sh` publication scan currently fails
+on host-specific absolute paths retained in historical runbooks and handoffs.
+Resolve that repository-wide release-cleanup issue before tagging; it does not
+reopen the verified upstream seals or evidence package.
 
 **Provisional paper figure book (21 September 2026):** Six main figures and
 seven supplementary candidates are inventoried in

@@ -1,6 +1,6 @@
 # Unified upstream cohort seal
 
-**Status:** implemented, not yet executed against real cohort outputs
+**Status:** real-cohort validated and checksum-verified on 25 September 2026
 **Contract:** `upstream_seal_v2`
 **Scope:** Yachida, Feng, Zeller
 
@@ -347,12 +347,12 @@ contract's logic, not the production counts.
 
 ## Acceptance gate
 
-Not complete until the fixture suite passes on the cluster, Codex reviews the
-implementation, the auditor runs against the real Yachida, Feng and Zeller
-outputs, all three v2 seals verify, counts and sample sets agree with the
-native evidence, and no source seal or profile changed. **Only then** may
-`UPSTREAM_EVIDENCE_PACKAGE_SPEC.md` be implemented.
-
-As of this commit none of the real-cohort steps has been performed. Standard
-library only, with postponed annotation evaluation for the cluster's older
-Python.
+Satisfied. The fixture suite passed on the cluster, the implementation was
+reviewed, and the common auditor completed against all three real cohorts:
+Yachida job `3097679`, Feng job `3097680`, and Zeller job `3097681`, each
+`COMPLETED 0:0` with an empty error log and a checksum-verifying `PASS` seal.
+A cross-cohort audit confirmed identical public schemas and canonical core
+columns without changing any native seal or profile. These three immutable
+`production_seal_v2` directories are the authoritative inputs to the upstream
+evidence package. Standard library only, with postponed annotation evaluation
+for the cluster's older Python.

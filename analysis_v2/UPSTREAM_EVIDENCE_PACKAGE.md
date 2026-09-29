@@ -1,6 +1,6 @@
 # Upstream evidence package
 
-**Status:** implemented and fixture-tested; not yet built from real cohort data
+**Status:** real-data package built and checksum-verified on 29 September 2026
 **Package version:** `upstream_evidence_v1`
 **Consumes:** `upstream_seal_v2`
 
@@ -270,11 +270,12 @@ exercised.
 
 ## Definition of done
 
-Not complete until the fixture tests pass on the cluster, Codex finds no
-weakening of source seals or privacy rules, the real package builds in a new
-directory, every checksum verifies, the aggregate counts match the sealed
-evidence exactly, and the figure and its source data are manually reviewed.
-Generated real-data packages stay outside Git for later Zenodo deposition;
-only code and small schemas are committed.
-
-**As of this commit no real-data package has been built.**
+Satisfied for upstream evidence generation. Job `3097746` completed `0:0` with
+an empty error log. The package reports `PASS` for Yachida 201, Feng 154 and
+Zeller 156 samples plus 360 assembly-sensitivity profiles; its 56 files and 57
+checksum entries verified independently. The definitive cluster package is
+`work/upstream_evidence_package_20260929T140202Z` and records source commit
+`9df9ae7dce670ec83fbbfbb709c10a0bb51c4947`. Generated real-data packages
+remain outside Git for later Zenodo deposition; only code, schemas and
+non-sensitive methods are committed. Manual visual review and Zenodo deposit
+remain release tasks, not upstream-computation tasks.

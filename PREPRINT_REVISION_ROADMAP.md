@@ -136,8 +136,8 @@ The final manuscript must report the exact completed sample and profile counts f
 
 #### Priority 1 — required for valid final results
 
-1. Build and archive the checksummed upstream evidence package from the three completed production seals.
-2. Audit exact profiler versions, databases, reference files, parameters, native abundance fields, and sample/profile counts.
+1. **Completed:** build and checksum-verify the upstream evidence package from the three completed production seals.
+2. **Completed upstream record:** profiler images, databases, reference files, parameters, manifests, source commit, and sample/profile counts are indexed in that package; public archive deposition remains.
 3. Freeze the taxon identity and alias policy before rebuilding the final response atlas.
 4. Build a single definitive three-cohort canonical input from the three sealed cohort products.
 5. Run the frozen analysis plan once in `DEFINITIVE` mode.
