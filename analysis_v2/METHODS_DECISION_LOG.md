@@ -1790,3 +1790,10 @@ this strengthened contract; profiling is not repeated.
 - Direct target measurements and response-atlas feature equivalence have different roles. In particular, Bracken's `Bacteroides fragilis_A` is an atlas equivalence, not an added direct-target abundance; `Fusobacterium nucleatum_E` is not collapsed into the implanted Fnuc feature.
 - The Methods source's unverified Bracken read-length value of 150 was removed. Feng and Zeller preflight requires 100 and threshold 10; Yachida's public example matches, but its real site configuration must be checked against packaged provenance before manuscript wording gives a cohort-wide value. The generic profiling script's fallback does not prove production settings.
 - `UPSTREAM_SOURCE_RETENTION.md` identifies upstream source groups to preserve for public reproduction. The package's checksum manifest remains the exact list of generated upstream evidence to share. A final per-file Git cleanup decision awaits the definitive downstream dependency graph.
+
+## 2026-09-29 — Bracken production read length verified from retained profiles
+
+- The user checked the actual Lobo strict-production environment files for Yachida, Feng, and Zeller: each had `READ_LEN=100` and `BRACKEN_THRESHOLD=10`.
+- The upstream evidence package's metadata also reported read length 100 and Bracken threshold 10, although its `read_length` note refers to spike-reference read-pool generation and was not used alone to infer profiling settings.
+- A user-run scan of retained `profiling_parameters.tsv` files found only `read_length=100, bracken_threshold=10`: Yachida 3,415 files, Feng 3,045, Zeller 3,054. The scan's broad file search exceeded the sealed production profile counts by 7, 13, and 6, respectively; its count assertion failed for that reason. The setting check passed for every file scanned. The previously verified upstream seals remain the authority for exact production profile counts.
+- The manuscript-facing Methods now states Bracken read length 100 and abundance threshold 10. The generic profiling script's fallback of 150 must not be reported as the production setting.
