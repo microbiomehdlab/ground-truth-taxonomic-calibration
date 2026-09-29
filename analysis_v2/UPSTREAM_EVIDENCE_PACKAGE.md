@@ -62,7 +62,7 @@ documented regular files, no subdirectory, and a `production_seal.sha256`
 covering exactly the other six — an omitted *or* additional entry fails. The
 assembly seal's `SUCCESS` must be checksummed. The historical post-seal
 `matched_seed_audit.tsv` sidecar is required and audited independently for its
-30 x 2 x 6 design, matched seeds and `PASS` statuses; it is explicitly recorded
+126 unique combinations, documented taxa and fractions, matched seeds and `PASS` statuses; it is explicitly recorded
 as `AUDITED_UNSEALED`. Every other unlisted member is rejected.
 
 **Identity and topology.** Cohort sizes exactly 201 / 154 / 156; 30 independent

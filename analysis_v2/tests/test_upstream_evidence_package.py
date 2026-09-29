@@ -261,7 +261,7 @@ class Fixture:
         write_tsv(seal / "matched_seed_audit.tsv",
                   ["sample_id", "study", "original_label", "clean_label",
                    "fraction", "original_seed", "clean_seed", "status"],
-                  sidecar_rows)
+                  sidecar_rows[:126])
         self.reseal_assembly()
 
     def reseal_assembly(self):

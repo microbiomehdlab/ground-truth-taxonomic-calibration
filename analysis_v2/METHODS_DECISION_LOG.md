@@ -1762,8 +1762,8 @@ this strengthened contract; profiling is not repeated.
 - The real Yachida assembly-sensitivity directory contains one post-seal
   `matched_seed_audit.tsv` sidecar that is not listed by the historical
   `experiment_inputs_and_summary.sha256`; all five listed members still verify.
-- The evidence builder now requires that exact sidecar, validates its 360-row
-  30-sample x 2-label x 6-fraction design, equal original and clean seeds, and
+- The evidence builder now requires that exact sidecar, validates its 126 unique audited combinations, documented taxa and fractions,
+  equal original and clean seeds, and
   `PASS` status throughout, while rejecting every other unlisted member.
 - Release inventories label it `AUDITED_UNSEALED` with
   `not_covered_by_historical_manifest` rather than representing it as covered

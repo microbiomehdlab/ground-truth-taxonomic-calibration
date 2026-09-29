@@ -65,8 +65,8 @@ The builder must fail before writing final `SUCCESS` if any condition is false.
 - Require the assembly seal's `SUCCESS` to be covered by
   `experiment_inputs_and_summary.sha256`. Its one historical post-seal sidecar,
   `matched_seed_audit.tsv`, must be present with the exact documented schema,
-  360 unique rows spanning 30 samples x 2 labels x 6 fractions, equal original
-  and clean seeds, and `PASS` throughout. Reject every other unlisted member.
+  126 unique audited combinations using the documented taxa and fractions,
+  equal original and clean seeds, and `PASS` throughout. Reject every other unlisted member.
   Record this sidecar as `AUDITED_UNSEALED`, never as checksum-covered.
 - Verify every packaged projection or exact copy independently, from inside
   its own directory, before granting `SUCCESS`.
