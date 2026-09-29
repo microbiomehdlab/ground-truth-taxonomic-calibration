@@ -1783,3 +1783,10 @@ this strengthened contract; profiling is not repeated.
 - `scripts/check_repository.sh` still fails because multiple tracked historical
   runbooks and handoffs contain host-specific absolute paths. This is a public-
   release cleanup blocker, not an upstream-method or evidence-integrity failure.
+
+## 2026-09-29 — Downstream taxon identity lock and upstream release source set
+
+- The ten-target panel, 20 exact profiler target aliases, and four feature-equivalence mappings passed a structural coverage and uniqueness check. `taxon_identity_freeze.sha256` records the exact bytes. The two definitive cohort entry points now verify the lock before canonical input construction and reject differing panel or alias overrides.
+- Direct target measurements and response-atlas feature equivalence have different roles. In particular, Bracken's `Bacteroides fragilis_A` is an atlas equivalence, not an added direct-target abundance; `Fusobacterium nucleatum_E` is not collapsed into the implanted Fnuc feature.
+- The Methods source's unverified Bracken read-length value of 150 was removed. Feng and Zeller preflight requires 100 and threshold 10; Yachida's public example matches, but its real site configuration must be checked against packaged provenance before manuscript wording gives a cohort-wide value. The generic profiling script's fallback does not prove production settings.
+- `UPSTREAM_SOURCE_RETENTION.md` identifies upstream source groups to preserve for public reproduction. The package's checksum manifest remains the exact list of generated upstream evidence to share. A final per-file Git cleanup decision awaits the definitive downstream dependency graph.

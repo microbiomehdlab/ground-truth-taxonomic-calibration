@@ -75,6 +75,7 @@ then assemble release evidence through
 The clean reproduction map is [`REPRODUCING.md`](REPRODUCING.md), and the
 manuscript-facing upstream method record is
 [`analysis_v2/UPSTREAM_METHODS_FOR_MANUSCRIPT.md`](analysis_v2/UPSTREAM_METHODS_FOR_MANUSCRIPT.md).
+The [taxon identity freeze](analysis_v2/TAXON_IDENTITY_FREEZE.md) fixes the downstream mapping, and [upstream source retention](analysis_v2/UPSTREAM_SOURCE_RETENTION.md) records what should remain in the public code release.
 
 The frozen real-data checkpoint is 511 samples across Yachida, Feng and Zeller,
 with 511 baseline, 3,577 community and 5,400 independent profiles. All three

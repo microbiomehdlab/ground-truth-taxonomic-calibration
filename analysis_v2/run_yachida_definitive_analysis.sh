@@ -14,6 +14,9 @@ SPIKE_ENV="${SPIKE_ENV:-$ROOT/work/yachida_67x3/spikein.env}"
 [[ -s "$SPIKE_ENV" ]] && source "$SPIKE_ENV"
 SPIKE_PANEL="${SPIKE_PANEL:-$ROOT/spikes/spike_panel.tsv}"
 ALIASES="${ALIASES:-$ROOT/examples/spike_taxon_aliases.csv}"
+(cd "$ROOT" && sha256sum -c --quiet analysis_v2/taxon_identity_freeze.sha256)
+cmp -s "$SPIKE_PANEL" "$ROOT/spikes/spike_panel.tsv" || { echo "[ERROR] Spike panel differs from frozen identity policy" >&2; exit 1; }
+cmp -s "$ALIASES" "$ROOT/examples/spike_taxon_aliases.csv" || { echo "[ERROR] Taxon aliases differ from frozen identity policy" >&2; exit 1; }
 CANONICAL_INPUT="${CANONICAL_INPUT:-$RUN_ROOT/canonical/canonical_input.tsv}"
 CANONICAL_SUCCESS="${CANONICAL_VALIDATION_SUCCESS:-$(dirname "$CANONICAL_INPUT")/validation/SUCCESS}"
 SENSITIVITY_SUCCESS="${ASSEMBLY_SENSITIVITY_SUCCESS:-$ASSEMBLY_SENSITIVITY_ROOT/experiment_seal/SUCCESS}"

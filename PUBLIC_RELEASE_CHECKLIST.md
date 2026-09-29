@@ -55,7 +55,7 @@ efficiency, or biological presence/absence.
   seals (`analysis_v2/UPSTREAM_EVIDENCE_PACKAGE.md`). Job `3097746` completed
   `0:0`; the package reports `PASS` for 511 samples and 360 assembly-sensitivity
   profiles at source commit `9df9ae7dce670ec83fbbfbb709c10a0bb51c4947`.
-- [ ] Freeze and record the final taxon identity and alias policy.
+- [x] Freeze and checksum-record the panel, target aliases, and feature-equivalence policy in `analysis_v2/TAXON_IDENTITY_FREEZE.md` and `analysis_v2/taxon_identity_freeze.sha256`. Each definitive cohort must still pass its native-profile semantic audit.
 - [x] Record exact profiler image, analysis image, database, spike FASTA,
   manifest, and source-commit identities in the verified upstream evidence
   package. Public redistribution and archive metadata remain a release task.

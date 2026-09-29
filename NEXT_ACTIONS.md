@@ -400,11 +400,12 @@ seal, and nonempty `SUCCESS`. Slurm `COMPLETED` is insufficient.
 
 ## 5. Freeze identity and profiler semantics
 
-Freeze `analysis_v2/feature_equivalence_aliases.tsv`, preserve raw profiler
-identifiers, prohibit broad prefix collapsing, keep
-`Fusobacterium nucleatum_E` separate unless independently justified, and audit
-native fields/database versions. Read `analysis_v2/PROFILER_SEMANTICS.md` and
-the corresponding decision-log entries.
+The target panel, exact profiler aliases, and feature-equivalence policy are locked
+by `analysis_v2/taxon_identity_freeze.sha256`; see
+`analysis_v2/TAXON_IDENTITY_FREEZE.md`. Preserve raw profiler identifiers,
+prohibit broad prefix collapsing, and keep `Fusobacterium nucleatum_E`
+separate. Each definitive cohort still needs a passing native-profile semantic
+audit; see `analysis_v2/PROFILER_SEMANTICS.md`.
 
 ## 6. Build the definitive three-cohort input
 
