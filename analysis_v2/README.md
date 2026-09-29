@@ -159,8 +159,9 @@ an estimand, model, multiplicity family, or interpretation rule changes.
 
 ## Definitive Yachida gate
 
-`run_yachida_definitive_analysis.sbatch` is the only intended entry point for
-the final Yachida v2 analysis. Its shell driver first builds the complete
+`run_cohort_definitive_analysis.sbatch` is the shared entry point for new
+Yachida, Feng, and Zeller preflights and definitive analyses; see
+`THREE_COHORT_DEFINITIVE_RUNBOOK.md`. Its shell driver first builds the complete
 canonical table from sealed native profiles, then runs
 `scripts/check_cohort_definitive_readiness.py`, and refuses to proceed unless
 the 201-sample production seal, complete validated canonical input, both
@@ -210,8 +211,8 @@ workflow has not yet been executed against real cohort outputs.
 `CRC_COHORT_DEFINITIVE_RUNBOOK.md` documents the shared fail-closed framework
 for Feng and Zeller. `scripts/seal_crc_cohort_upstream.py` creates participant
 flow and covariate-missingness ledgers and seals only complete cohorts.
-`run_crc_cohort_definitive_analysis.sh` applies the same canonical contract and
-downstream endpoints separately to each cohort. After all three definitive
+The shared `run_cohort_definitive_analysis.sh` applies the same canonical
+contract and downstream endpoints separately to each cohort. After all three definitive
 packages pass, `run_three_cohort_definitive_synthesis.sh` gates the existing
 random-effects synthesis on complete, non-development cohort evidence.
 `run_three_cohort_publication_report.sh` then creates the final overview tables
