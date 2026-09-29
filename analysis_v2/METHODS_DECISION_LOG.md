@@ -1797,3 +1797,8 @@ this strengthened contract; profiling is not repeated.
 - The upstream evidence package's metadata also reported read length 100 and Bracken threshold 10, although its `read_length` note refers to spike-reference read-pool generation and was not used alone to infer profiling settings.
 - A user-run scan of retained `profiling_parameters.tsv` files found only `read_length=100, bracken_threshold=10`: Yachida 3,415 files, Feng 3,045, Zeller 3,054. The scan's broad file search exceeded the sealed production profile counts by 7, 13, and 6, respectively; its count assertion failed for that reason. The setting check passed for every file scanned. The previously verified upstream seals remain the authority for exact production profile counts.
 - The manuscript-facing Methods now states Bracken read length 100 and abundance threshold 10. The generic profiling script's fallback of 150 must not be reported as the production setting.
+
+## 2026-09-29 — Quarantine explains the additional Bracken parameter files
+
+- The user compared every discovered `profiling_parameters.tsv` path with paths constructed from each sealed production manifest and frozen dose panel. All 3,408 Yachida, 3,032 Feng, and 3,048 Zeller expected production files were present (`missing=0` in every cohort).
+- The 7 Yachida, 13 Feng, and 6 Zeller additional parameter files were all under each run's `results/quarantine/` tree, in timestamped directories for replaced profile attempts. None belongs to the expected production path set. The earlier broad count assertion failed because it included these quarantined copies; it did not reveal missing production outputs or a different read-length setting. No files were deleted.
