@@ -107,6 +107,17 @@ ASSEMBLY_DEFAULT_KEYS = {"samples": "samples", "assembly_arms": "assembly_arms",
 ASSEMBLY_SUCCESS_FIELDS = ("experiment", "samples", "assembly_arms",
                            "fractions_per_arm", "expected_profiles",
                            "observed_profiles", "status")
+ASSEMBLY_SIDECAR_NAME = "matched_seed_audit.tsv"
+ASSEMBLY_SIDECAR_FIELDS = [
+    "sample_id", "study", "original_label", "clean_label", "fraction",
+    "original_seed", "clean_seed", "status",
+]
+ASSEMBLY_CLEAN_LABELS = {
+    "Pana": "Pana_clean_GCA_000381525.1",
+    "Pint": "Pint_clean_GCA_001953955.1",
+}
+ASSEMBLY_LABELS = set(ASSEMBLY_CLEAN_LABELS)
+ASSEMBLY_FRACTIONS = {"0.0001", "0.0005", "0.001", "0.005", "0.01", "0.05"}
 
 # --- provenance metadata contract -----------------------------------------
 PROVENANCE_FIELDS = ["category", "asset_id", "name", "version_or_release",
@@ -636,6 +647,61 @@ def frozen_manifest_ids(path: Path, label: str):
     return set(identifiers)
 
 
+def validate_assembly_sidecar(path: Path):
+    """Validate the historical matched-seed audit not covered by the seal manifest."""
+    header, rows = read_table(path, "assembly matched-seed audit")
+    if header != ASSEMBLY_SIDECAR_FIELDS:
+        raise PackageError(
+            "assembly matched-seed audit schema must be exactly: %s"
+            % ", ".join(ASSEMBLY_SIDECAR_FIELDS))
+    if len(rows) != 360:
+        raise PackageError(
+            "assembly matched-seed audit has %d rows; 360 are required"
+            % len(rows))
+    samples = set()
+    observed = set()
+    for number, row in enumerate(rows, start=2):
+        sample = row["sample_id"].strip()
+        label = row["original_label"].strip()
+        fraction = row["fraction"].strip()
+        key = (sample, label, fraction)
+        if not sample or key in observed:
+            raise PackageError(
+                "assembly matched-seed audit line %d has a blank sample or duplicate design key"
+                % number)
+        observed.add(key)
+        samples.add(sample)
+        if row["study"].strip() != "YachidaS_2019":
+            raise PackageError(
+                "assembly matched-seed audit line %d has the wrong study" % number)
+        if label not in ASSEMBLY_LABELS or fraction not in ASSEMBLY_FRACTIONS:
+            raise PackageError(
+                "assembly matched-seed audit line %d has an unexpected label or fraction"
+                % number)
+        if row["clean_label"].strip() != ASSEMBLY_CLEAN_LABELS.get(label):
+            raise PackageError(
+                "assembly matched-seed audit line %d has the wrong clean label"
+                % number)
+        original_seed = row["original_seed"].strip()
+        clean_seed = row["clean_seed"].strip()
+        if not original_seed.isdigit() or original_seed != clean_seed:
+            raise PackageError(
+                "assembly matched-seed audit line %d does not preserve the seed"
+                % number)
+        if row["status"].strip() != "PASS":
+            raise PackageError(
+                "assembly matched-seed audit line %d is not PASS" % number)
+    if len(samples) != 30:
+        raise PackageError(
+            "assembly matched-seed audit has %d samples; 30 are required"
+            % len(samples))
+    expected = {(sample, label, fraction) for sample in samples
+                for label in ASSEMBLY_LABELS for fraction in ASSEMBLY_FRACTIONS}
+    if observed != expected:
+        raise PackageError("assembly matched-seed audit is not a complete 30 x 2 x 6 design")
+    return digest(path), path.stat().st_size
+
+
 def load_assembly_sensitivity(seal_root: Path, keys):
     label = "assembly-sensitivity experiment seal"
     if not seal_root.is_dir():
@@ -650,15 +716,17 @@ def load_assembly_sensitivity(seal_root: Path, keys):
     if SUCCESS_NAME not in verified:
         raise PackageError(
             "%s does not checksum its own SUCCESS" % label)
-    # Every non-checksum regular member must be represented, so a file cannot
-    # ride along unrecorded.
+    # The historical directory contains one post-seal matched-seed audit. It is
+    # not silently treated as checksummed: require that exact sidecar, validate
+    # its full design and assertions, and reject every other unlisted member.
     present = sorted(item.name for item in seal_root.iterdir() if item.is_file())
     unlisted = [name for name in present
                 if name != ASSEMBLY_CHECKSUM_NAME and name not in verified]
-    if unlisted:
+    if unlisted != [ASSEMBLY_SIDECAR_NAME]:
         raise PackageError(
-            "%s holds member(s) absent from %s: %s"
-            % (label, ASSEMBLY_CHECKSUM_NAME, ", ".join(unlisted)))
+            "%s must have exactly the historical unsealed sidecar %s; observed unlisted members: %s"
+            % (label, ASSEMBLY_SIDECAR_NAME, ", ".join(unlisted) or "none"))
+    sidecar = validate_assembly_sidecar(seal_root / ASSEMBLY_SIDECAR_NAME)
     success = read_key_value(seal_root / SUCCESS_NAME, "%s SUCCESS" % label)
     missing_fields = [name for name in ASSEMBLY_SUCCESS_FIELDS
                       if name not in success]
@@ -682,6 +750,7 @@ def load_assembly_sensitivity(seal_root: Path, keys):
                 % (label, name, value, expected))
         observed[name] = value
     return {"root": seal_root, "success": success, "verified": verified,
+            "sidecar": {ASSEMBLY_SIDECAR_NAME: sidecar},
             "observed": observed,
             "seal_sha256": digest(checksum)}
 
@@ -1144,6 +1213,13 @@ def build_tables(cohorts, assembly, provenance_rows, ledger_rows):
             "source_seal_checksum": assembly["seal_sha256"],
             "status": "VERIFIED",
         })
+    for member, (sha, size) in sorted(assembly["sidecar"].items()):
+        inventory.append({
+            "component": "yachida_assembly_sensitivity",
+            "logical_file": member, "sha256": sha, "bytes": size,
+            "source_seal_checksum": "not_covered_by_historical_manifest",
+            "status": "AUDITED_UNSEALED",
+        })
 
     figure_source = []
     for row in sample_flow:
@@ -1280,6 +1356,10 @@ def copy_exact_seal(destination: Path, component: str, source_root: Path,
     destination.mkdir(parents=True, exist_ok=True)
     for member in sorted(members):
         shutil.copyfile(str(source_root / member), str(destination / member))
+    for member in sorted(members):
+        if digest(destination / member) != digest(source_root / member):
+            raise PackageError("copy of %s/%s changed during packaging"
+                               % (component, member))
     shutil.copyfile(str(source_root / checksum_name),
                     str(destination / checksum_name))
     # Prove here, not only upstream, that the copied manifest verifies.
@@ -1340,13 +1420,15 @@ def copy_source_seals(staging: Path, cohorts, assembly, include_individual):
 
     destination = root / "yachida_assembly_sensitivity"
     members = dict(assembly["verified"])
+    members.update(assembly["sidecar"])
     members[ASSEMBLY_CHECKSUM_NAME] = (
         assembly["seal_sha256"],
         (assembly["root"] / ASSEMBLY_CHECKSUM_NAME).stat().st_size)
     if include_individual:
         copy_exact_seal(
             destination, "yachida_assembly_sensitivity", assembly["root"],
-            sorted(assembly["verified"]), ASSEMBLY_CHECKSUM_NAME)
+            sorted(set(assembly["verified"]) | set(assembly["sidecar"])),
+            ASSEMBLY_CHECKSUM_NAME)
     else:
         write_projection(
             destination, "yachida_assembly_sensitivity",
@@ -1380,6 +1462,11 @@ def verify_packaged_seal_copies(staging: Path) -> int:
             present = sorted(item.name for item in component.iterdir()
                              if item.is_file() and item.name != manifests[0])
             unlisted = [name for name in present if name not in verified]
+            allowed_unlisted = ({ASSEMBLY_SIDECAR_NAME}
+                                if parent.name == EXACT_SEAL_ROOT and
+                                component.name == "yachida_assembly_sensitivity"
+                                else set())
+            unlisted = [name for name in unlisted if name not in allowed_unlisted]
             if unlisted:
                 raise PackageError(
                     "packaged %s/%s holds file(s) its checksum manifest does "

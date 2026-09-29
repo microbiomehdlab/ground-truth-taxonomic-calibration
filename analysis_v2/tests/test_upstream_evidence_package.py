@@ -244,6 +244,24 @@ class Fixture:
             "samples\t30\nassembly_arms\t2\nfractions_per_arm\t6\n"
             "expected_profiles\t360\nobserved_profiles\t360\nstatus\tPASS\n",
             encoding="utf-8")
+        sidecar_rows = []
+        fractions = ("0.0001", "0.0005", "0.001", "0.005", "0.01", "0.05")
+        for sample_index in range(30):
+            sample = "assembly_%02d" % sample_index
+            for label, clean_label in (("Pana", "Pana_clean_GCA_000381525.1"),
+                                       ("Pint", "Pint_clean_GCA_001953955.1")):
+                for fraction_index, fraction in enumerate(fractions):
+                    seed = str(100000 + sample_index * 12 + fraction_index)
+                    sidecar_rows.append({
+                        "sample_id": sample, "study": "YachidaS_2019",
+                        "original_label": label, "clean_label": clean_label,
+                        "fraction": fraction, "original_seed": seed,
+                        "clean_seed": seed, "status": "PASS",
+                    })
+        write_tsv(seal / "matched_seed_audit.tsv",
+                  ["sample_id", "study", "original_label", "clean_label",
+                   "fraction", "original_seed", "clean_seed", "status"],
+                  sidecar_rows)
         self.reseal_assembly()
 
     def reseal_assembly(self):
@@ -1055,7 +1073,21 @@ class ExactSealMembershipTest(PackageTestCase):
     def test_assembly_member_absent_from_its_manifest_fails(self):
         fixture = self.fixture()
         (fixture.assembly / "stray.tsv").write_text("x\n", encoding="utf-8")
-        self.build_fails(fixture, "holds member(s) absent from")
+        self.build_fails(fixture, "observed unlisted members")
+
+    def test_historical_matched_seed_sidecar_is_required_and_validated(self):
+        missing = self.fixture()
+        (missing.assembly / "matched_seed_audit.tsv").unlink()
+        self.build_fails(missing, "historical unsealed sidecar",
+                         name="missing_seed_sidecar")
+
+        mismatched = self.fixture()
+        path = mismatched.assembly / "matched_seed_audit.tsv"
+        header, rows = read_tsv(path)
+        rows[0]["clean_seed"] = str(int(rows[0]["original_seed"]) + 1)
+        write_tsv(path, header, rows)
+        self.build_fails(mismatched, "does not preserve the seed",
+                         name="mismatched_seed_sidecar")
 
     def test_assembly_success_must_be_checksummed(self):
         fixture = self.fixture()
