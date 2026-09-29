@@ -586,7 +586,11 @@ def load_cohort_seal(cohort: str, seal_root: Path, manifest: Path,
                 % (label, member))
         inventory_members.add(member)
         job = (row["source_audit_job"] or "").strip()
-        if not JOB_PATTERN.match(job):
+        # This field belongs to the native/source seal, not to the later
+        # unified-v2 audit recorded in audit_ledger.tsv. Historical Yachida
+        # has no native Slurm audit identifier, so a consistently blank value
+        # is legitimate; otherwise the value must be numeric.
+        if job and not JOB_PATTERN.match(job):
             raise PackageError(
                 "%s source_seal_inventory.tsv line %d has an invalid "
                 "source_audit_job %r" % (label, number, job))
@@ -615,7 +619,7 @@ def load_cohort_seal(cohort: str, seal_root: Path, manifest: Path,
         "balance": balance, "totals": totals,
         "expected_totals": expected_totals,
         "input_provenance_mode": sorted(modes)[0],
-        "source_audit_job": next(iter(inventory_jobs)),
+        "native_source_audit_job": next(iter(inventory_jobs)),
         "seal_sha256": digest(seal_root / CHECKSUM_NAME),
     }
 
@@ -1683,15 +1687,6 @@ def build(args) -> Path:
     ledger_rows = load_audit_ledger(inputs["audit_ledger"], COHORT_ORDER,
                                     expected_jobs, seal_checksums)
     scan_for_credentials(ledger_rows, "audit ledger")
-    ledger_by_cohort = {row["cohort"]: row for row in ledger_rows}
-    for cohort in COHORT_ORDER:
-        inventory_job = cohorts[cohort]["source_audit_job"]
-        ledger_job = ledger_by_cohort[cohort]["audit_job_id"].strip()
-        if inventory_job != ledger_job:
-            raise PackageError(
-                "%s source_seal_inventory.tsv records audit job %s but the "
-                "validated audit ledger records %s"
-                % (cohort, inventory_job, ledger_job))
 
     tables = build_tables(cohorts, assembly, provenance_rows, ledger_rows)
     stamp = datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ")

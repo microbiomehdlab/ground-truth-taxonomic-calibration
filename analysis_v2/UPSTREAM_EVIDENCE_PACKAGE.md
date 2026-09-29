@@ -98,6 +98,12 @@ explicit UTC stamp, and a `seal_sha256` equal to that cohort's actual
 `production_seal.sha256`. The registry's `source_audit_job` comes only from
 this validated ledger.
 
+The `source_audit_job` inside each seal's `source_seal_inventory.tsv` describes
+the earlier native/source seal, not this unified-v2 audit. Historical Yachida
+therefore legitimately has consistently blank values, while Feng and Zeller
+record one numeric native audit job. The builder validates that distinction
+but does not require a native job to equal the unified ledger job.
+
 **Provenance metadata.** A full 40-character commit is required. Categories
 must be documented ones, `asset_id` values unique, and file-backed assets need
 a real 64-character SHA-256. `upstream_parameter` rows record settings rather

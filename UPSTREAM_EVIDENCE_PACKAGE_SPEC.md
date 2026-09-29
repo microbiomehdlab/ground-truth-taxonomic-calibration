@@ -317,6 +317,10 @@ this validated ledger.
 The earlier topology-hardened CRC audits were Feng `3097587` and Zeller
 `3097588` on 24 September 2026; they are the native-seal provenance recorded in
 each v2 seal's inventory, not the unified audits this package validates.
+Historical Yachida predates a native Slurm audit identifier, so its inventory
+legitimately records blank `source_audit_job` values. Within one inventory,
+these values must be consistently blank or one numeric native job; they are
+not compared with the later unified audit recorded in `audit_ledger.tsv`.
 
 ### `source_seal_inventory.tsv`
 

@@ -1196,7 +1196,7 @@ class PerSampleTopologyTest(PackageTestCase):
         self.build_fails(drifted, "source_seal_inventory.tsv schema must be",
                          name="inv_schema")
 
-    def test_inventory_member_and_audit_job_are_exact(self):
+    def test_inventory_member_and_native_audit_job_are_valid(self):
         duplicated = self.fixture()
         seal = duplicated.seals["feng"]
         header, rows = read_tsv(seal / "source_seal_inventory.tsv")
@@ -1213,20 +1213,31 @@ class PerSampleTopologyTest(PackageTestCase):
         invalid.reseal("feng")
         self.build_fails(invalid, "invalid source_audit_job", name="inv_job")
 
-        mismatched = self.fixture()
-        seal = mismatched.seals["feng"]
+        legacy = self.fixture()
+        seal = legacy.seals["yachida"]
         header, rows = read_tsv(seal / "source_seal_inventory.tsv")
-        rows[0]["source_audit_job"] = "999999"
+        rows[0]["source_audit_job"] = ""
         write_tsv(seal / "source_seal_inventory.tsv", header, rows)
-        mismatched.reseal("feng")
-        header, rows = read_tsv(mismatched.ledger)
+        legacy.reseal("yachida")
+        header, rows = read_tsv(legacy.ledger)
         for row in rows:
-            if row["cohort"] == "feng":
+            if row["cohort"] == "yachida":
                 row["seal_sha256"] = sha256_file(
                     seal / "production_seal.sha256")
-        write_tsv(mismatched.ledger, header, rows)
-        self.build_fails(mismatched, "validated audit ledger records",
-                         name="inv_job_mismatch")
+        write_tsv(legacy.ledger, header, rows)
+        self.build_ok(legacy, name="legacy_blank_native_job")
+
+        mixed = self.fixture()
+        seal = mixed.seals["feng"]
+        header, rows = read_tsv(seal / "source_seal_inventory.tsv")
+        second = dict(rows[0])
+        second["member"] = "another_source_member.tsv"
+        second["source_audit_job"] = "999999"
+        rows.append(second)
+        write_tsv(seal / "source_seal_inventory.tsv", header, rows)
+        mixed.reseal("feng")
+        self.build_fails(mixed, "reports multiple audit jobs",
+                         name="mixed_native_jobs")
 
 
 class AuditLedgerSemanticsTest(PackageTestCase):
@@ -1254,20 +1265,6 @@ class AuditLedgerSemanticsTest(PackageTestCase):
 
     def test_expected_job_can_be_overridden_explicitly(self):
         fixture = self.corrupt(self.fixture(), "audit_job_id", "4200001")
-        seal = fixture.seals["feng"]
-        header, rows = read_tsv(seal / "source_seal_inventory.tsv")
-        for row in rows:
-            row["source_audit_job"] = "4200001"
-        write_tsv(seal / "source_seal_inventory.tsv", header, rows)
-        fixture.reseal("feng")
-        # Updating a sealed member changes the seal-manifest digest recorded
-        # by the ledger, as it would for a real replacement audit.
-        header, rows = read_tsv(fixture.ledger)
-        for row in rows:
-            if row["cohort"] == "feng":
-                row["seal_sha256"] = sha256_file(
-                    seal / "production_seal.sha256")
-        write_tsv(fixture.ledger, header, rows)
         self.build_ok(fixture, extra=["--feng-audit-job", "4200001"])
 
     def test_non_completed_state_fails(self):
