@@ -76,7 +76,7 @@ First run the downstream preflight, which builds and validates the canonical
 table but fits no models:
 
 ```bash
-export ANALYSIS_SIF=/mnt/beegfs/apptainer/images/ground_truth_analysis_v1.sif
+export ANALYSIS_SIF=/mnt/beegfs/apptainer/images/ground_truth_analysis_v2_1.sif
 export ASSEMBLY_SENSITIVITY_ROOT="$PWD/work/yachida_assembly_sensitivity_20260901"
 export RUN_ROOT="$PWD/work/analysis_v2_yachida_preflight_$(date +%Y%m%d_%H%M%S)"
 export PREFLIGHT_ONLY=1

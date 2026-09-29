@@ -56,7 +56,7 @@ Then run a preflight in a new directory:
 export PROJECT="$PWD"
 export COHORT=feng
 export CRC_ENV="$PWD/config/feng.strict-production.env"
-export ANALYSIS_SIF=/mnt/beegfs/apptainer/images/ground_truth_analysis_v1.sif
+export ANALYSIS_SIF=/mnt/beegfs/apptainer/images/ground_truth_analysis_v2_1.sif
 export RUN_ROOT="$PWD/work/analysis_v2_feng_preflight_$(date +%Y%m%d_%H%M%S)"
 export PREFLIGHT_ONLY=1
 sbatch --export=ALL run_crc_cohort_definitive_analysis.sbatch

@@ -1802,3 +1802,7 @@ this strengthened contract; profiling is not repeated.
 
 - The user compared every discovered `profiling_parameters.tsv` path with paths constructed from each sealed production manifest and frozen dose panel. All 3,408 Yachida, 3,032 Feng, and 3,048 Zeller expected production files were present (`missing=0` in every cohort).
 - The 7 Yachida, 13 Feng, and 6 Zeller additional parameter files were all under each run's `results/quarantine/` tree, in timestamped directories for replaced profile attempts. None belongs to the expected production path set. The earlier broad count assertion failed because it included these quarantined copies; it did not reveal missing production outputs or a different read-length setting. No files were deleted.
+
+## 2026-09-29 — Definitive cohort runbooks use the versioned v2 analysis image
+
+- Corrected the Yachida and Feng/Zeller definitive runbooks to point to `ground_truth_analysis_v2_1.sif`. The previous v1 path was stale relative to the frozen 2026-09-20 downstream environment decision and the successful upstream evidence-package build. This changes launch documentation only; no cohort analysis was submitted by this edit.
