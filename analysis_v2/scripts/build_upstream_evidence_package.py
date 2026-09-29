@@ -85,9 +85,9 @@ FROZEN_SUBSET_BALANCE = {"Control": 10, "Adenoma": 10, "CRC": 10}
 FROZEN_COHORTS = {
     "yachida": {"study": "YachidaS_2019", "samples": 201,
                 "baseline": 201, "community": 1407, "independent": 1800},
-    "feng": {"study": "FengQ_2015", "samples": 154,
+    "feng": {"study": "Public_study__FengQ_2015", "samples": 154,
              "baseline": 154, "community": 1078, "independent": 1800},
-    "zeller": {"study": "ZellerG_2014", "samples": 156,
+    "zeller": {"study": "Public_study__ZellerG_2014", "samples": 156,
                "baseline": 156, "community": 1092, "independent": 1800},
 }
 COHORT_ORDER = ("yachida", "feng", "zeller")

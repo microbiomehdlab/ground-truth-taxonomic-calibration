@@ -31,8 +31,8 @@ CONDITIONS = ("Control", "Adenoma", "CRC")
 DESIGNS = ("baseline", "independent", "community")
 COHORTS = {
     "yachida": {"study": "YachidaS_2019", "samples": 201, "community": 1407},
-    "feng": {"study": "FengQ_2015", "samples": 154, "community": 1078},
-    "zeller": {"study": "ZellerG_2014", "samples": 156, "community": 1092},
+    "feng": {"study": "Public_study__FengQ_2015", "samples": 154, "community": 1078},
+    "zeller": {"study": "Public_study__ZellerG_2014", "samples": 156, "community": 1092},
 }
 INDEPENDENT = 30
 INDEPENDENT_PROFILES = 1800
