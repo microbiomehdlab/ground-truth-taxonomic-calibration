@@ -22,7 +22,7 @@ cmp -s "$ALIASES" "$ROOT/examples/spike_taxon_aliases.csv" || { echo "[ERROR] Ta
 CANONICAL_INPUT="${CANONICAL_INPUT:-$RUN_ROOT/canonical/canonical_input.tsv}"
 CANONICAL_SUCCESS="${CANONICAL_VALIDATION_SUCCESS:-$(dirname "$CANONICAL_INPUT")/validation/SUCCESS}"
 [[ ! -e "$RUN_ROOT" || -z "$(find "$RUN_ROOT" -mindepth 1 -print -quit)" ]] || { echo "[ERROR] RUN_ROOT must be new or empty" >&2; exit 1; }
-mkdir -p "$RUN_ROOT"/{canonical,readiness,profiler_semantics,endpoints,models,reports,provenance}
+mkdir -p "$RUN_ROOT"/{canonical,readiness,profiler_semantics,models,reports,provenance}
 python3 analysis_v2/scripts/validate_analysis_policy.py \
   --policy analysis_v2/ANALYSIS_POLICY.tsv --outdir "$RUN_ROOT/provenance/analysis_policy"
 
@@ -38,6 +38,9 @@ python3 analysis_v2/scripts/check_cohort_definitive_readiness.py \
   --canonical "$CANONICAL_INPUT" --canonical-success "$CANONICAL_SUCCESS" \
   --analysis-sif "$ANALYSIS_SIF" --expected-samples "$EXPECTED_SAMPLES" \
   --expected-independent 30 --outdir "$RUN_ROOT/readiness"
+if require_reference_inputs "$CANONICAL_INPUT"; then
+  echo "[PASS] MetaPhlAn reference inputs validated"
+fi
 [[ "${PREFLIGHT_ONLY:-0}" != 1 ]] || { echo "[PASS] $COHORT definitive preflight only"; exit 0; }
 
 audit_args=(--outdir "$RUN_ROOT/profiler_semantics")

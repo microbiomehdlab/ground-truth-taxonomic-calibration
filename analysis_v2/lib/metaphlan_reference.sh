@@ -90,6 +90,9 @@ require_reference_inputs() {
   require_columns "$TARGET_GENOME_SIZES" target_label genome_size_bp
   require_columns "$EFFECTIVE_GENOME_SIZES" cohort sample_id effective_genome_size_bp
   require_geff_coverage "$canonical" "$EFFECTIVE_GENOME_SIZES"
+  python3 analysis_v2/scripts/validate_metaphlan_reference_inputs.py \
+    --canonical "$canonical" --targets "$TARGET_GENOME_SIZES" \
+    --effective "$EFFECTIVE_GENOME_SIZES" || exit 1
   return 0
 }
 
