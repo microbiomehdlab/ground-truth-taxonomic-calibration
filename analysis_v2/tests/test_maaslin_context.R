@@ -12,7 +12,8 @@ mock <- function(input_data,input_metadata,output,...) {
     data.frame(feature=names(input_data)[i],metadata='group',coef=s[1],stderr=s[2],pval=s[4],qval=s[4])
   }))
   write.table(rows,file.path(output,'all_results.tsv'),sep='\t',row.names=FALSE,quote=FALSE)
-  saveRDS(models,file.path(output,'models.rds'))
+  dir.create(file.path(output,'fits'))
+  saveRDS(models,file.path(output,'fits','models.rds'))
 }
 root <- tempfile('maaslin_context_'); dir.create(root)
 r <- fit_maaslin_context(x,meta,colnames(x),file.path(root,'good'),backend=mock)

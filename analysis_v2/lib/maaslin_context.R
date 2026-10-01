@@ -71,7 +71,7 @@ fit_maaslin_context <- function(abundance, metadata, family, output,
         any(native$stderr<=0) || any(!is.finite(native$pval)) ||
         any(native$pval<0 | native$pval>1)) stop('Invalid backend group inference')
     # MaAsLin2 may log convergence without issuing an R warning: inspect models.
-    models_path <- file.path(fitout,'models.rds')
+    models_path <- file.path(fitout,'fits','models.rds')
     if (!file.exists(models_path)) stop('Saved models required for diagnostics')
     models <- readRDS(models_path)
     if (!is.list(models) || !length(models)) stop('Unexpected saved-model layout')
