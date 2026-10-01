@@ -1,6 +1,17 @@
 #!/usr/bin/env Rscript
 source('analysis_v2/scripts/audit_paired_pilot.R')
 
+read_diagnostic_table <- function(path) {
+    # All-empty text columns otherwise become logical NA under type inference.
+    x <- read.delim(path,quote='',check.names=FALSE,stringsAsFactors=FALSE,
+                    colClasses='character',na.strings=NULL)
+    for (name in intersect(names(x),c('backend_warning_prefix','deterministic_difference_at_tolerance','singular'))) {
+        if(!all(x[[name]] %in% c('TRUE','FALSE','NA'))) stop('Invalid boolean diagnostic')
+        x[[name]] <- ifelse(x[[name]]=='NA',NA,x[[name]]=='TRUE')
+    }
+    x
+}
+
 select_diagnostics <- function(variation,models) {
     selected <- list()
     for (context in sort(unique(variation$context_id))) {
@@ -37,7 +48,7 @@ select_diagnostics <- function(variation,models) {
 
 refit_diagnostics <- function(audit,results,out) {
     if(!requireNamespace('lmerTest',quietly=TRUE)) stop('lmerTest required')
-    read <- function(path) read.delim(path,quote='',check.names=FALSE,stringsAsFactors=FALSE)
+    read <- read_diagnostic_table
     selection <- select_diagnostics(read(file.path(audit,'paired_variation.tsv')),
                                     read(file.path(audit,'model_diagnostics.tsv')))
     write_audit_tsv(selection,file.path(out,'selection.tsv'))

@@ -1,4 +1,8 @@
 source('analysis_v2/scripts/refit_paired_diagnostics.R')
+blank_path <- tempfile()
+write_audit_tsv(data.frame(optimizer_code='0',convergence_messages='',diagnostic_error='',singular=FALSE),blank_path)
+blank <- read_diagnostic_table(blank_path)
+stopifnot(identical(blank$diagnostic_error,''),identical(blank$convergence_messages,''),!blank$singular)
 v <- data.frame(context_id='pilot_test',attempt='attempt_test',model_feature=sprintf('feature_%06d',1:4),
                 feature=c('bad','warning','clean','Fusobacterium nucleatum'),
                 backend_warning_prefix=c(TRUE,TRUE,FALSE,TRUE),deterministic_difference_at_tolerance=c(TRUE,FALSE,FALSE,FALSE))
@@ -27,7 +31,8 @@ if(requireNamespace('lmerTest',quietly=TRUE)) {
     write.table(abundance,file.path(task,'abundance.tsv'),sep='\t',quote=FALSE,row.names=FALSE)
     saveRDS(setNames(list(model),v$model_feature),file.path(task,'fit/maaslin_native/fits/models.rds'))
     refit_diagnostics(audit,results,out)
-    compared <- read.delim(file.path(out,'refit_comparisons.tsv'),quote='')
+    compared <- read.delim(file.path(out,'refit_comparisons.tsv'),quote='',colClasses=c(error='character'))
+    if(any(nzchar(compared$error))) print(compared[,c('variant','error')])
     stopifnot(nrow(compared)==5,all(compared$error==''),
               max(abs(compared$beta-lme4::fixef(model)['group']))<1e-5,
               max(abs(compared$stderr-compared$stderr[1]))<1e-4)
