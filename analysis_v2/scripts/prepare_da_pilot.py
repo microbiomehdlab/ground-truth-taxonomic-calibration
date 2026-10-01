@@ -13,9 +13,10 @@ def verify(folder):
     for line in (folder/'SHA256SUMS').read_text().splitlines():
         sha,name=line.split(maxsplit=1)
         path=Path(name)
-        require(not path.is_absolute() and '..' not in path.parts and name not in covered,'Unsafe checksum member')
+        normalized=path.as_posix()
+        require(not path.is_absolute() and '..' not in path.parts and normalized not in covered,'Unsafe checksum member')
         require(digest(folder/path)==sha,'Checksum mismatch: '+str(folder/path))
-        covered.add(name)
+        covered.add(normalized)
     require('SUCCESS' in covered,'SUCCESS not checksummed')
 
 

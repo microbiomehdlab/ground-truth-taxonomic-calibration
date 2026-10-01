@@ -2,6 +2,7 @@
 from __future__ import annotations
 import shutil
 import sys
+import tempfile
 import unittest
 from pathlib import Path
 from unittest.mock import patch
@@ -13,6 +14,16 @@ import test_da_design_inventory as fixture
 
 
 class Tests(unittest.TestCase):
+    def test_checksum_dot_prefix_and_normalized_duplicate(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root=Path(tmp)
+            success=root/'SUCCESS'; success.write_text('status\tPASS\n')
+            line=p.digest(success)+'  ./SUCCESS\n'
+            (root/'SHA256SUMS').write_text(line)
+            p.verify(root)
+            (root/'SHA256SUMS').write_text(line+p.digest(success)+'  SUCCESS\n')
+            with self.assertRaises(ValueError): p.verify(root)
+
     def test_plan_memberships_doses_and_resumable_worker(self):
         original_write=fixture.m.write_table; original_build=fixture.m.build
         repo=Path(__file__).resolve().parents[2]
@@ -38,7 +49,7 @@ class Tests(unittest.TestCase):
             for folder in (inv,da1):
                 (folder/'SUCCESS').write_text('status\tPASS\n')
                 members=sorted(x for x in folder.rglob('*') if x.is_file())
-                (folder/'SHA256SUMS').write_text(''.join(p.digest(x)+'  '+str(x.relative_to(folder))+'\n' for x in members))
+                (folder/'SHA256SUMS').write_text(''.join(p.digest(x)+'  ./'+str(x.relative_to(folder))+'\n' for x in members))
             plan=root/'plan'; p.build(inv,da1,plan,cohorts=('feng',))
             contexts=p.table(plan/'contexts.tsv'); obs=p.table(plan/'observations.tsv')
             self.assertEqual(len(contexts),68)
