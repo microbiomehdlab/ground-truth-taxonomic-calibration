@@ -54,13 +54,14 @@ class Tests(unittest.TestCase):
             (seal/'production_seal.sha256').write_text(''.join(m.digest(p)+'  '+p.name+'\n' for p in sorted(seal.iterdir())))
             c=root/'canonical.tsv'; m.write_table(c,canonical)
             out=root/'out'
-            m.build(c,state,out,'feng',30,repetitions=2)
+            repetitions=getattr(self,'repetitions',2)
+            m.build(c,state,out,'feng',30,repetitions=repetitions)
             self.assertTrue((out/'SUCCESS').exists())
             families=m.table(out/'feature_families.tsv')
             self.assertEqual(len(families),60)
             self.assertTrue(all(r['baseline_n']=='10' for r in families))
             allocations=m.table(out/'allocations.tsv')
-            self.assertEqual(len(allocations),2*(252+2)*10)
+            self.assertEqual(len(allocations),2*(252+repetitions)*10)
             # Corrupt source must fail before output is created.
             source=Path(canonical[0]['source_profile']); source.write_text('corrupt\n')
             with self.assertRaises(ValueError): m.build(c,state,root/'bad','feng',30,repetitions=2)
