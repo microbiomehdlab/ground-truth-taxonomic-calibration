@@ -1,5 +1,24 @@
 #!/usr/bin/env Rscript
 # Diagnostic only: no refitting, warning suppression or DA p-value changes.
+write_audit_tsv <- function(data,path) {
+    # Printable escapes keep one physical line per record. Original warning
+    # text remains untouched in the model logs and saved RDS inputs.
+    for (name in names(data)) {
+        if (is.character(data[[name]])) {
+            present <- !is.na(data[[name]])
+            data[[name]][present] <- encodeString(data[[name]][present],quote='')
+        }
+    }
+    write.table(data,path,sep='\t',quote=FALSE,row.names=FALSE,na='NA')
+    fields <- count.fields(path,sep='\t',quote='',comment.char='',blank.lines.skip=FALSE)
+    if (length(fields)!=nrow(data)+1 || any(fields!=ncol(data)))
+        stop('Audit TSV row/column integrity failed: ',path)
+    reread <- read.delim(path,quote='',comment.char='',check.names=FALSE,
+                        stringsAsFactors=FALSE,colClasses='character',na.strings=NULL)
+    if (nrow(reread)!=nrow(data) || !identical(names(reread),names(data)))
+        stop('Audit TSV round-trip schema failed: ',path)
+}
+
 paired_metrics <- function(a,b,p=1e-8) {
     stopifnot(length(a)==length(b),length(a)>1,all(is.finite(c(a,b))),
               all(c(a,b)>=0),all(c(a,b)<=1))
@@ -97,7 +116,7 @@ audit_paired <- function(root,out,repo) {
             stringsAsFactors=FALSE)
     }
     save <- function(rows,name) {
-        if(length(rows)) write.table(do.call(rbind,rows),file.path(out,name),sep='\t',quote=FALSE,row.names=FALSE,na='NA')
+        if(length(rows)) write_audit_tsv(do.call(rbind,rows),file.path(out,name))
     }
     save(features,'paired_variation.tsv'); save(summaries,'context_summary.tsv')
     save(model_rows,'model_diagnostics.tsv')

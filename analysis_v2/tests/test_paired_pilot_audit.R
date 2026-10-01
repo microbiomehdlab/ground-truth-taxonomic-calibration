@@ -1,4 +1,13 @@
 source('analysis_v2/scripts/audit_paired_pilot.R')
+escaped_path <- tempfile()
+messages <- c('very large eigenvalue\n - Rescale variables?',
+              'tab\there\rreturn and \\literal and "quote"', '')
+write_audit_tsv(data.frame(context_id=rep('pilot_test',3),convergence_messages=messages),escaped_path)
+escaped <- read.delim(escaped_path,quote='',check.names=FALSE,colClasses='character')
+stopifnot(nrow(escaped)==3,all(escaped$context_id=='pilot_test'),
+          identical(escaped$convergence_messages,encodeString(messages,quote='')),
+          length(readLines(escaped_path))==4,
+          all(count.fields(escaped_path,sep='\t',quote='')==2))
 x <- paired_metrics(c(0,.01,.02),c(0,.01,.02))
 stopifnot(x$exactly_unchanged_pairs==3,x$sd_log_difference==0,x$deterministic_difference_at_tolerance)
 x <- paired_metrics(c(.01,.02,.03),c(.02,.025,.04))
