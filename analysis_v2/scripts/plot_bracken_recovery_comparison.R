@@ -14,7 +14,9 @@ if (status$status != 'PASS_SUMMARY_TABLES') stop('Summary stage failed')
 data <- read.delim(file.path(input,'recovery_summary.tsv'),check.names=FALSE)
 differences <- read.delim(file.path(input,'paired_method_differences.tsv'),check.names=FALSE)
 if (!nrow(data) || any(!is.finite(data$recovery_ratio_median))) stop('Invalid summaries')
-method_order <- c('Native fraction / old reference','All input pairs / read reference')
+is_mpa <- identical(status$profiler, 'metaphlan4')
+profiler_title <- if(is_mpa) 'MetaPhlAn' else 'Bracken'
+method_order <- if(is_mpa) c('Read-fraction reference / sensitivity','Genome-equivalent reference / primary') else c('Native fraction / old reference','All input pairs / read reference')
 data$method <- factor(data$method,levels=method_order)
 taxa <- c('Bfrag','Csym','Dpne','Fnuc','Hhat','Pmic','Pana','Psto','Porp','Pint')
 unknown <- setdiff(unique(data$target_label),taxa)
@@ -47,11 +49,11 @@ for (cohort in unique(data$cohort)) for (population in unique(data$analysis_popu
     geom_linerange(aes(ymin=recovery_ratio_q1,ymax=recovery_ratio_q3),linewidth=.35)+
     geom_line(aes(y=recovery_ratio_median),linewidth=.4)+geom_point(aes(y=recovery_ratio_median),size=1.4)+
     scale_y_continuous(trans=scales::pseudo_log_trans(base=10,sigma=.2))+
-    labs(title=paste('Bracken recovery ratio:',context),y='Recovered / implanted signal (ideal = 1)')
+    labs(title=paste(profiler_title,'recovery ratio:',context),y='Recovered / implanted signal (ideal = 1)')
   error <- base+geom_linerange(aes(ymin=absolute_relative_error_q1,ymax=absolute_relative_error_q3),linewidth=.35)+
     geom_line(aes(y=absolute_relative_error_median),linewidth=.4)+geom_point(aes(y=absolute_relative_error_median),size=1.4)+
     scale_y_continuous(trans=scales::pseudo_log_trans(base=10,sigma=.2))+
-    labs(title=paste('Bracken absolute relative error:',context),y='Absolute error / implanted signal (ideal = 0)')
+    labs(title=paste(profiler_title,'absolute relative error:',context),y='Absolute error / implanted signal (ideal = 0)')
   delta_plot <- ggplot(delta,aes(x=100*nominal_total_dose,y=paired_error_delta_median))+
     geom_hline(yintercept=0,linetype='dashed',color='#333333')+
     geom_linerange(aes(ymin=paired_error_delta_q1,ymax=paired_error_delta_q3),color='#0072B2',linewidth=.35)+
@@ -59,7 +61,7 @@ for (cohort in unique(data$cohort)) for (population in unique(data$analysis_popu
     facet_grid(condition~target_label,drop=FALSE)+scale_x_log10()+
     scale_y_continuous(trans=scales::pseudo_log_trans(base=10,sigma=.2))+
     labs(title=paste('Paired change in recovery error:',context),x=xlabel,
-      y='All-input error minus old error',subtitle='Negative: lower error using all input pairs. Points: median paired difference; bars: Q1-Q3.',
+      y=if(is_mpa) 'Genome-equivalent error minus read-reference error' else 'All-input error minus old error',subtitle='Negative: lower error using the primary reference. Points: median paired difference; bars: Q1-Q3.',
       caption='Source: paired_method_differences.tsv. Descriptive comparison; no inferential significance claim.')
   prefix <- paste(cohort,population,sep='_')
   save_plot(recovery,paste0(prefix,'_recovery_ratio'))
@@ -68,4 +70,4 @@ for (cohort in unique(data$cohort)) for (population in unique(data$analysis_popu
 }
 capture.output(sessionInfo(),file=file.path(out,'session_info.txt'))
 writeLines(c('status\tPASS_PLOTS','intervals\tsample_IQR','y_axis\tpseudo_log_signed'),file.path(out,'SUCCESS'))
-message('[PASS] Bracken comparison figures: ',out)
+message('[PASS] ',profiler_title,' comparison figures: ',out)
