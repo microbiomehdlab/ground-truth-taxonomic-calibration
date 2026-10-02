@@ -1,5 +1,9 @@
 # DA protocol amendment: MaAsLin2 primary
 
+DA2 primary-tool decision below is superseded by
+[the 2026-10-02 paired-inference amendment](DA2_PAIRED_INFERENCE_AMENDMENT_20261002.md).
+DA1 and DA3 remain MaAsLin2 primary. The dated original decision is retained.
+
 Status: agreed primary-tool change; remaining proposed settings require review.
 No definitive DA launch, preregistration claim or implementation-completion claim.
 This document supersedes the HC3-primary and one-sample-test-primary passages
