@@ -1,0 +1,21 @@
+source('analysis_v2/lib/exact_da3_candidate.R')
+g<-rep(0:1,each=5)
+y<-cbind(separated=c(rep(0,5),log2(1+c(1,1,1,1,2)*1e-5/1e-8)),
+  constant=rep(1,10),perfect=c(rep(0,5),rep(1,5)))
+fit<-exact_da3_candidate(y,g)
+stopifnot(isTRUE(all.equal(fit$exact_p[1],2/252)),fit$exact_p[2]==1,
+  !fit$variable[2],fit$variable[3],fit$exact_p[3]==2/252,
+  all(fit$max_statistic_fwer_p>=fit$exact_p-1e-12))
+stopifnot(isTRUE(all.equal(fit$exact_bh_q,p.adjust(fit$exact_p,'BH'))))
+reverse<-exact_da3_candidate(y,1-g)
+stopifnot(isTRUE(all.equal(fit$exact_p,reverse$exact_p)),isTRUE(all.equal(fit$beta,-reverse$beta)))
+order<-c(10,2,7,3,5,1,9,6,4,8)
+reordered<-exact_da3_candidate(y[order,],g[order])
+stopifnot(isTRUE(all.equal(fit$exact_p,reordered$exact_p)))
+permutations<-combn(10,5)
+hits<-vapply(seq_len(252),function(i){group<-integer(10);group[permutations[,i]]<-1;
+  any(exact_da3_candidate(y,group)$max_statistic_fwer_p<=.05)},logical(1))
+stopifnot(mean(hits)<=.05)
+bad<-tryCatch(exact_da3_candidate(y,c(rep(0,4),rep(1,6))),error=function(e)e)
+stopifnot(inherits(bad,'error'))
+cat('[PASS] Exact enumeration, ties/constants/perfect separation, BH, family maximum, label and row invariance\n')
