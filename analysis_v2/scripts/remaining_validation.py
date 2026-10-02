@@ -6,7 +6,7 @@ from audit_bracken_denominators import table,require,write_table,digest
 from prepare_da_pilot import verify
 from plan_da3_canary import finish
 
-def plan(pilot,out):
+def plan(pilot,out,clinical_only=False):
     pilot,out=pilot.resolve(),out.resolve();require(not out.exists() and pilot not in out.parents and out not in pilot.parents,'Fresh nonoverlapping output required')
     tasks=[];identities=set()
     for source in sorted(pilot.glob('pilot_*')):
@@ -16,11 +16,11 @@ def plan(pilot,out):
         key=(context['cohort'],context['profiler'],context['background'])
         require(key not in identities,'Duplicate DA1 context');identities.add(key)
         verify(source)
-        for mode,scenario in [('clinical_backend','actual'),('clinical_null','gaussian'),('clinical_null','skewed'),('clinical_null','heteroskedastic')]:
+        for mode,scenario in [('clinical_robust' if clinical_only else 'clinical_backend','actual'),('clinical_null','gaussian'),('clinical_null','skewed'),('clinical_null','heteroskedastic')]:
             tasks.append(dict(index=len(tasks),mode=mode,scenario=scenario,source=str(source),n='',family_n='',source_sha256=digest(source/'SHA256SUMS')))
     require(len(tasks)==48,'Expected all twelve completed DA1 pilot contexts')
     require(identities=={(c,t,b) for c in ('yachida','feng','zeller') for t in ('kraken2_bracken','metaphlan4') for b in ('Adenoma','CRC')},'Incomplete clinical context grid')
-    for n in (5,10,15,20):
+    for n in (() if clinical_only else (5,10,15,20)):
         for m in (474,3471):
             for scenario in ('gaussian','correlated','skewed'):
                 tasks.append(dict(index=len(tasks),mode='partial_null',scenario=scenario,source='',n=n,family_n=m,source_sha256=''))
@@ -34,7 +34,7 @@ def run(plan_root,results,index,repo):
     if r['source']:
         source=Path(r['source']);require(digest(source/'SHA256SUMS')==r['source_sha256'],'Source checkpoint changed');verify(source)
         for name in ('abundance.tsv','metadata.tsv','context.tsv'):shutil.copyfile(source/name,task/name);hashes[str(source/name)]=digest(source/name)
-    for name in ('scripts/run_remaining_validation.R','lib/maaslin_context.R','lib/maaslin_contract.R','lib/exact_da3_candidate.R','lib/monte_carlo_da3_candidate.R'):
+    for name in ('scripts/run_remaining_validation.R','lib/clinical_hc3.R','lib/maaslin_context.R','lib/maaslin_contract.R','lib/exact_da3_candidate.R','lib/monte_carlo_da3_candidate.R'):
         path=repo/'analysis_v2'/name;hashes[str(path)]=digest(path)
     with (task/'model.out').open('w') as stdout,(task/'model.err').open('w') as stderr:
         subprocess.run(['Rscript',str(repo/'analysis_v2/scripts/run_remaining_validation.R'),str(task),r['mode'],str(repo)],stdout=stdout,stderr=stderr,check=True)
@@ -57,9 +57,10 @@ def collect(plan_root,results,out):
 if __name__=='__main__':
     p=argparse.ArgumentParser();sub=p.add_subparsers(dest='command',required=True)
     q=sub.add_parser('plan');q.add_argument('--pilot',type=Path,required=True);q.add_argument('--out',type=Path,required=True)
+    q.add_argument('--clinical-only',action='store_true')
     q=sub.add_parser('run');q.add_argument('--plan',type=Path,required=True);q.add_argument('--results',type=Path,required=True);q.add_argument('--index',type=int,required=True);q.add_argument('--repo',type=Path,required=True)
     q=sub.add_parser('collect');q.add_argument('--plan',type=Path,required=True);q.add_argument('--results',type=Path,required=True);q.add_argument('--out',type=Path,required=True)
     a=p.parse_args()
-    if a.command=='plan':plan(a.pilot,a.out)
+    if a.command=='plan':plan(a.pilot,a.out,a.clinical_only)
     elif a.command=='run':run(a.plan,a.results,a.index,a.repo)
     else:collect(a.plan,a.results,a.out)

@@ -6,6 +6,24 @@ from remaining_validation import collect
 REPO=Path(__file__).resolve().parents[2]
 
 class RemainingTests(unittest.TestCase):
+ def test_full_collector_exact_schema_and_missing_batch(self):
+  from collect_da3_batches import collect as collect_batches
+  with tempfile.TemporaryDirectory() as d:
+   root=Path(d);p=root/'plan';p.mkdir();(p/'batches').mkdir()
+   (p/'batches/a.json').write_text(json.dumps([dict(context_id='c')]))
+   write_table(p/'tasks.tsv',[dict(index=0,file='batches/a.json')]);finish(p,'TEST')
+   f=root/'results/batch_00000';f.mkdir(parents=True)
+   write_table(f/'summary.tsv',[dict(context_id='c')])
+   (f/'resume_identity.json').write_text(json.dumps(dict(plan_sha256=digest(p/'SHA256SUMS'))))
+   import gzip,csv
+   with gzip.open(f/'targets.tsv.gz','wt',newline='') as h:
+    w=csv.DictWriter(h,fieldnames=['context_id','target_label','permutations'],delimiter='\t');w.writeheader()
+    w.writerows([dict(context_id='c',target_label=str(i),permutations=252) for i in range(10)])
+   finish(f,'TEST');collect_batches(p,root/'results',root/'report')
+   self.assertEqual(json.loads((root/'report/status.json').read_text())['completed_contexts'],1)
+   collect_batches(p,root/'missing',root/'missing_report')
+   self.assertEqual(len(json.loads((root/'missing_report/status.json').read_text())['failures']),1)
+
  def test_compact_batch_actual_exact_backend(self):
   with tempfile.TemporaryDirectory() as d:
    root=Path(d);plan=root/'plan';plan.mkdir();(plan/'batches').mkdir();profile=root/'native.tsv'
@@ -18,6 +36,10 @@ class RemainingTests(unittest.TestCase):
    self.assertEqual(table(root/'results/batch_00000/summary.tsv')[0]['positive_fwer_discoveries'],'0')
    import gzip,csv
    with gzip.open(root/'results/batch_00000/targets.tsv.gz','rt') as h:self.assertEqual(next(csv.DictReader(h,delimiter='\t'))['exact_p'],'1')
+   before=digest(root/'results/batch_00000/targets.tsv.gz')
+   run(plan,root/'results',0,REPO)
+   self.assertEqual(before,digest(root/'results/batch_00000/targets.tsv.gz'))
+   profile.write_text(profile.read_text()+'\n')
    with self.assertRaises(ValueError):run(plan,root/'results',0,REPO)
 
  def test_partial_null_runs_and_collector_keeps_missing(self):
@@ -37,6 +59,6 @@ class RemainingTests(unittest.TestCase):
    write_table(task/'metadata.tsv',[dict(observation_id='s'+str(i),group=int(i>=10),age=30+i,sex='Male' if i%2 else 'Female') for i in range(20)])
    write_table(task/'abundance.tsv',[dict(observation_id='s'+str(i),target1=.001,target2=.002) for i in range(20)])
    subprocess.run(['Rscript',str(REPO/'analysis_v2/scripts/run_remaining_validation.R'),str(task),'clinical_null',str(REPO)],check=True,stdout=subprocess.DEVNULL)
-   self.assertEqual(len(table(task/'draws.tsv')),200)
+   self.assertEqual(len(table(task/'draws.tsv')),400)
 
 if __name__=='__main__':unittest.main()

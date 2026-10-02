@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Compact 100-allocation design and batched workers; never auto-launch."""
 from __future__ import annotations
-import argparse,csv,gzip,json,math,subprocess,tempfile,time
+import argparse,csv,gzip,json,math,subprocess,tempfile,time,fcntl,os
 from decimal import Decimal
 from pathlib import Path
 from audit_bracken_denominators import table,require,digest,write_table
@@ -68,6 +68,32 @@ def plan(inventory,out,repetitions=100,batch_size=25):
     finish(out,'PASS_DRAFT_BATCH_PLAN_NOT_PRODUCTION_AUTHORIZATION');print('[PASS]',count,'contexts;',len(ledger),'batches')
 
 def run(plan_root,results,index,repo):
+    plan_root,results,repo=plan_root.resolve(),results.resolve(),repo.resolve()
+    require(results!=plan_root and plan_root not in results.parents and results not in plan_root.parents,'Overlapping results')
+    require(results!=repo and results not in repo.parents,'Results contain source repository')
+    files=[repo/'analysis_v2'/n for n in ('scripts/plan_da3_batches.py','scripts/fit_da3_batch_context.R','scripts/build_biomarker_abundance_input.py','scripts/audit_bracken_denominators.py','scripts/prepare_da_pilot.py','scripts/plan_da3_canary.py','lib/exact_da3_candidate.R','lib/monte_carlo_da3_candidate.R','lib/unpaired_null.R')]
+    identity=dict(plan_sha256=digest(plan_root/'SHA256SUMS'),code={str(p):digest(p) for p in files})
+    results.mkdir(parents=True,exist_ok=True);locks=results/'locks';locks.mkdir(exist_ok=True)
+    name='batch_%05d'%index;final=results/name
+    with (locks/(name+'.lock')).open('a') as lock:
+        fcntl.flock(lock,fcntl.LOCK_EX)
+        if final.exists():
+            verify(final)
+            require(json.loads((final/'resume_identity.json').read_text())==identity,'Resume identity differs')
+            for r in table(final/'input_hashes.tsv'):require(digest(Path(r['path']))==r['sha256'],'Completed batch source changed')
+            print('[PASS] Already completed:',name);return
+        attempts=results/'attempts';attempts.mkdir(exist_ok=True)
+        attempt=Path(tempfile.mkdtemp(prefix=name+'_',dir=str(attempts)))
+        _run_new(plan_root,attempt,index,repo)
+        staged=attempt/name
+        require(identity['code']=={str(p):digest(p) for p in files},'Code changed during batch')
+        (staged/'resume_identity.json').write_text(json.dumps(identity,sort_keys=True)+'\n')
+        finish(staged,'PASS_BATCH_COMPUTATION_NOT_PRODUCTION_AUTHORIZATION')
+        os.rename(staged,final)
+        attempt.rmdir()
+        print('[PASS] Completed:',name)
+
+def _run_new(plan_root,results,index,repo):
     # Verify only this task and shared catalog against the plan checksum ledger;
     # do not rehash all 4,800 immutable batch files in every worker.
     hashes={name:h for h,name in (line.split(None,1) for line in (plan_root/'SHA256SUMS').read_text().splitlines())}
