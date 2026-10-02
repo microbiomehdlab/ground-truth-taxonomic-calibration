@@ -72,7 +72,7 @@ def run(plan_root,results,index,repo):
     require(results!=plan_root and plan_root not in results.parents and results not in plan_root.parents,'Overlapping results')
     require(results!=repo and results not in repo.parents,'Results contain source repository')
     files=[repo/'analysis_v2'/n for n in ('scripts/plan_da3_batches.py','scripts/fit_da3_batch_context.R','scripts/build_biomarker_abundance_input.py','scripts/audit_bracken_denominators.py','scripts/prepare_da_pilot.py','scripts/plan_da3_canary.py','lib/exact_da3_candidate.R','lib/monte_carlo_da3_candidate.R','lib/unpaired_null.R')]
-    identity=dict(plan_sha256=digest(plan_root/'SHA256SUMS'),code={str(p):digest(p) for p in files})
+    identity=dict(plan_sha256=digest(plan_root/'SHA256SUMS'),code={str(p):digest(p) for p in files},analysis_image_sha256=os.environ.get('DA3_IMAGE_SHA256','NOT_RECORDED_LOCAL_TEST'))
     results.mkdir(parents=True,exist_ok=True);locks=results/'locks';locks.mkdir(exist_ok=True)
     name='batch_%05d'%index;final=results/name
     with (locks/(name+'.lock')).open('a') as lock:
@@ -87,6 +87,7 @@ def run(plan_root,results,index,repo):
         _run_new(plan_root,attempt,index,repo)
         staged=attempt/name
         require(identity['code']=={str(p):digest(p) for p in files},'Code changed during batch')
+        require(identity['plan_sha256']==digest(plan_root/'SHA256SUMS'),'Plan changed during batch')
         (staged/'resume_identity.json').write_text(json.dumps(identity,sort_keys=True)+'\n')
         finish(staged,'PASS_BATCH_COMPUTATION_NOT_PRODUCTION_AUTHORIZATION')
         os.rename(staged,final)
@@ -131,10 +132,19 @@ def _run_new(plan_root,results,index,repo):
     write_table(out/'input_hashes.tsv',[dict(path=p,sha256=h) for p,h in sorted(dict(source_hashes,**codehash).items())]);write_table(out/'timing.tsv',[dict(contexts=len(contexts),elapsed_seconds=time.monotonic()-start)])
     finish(out,'PASS_BATCH_COMPUTATION_NOT_PRODUCTION_AUTHORIZATION')
 
+def check(plan_root):
+    verify(plan_root)
+    require('status\tPASS_DRAFT_BATCH_PLAN_NOT_PRODUCTION_AUTHORIZATION' in (plan_root/'SUCCESS').read_text().splitlines(),'Wrong plan status')
+    tasks=table(plan_root/'tasks.tsv')
+    require(len(tasks)==4800 and [int(r['index']) for r in tasks]==list(range(4800)) and all(int(r['contexts'])==25 for r in tasks),'Expected 4800 indexed 25-context batches')
+    print('[PASS] Checksummed exploratory plan: 120000 contexts,100 allocations')
+
 if __name__=='__main__':
     p=argparse.ArgumentParser();s=p.add_subparsers(dest='command',required=True)
     q=s.add_parser('plan');q.add_argument('--inventory',type=Path,required=True);q.add_argument('--out',type=Path,required=True)
     q=s.add_parser('run');q.add_argument('--plan',type=Path,required=True);q.add_argument('--results',type=Path,required=True);q.add_argument('--repo',type=Path,required=True);q.add_argument('--index',type=int,required=True)
+    q=s.add_parser('check');q.add_argument('--plan',type=Path,required=True)
     a=p.parse_args()
     if a.command=='plan':plan(a.inventory,a.out)
-    else:run(a.plan,a.results,a.index,a.repo)
+    elif a.command=='run':run(a.plan,a.results,a.index,a.repo)
+    else:check(a.plan)
