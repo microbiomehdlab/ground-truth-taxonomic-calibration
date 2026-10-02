@@ -1,0 +1,45 @@
+source('analysis_v2/lib/monte_carlo_da3_candidate.R')
+source('analysis_v2/lib/paired_direction_candidate.R')
+set.seed(42);y<-matrix(rnorm(20*8),20,dimnames=list(NULL,paste0('f',1:8)))
+y[,8]<-0;g<-rep(0:1,each=10)
+a<-monte_carlo_da3_candidate(y,g,999,123,128)
+b<-monte_carlo_da3_candidate(y,g,999,123,256)
+stopifnot(isTRUE(all.equal(a,b)),all(a$mc_p>=1/1000),a$mc_p[8]==1,
+  all(a$max_statistic_fwer_p>=a$mc_p-1e-12),
+  isTRUE(all.equal(a$mc_bh_q,p.adjust(a$mc_p,'BH'))))
+# Independent slow calculation with identical random assignments and tie rule.
+centered<-sweep(y,2,colMeans(y),'-');scale<-apply(y,2,sd);scale[8]<-1
+z<-sweep(centered,2,scale,'/');observed<-abs(colMeans(z[g==1,])-colMeans(z[g==0,]))
+set.seed(123);null<-t(vapply(1:999,function(i){k<-sample.int(20,10);
+  abs(colMeans(z[k,])-colMeans(z[-k,]))},numeric(8)))
+count<-colSums(sweep(null,2,observed-100*.Machine$double.eps*pmax(1,observed),'>='))
+stopifnot(isTRUE(all.equal(a$mc_p,unname((count+1)/1000))))
+d<-cbind(up=rep(1,10),mixed=rep(c(-1,1),5),zero=rep(0,10),ties=c(rep(0,5),rep(1,5)))
+x<-paired_direction_candidate(d,rep(1e-12,4))
+stopifnot(x$raw_p[1]==binom.test(10,10,.5)$p.value,x$raw_p[2]==1,
+  is.na(x$raw_p[3]),x$full_family_bh_q[3]==1,x$informative_pairs[4]==5,
+  x$raw_p[4]==binom.test(5,5,.5)$p.value)
+negative<-paired_direction_candidate(-d,rep(1e-12,4))
+stopifnot(isTRUE(all.equal(x$raw_p,negative$raw_p)))
+bad<-tryCatch(monte_carlo_da3_candidate(y,rep(1,20)),error=function(e)e)
+stopifnot(inherits(bad,'error'))
+task<-tempfile('direction-fixture-');dir.create(task)
+native<-matrix(seq_len(80)*1e-6,20,4,dimnames=list(paste0('s',1:20),paste0('f',1:4)))
+meta<-data.frame(biological_sample_id=rep(paste0('person',1:10),2),group=g,
+  spike_state=rep(c('original','spiked'),each=10),row.names=rownames(native))
+write.table(data.frame(observation_id=rownames(native),native),file.path(task,'abundance.tsv'),sep='\t',quote=FALSE,row.names=FALSE)
+write.table(data.frame(observation_id=rownames(native),meta),file.path(task,'metadata.tsv'),sep='\t',quote=FALSE,row.names=FALSE)
+status<-system2(file.path(R.home('bin'),'Rscript'),c('analysis_v2/scripts/run_da_robustness.R',shQuote(task),'paired_direction',shQuote(getwd())))
+saved<-read.delim(file.path(task,'direction_results.tsv'))
+stopifnot(status==0,nrow(saved)==4,all(saved$informative_pairs==10),all(saved$positive==10))
+unlink(task,recursive=TRUE)
+task<-tempfile('larger-null-fixture-');dir.create(task)
+# Real native fractions, not transformed Gaussian responses.
+write.table(data.frame(observation_id=rownames(native),native),file.path(task,'abundance.tsv'),sep='\t',quote=FALSE,row.names=FALSE)
+write.table(data.frame(allocation_id='fixture',seed=123,group=rep(c('controls','cases'),each=10),sample_id=rownames(native)),
+  file.path(task,'allocations.tsv'),sep='\t',quote=FALSE,row.names=FALSE)
+status<-system2(file.path(R.home('bin'),'Rscript'),c('analysis_v2/scripts/run_da_robustness.R',shQuote(task),'larger_null',shQuote(getwd())))
+draw<-read.delim(file.path(task,'draws.tsv'))
+stopifnot(status==0,nrow(draw)==1,draw$n==10,draw$permutations==9999,draw$minimum_mc_p==.0001)
+unlink(task,recursive=TRUE)
+cat('[PASS] MC reproducibility/chunk invariance, independent calculation, plus-one/BH/max, and exact sign-test contract\n')
