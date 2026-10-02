@@ -6,7 +6,8 @@ clinical_hc3 <- function(x,y) {
  j<-match('group',colnames(x));bread<-solve(crossprod(x));weights<-x%*%bread
  leverage<-rowSums(weights*x)
  if(any(1-leverage<1e-10))stop('Extreme leverage: HC3 undefined/unstable')
- fit<-lm.fit(x,y);beta<-fit$coefficients[j,];r<-fit$residuals;df<-nrow(x)-ncol(x)
+ fit<-lm.fit(x,y);beta<-matrix(fit$coefficients,nrow=ncol(x))[j,]
+ r<-matrix(fit$residuals,nrow=nrow(x));df<-nrow(x)-ncol(x)
  ordinary_se<-sqrt(colSums(r^2)/df*bread[j,j])
  robust_se<-sqrt(colSums((r*(weights[,j]/(1-leverage)))^2))
  tolerance<-100*.Machine$double.eps*pmax(1,apply(abs(y),2,max))
