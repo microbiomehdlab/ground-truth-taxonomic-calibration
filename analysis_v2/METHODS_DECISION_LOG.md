@@ -4,6 +4,30 @@ This tracked log records decisions that affect manuscript methods or
 interpretation. Generated run directories preserve the corresponding inputs,
 diagnostics, provenance, and checksums.
 
+## 2026-10-03 — Timing passed; direct MaAsLin2 DA3 execution approved
+
+User-provided cluster report: 48/48 actual-package timing contexts complete,
+zero mismatched features and no failures. Median package times were roughly
+28/33 seconds for Bracken n=5/20 and 7/8 seconds for MetaPhlAn. The pilot projected
+774 single-worker hours, 26 ideal hours at concurrency 30, and 724 GiB with full
+native output retention. These are estimates, not measured full-run costs.
+
+The user approved the same 120,000-context DA3 grid through direct MaAsLin2
+1.18.0. No new allocation, transform, covariate, feature filter, or multiplicity
+choice is introduced. The existing wrapper is unchanged. Batch 25 contexts in
+one R process; retain compressed full-family and target statistics, diagnostics,
+source identity and hashes. Models are saved and checked on local scratch as
+before, then removed after success, not permanently archived for every context.
+This is a storage/execution change, not a statistical-method revision.
+
+The full-feature row coverage is validated before atomic publication. Resume
+skips only verified batches under the same source/plan/image identity; failed
+attempts are retained. Preparation enforces actual-package compact-output
+equivalence before releasing the arrays. Default concurrency is 30 total.
+Existing fast and permutation results remain untouched and differences are
+reported, not used to tune the analysis. Scientific interpretation and known
+small-n/null limitations remain subject to review. Runbook: MAASLIN_PRODUCTION.md.
+
 ## 2026-10-03 — Direct MaAsLin2 timing pilot (execution pending)
 
 At the user's request, add a 48-context timing/equivalence pilot using actual

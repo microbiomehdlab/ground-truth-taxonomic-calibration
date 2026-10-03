@@ -6,6 +6,13 @@ The immediate task connects exact-person spike recovery to existing DA3 standard
 LM/BH results and clinical context. Earlier method-development and execution
 instructions are historical where that dated plan supersedes them.
 
+Direct MaAsLin2 execution (3 October): the timing trial completed 48/48 contexts
+with no implementation mismatches. The user approved rerunning the existing
+120,000 DA3 contexts through the actual package. See
+[MAASLIN_PRODUCTION.md](MAASLIN_PRODUCTION.md) for the batched, restartable launch,
+compact full-feature retention and automatic collection. Full-run execution is
+pending; this does not change clinical DA1, paired DA2, or the experimental design.
+
 This directory is the isolated home of the revised downstream analysis. It is
 deliberately separate from the historical `original_unpaired` workflow at the
 repository root and under `scripts/`. Do not modify or overwrite that workflow
