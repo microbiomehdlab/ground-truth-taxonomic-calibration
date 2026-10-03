@@ -4,6 +4,26 @@ This tracked log records decisions that affect manuscript methods or
 interpretation. Generated run directories preserve the corresponding inputs,
 diagnostics, provenance, and checksums.
 
+## 2026-10-03 — Direct MaAsLin2 timing pilot (execution pending)
+
+At the user's request, add a 48-context timing/equivalence pilot using actual
+MaAsLin2 1.18.0 on existing DA3 allocations: three cohorts, two backgrounds,
+two profilers, n=5/20, and uniform total-community doses 0.0001/0.001. Choose
+the first context in each design stratum without inspecting its results.
+Keep the entire frozen feature family, explicit log2(1+a/1e-8) transform,
+group-only unpaired LM, and existing non-estimability/full-family BH policy.
+Native MaAsLin2 q-values remain separately identified. No clinical covariate
+choice, paired analysis, upstream output or existing DA3 result is changed.
+
+Measure direct-package time including saved models and tables, full task time,
+and output bytes; compare coefficients, p/q, estimability and discoveries with
+the fast LM on the identical matrix. Full-grid cost projections interpolate
+untested n and assume similar costs for other arms; they are not guaranteed
+completion times. Equivalence does not establish error calibration. Actual
+package testing is enforced in the cluster preparation job because the local
+environment lacks MaAsLin2. No full rerun is authorized by this pilot.
+Runbook: `MAASLIN_TIMING.md`. Existing scientific limitations remain in force.
+
 ## 2026-09-25 — Unified upstream cohort seal implemented (code only)
 
 **DECIDED** in `UNIFIED_UPSTREAM_SEAL_SPEC.md` (frozen 24 September 2026) and
