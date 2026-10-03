@@ -1,5 +1,11 @@
 # Paired downstream analysis (v2)
 
+Current scientific and execution entry point (3 October 2026):
+[Explaining missing adenoma significance with controlled spikes](ADENOMA_SIGNAL_EXPLANATION_20261003.md).
+The immediate task connects exact-person spike recovery to existing DA3 standard
+LM/BH results and clinical context. Earlier method-development and execution
+instructions are historical where that dated plan supersedes them.
+
 This directory is the isolated home of the revised downstream analysis. It is
 deliberately separate from the historical `original_unpaired` workflow at the
 repository root and under `scripts/`. Do not modify or overwrite that workflow
