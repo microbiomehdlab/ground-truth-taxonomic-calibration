@@ -11,7 +11,13 @@ with no implementation mismatches. The user approved rerunning the existing
 120,000 DA3 contexts through the actual package. See
 [MAASLIN_PRODUCTION.md](MAASLIN_PRODUCTION.md) for the batched, restartable launch,
 compact full-feature retention and automatic collection. Full-run execution is
-pending; this does not change clinical DA1, paired DA2, or the experimental design.
+running on the cluster (arrays 3104004–3104009); this does not change clinical
+DA1, paired DA2, or the experimental design.
+
+Clinical DA1 completion: [DA1_CLINICAL_RESULTS.md](DA1_CLINICAL_RESULTS.md)
+provides one audited export of the 12 existing all-eligible-sample MaAsLin2
+clinical fits, with adjusted effects/CI, full-family FDR, target prevalence and
+exclusions. Local fixtures pass; cluster export and interpretation are pending.
 
 This directory is the isolated home of the revised downstream analysis. It is
 deliberately separate from the historical `original_unpaired` workflow at the

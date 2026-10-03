@@ -4,6 +4,25 @@ This tracked log records decisions that affect manuscript methods or
 interpretation. Generated run directories preserve the corresponding inputs,
 diagnostics, provenance, and checksums.
 
+## 2026-10-03 — Complete DA1 by auditing existing clinical MaAsLin2 fits
+
+The user requested DA1 completion while DA3 runs. The 12 clinical pilot
+contexts already cover all three cohorts, both profilers, Adenoma/Control and
+CRC/Control, all eligible people and frozen full feature families. Implement
+a read-only verified export rather than silently rerunning or changing them.
+Cluster verification/execution remains pending; local fixtures are not evidence
+that the real clinical report has passed.
+
+Preserve the age/sex-adjusted ordinary MaAsLin2 1.18.0 LM, native fraction
+log2(1+a/1e-8) input, non-estimability rules and full-family group-only BH.
+Verify saved inference independently against that design; export original
+package coefficients/SE/p and both native/wrapper q, nominal 95% t intervals,
+both effect directions, eligible-group abundance/prevalence, sample counts and
+exclusions. CI assumptions are ordinary LM, not a new robust-inference claim;
+retain previously observed limitations. Non-significance is not proof of a
+profiling cause. No upstream or DA3 outputs, snapshots or jobs are modified.
+See DA1_CLINICAL_RESULTS.md. Scientific result interpretation follows export.
+
 ## 2026-10-03 — Timing passed; direct MaAsLin2 DA3 execution approved
 
 User-provided cluster report: 48/48 actual-package timing contexts complete,
