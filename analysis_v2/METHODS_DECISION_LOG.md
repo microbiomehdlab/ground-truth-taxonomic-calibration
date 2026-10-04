@@ -4,6 +4,30 @@ This tracked log records decisions that affect manuscript methods or
 interpretation. Generated run directories preserve the corresponding inputs,
 diagnostics, provenance, and checksums.
 
+## 2026-10-04 — Full DA2 descriptive dose response and paired supplement
+
+At the user's request, complete DA2 alongside the independently running DA1
+export and DA3 jobs. No new inferential method is selected: reuse the unchanged
+person-difference library and frozen condition-level full feature families.
+The primary deliverable is quantitative response across all 1,206 paired
+contexts and 82,340 target-person responses, including negative, zero and large
+recovery values. Retain native changes, Bracken all-input reference recovery,
+MetaPhlAn genome-equivalent recovery, and both legacy reference ratios.
+
+Paired native transformed differences, two-sided t p/CI and full-family BH
+remain supplementary; report both directions and degeneracies. Existing null,
+small-n and pseudocount limitations persist. Do not interpret successful spike
+recovery as clinical association or failed significance as proof of a profiling
+cause. Community/all-person and independent/ten-per-condition populations are
+kept separate. No unmatched population comparison is labelled a paired effect.
+
+Implement 18 independently resumable tasks, immutable source/image snapshots,
+exact profile/endpoint identity checks, atomic task publication, complete-family
+collection and six standard-style PDFs with retained plot data. Local real-R
+synthetic end-to-end fixtures pass; real cluster execution and scientific
+review remain pending. Runbook: DA2_DOSE_RESPONSE.md. Prior source results are
+unchanged and retained. No new bootstrap/method-validation campaign is opened.
+
 ## 2026-10-03 — Complete DA1 by auditing existing clinical MaAsLin2 fits
 
 The user requested DA1 completion while DA3 runs. The 12 clinical pilot

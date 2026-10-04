@@ -19,6 +19,11 @@ provides one audited export of the 12 existing all-eligible-sample MaAsLin2
 clinical fits, with adjusted effects/CI, full-family FDR, target prevalence and
 exclusions. Local fixtures pass; cluster export and interpretation are pending.
 
+The complete DA2 dose grid is implemented in
+[DA2_DOSE_RESPONSE.md](DA2_DOSE_RESPONSE.md): 18 parallel tasks, full-family
+paired supplementary inference, native/corrected target response summaries,
+and six consistently styled multipage PDFs. Cluster execution is pending.
+
 This directory is the isolated home of the revised downstream analysis. It is
 deliberately separate from the historical `original_unpaired` workflow at the
 repository root and under `scripts/`. Do not modify or overwrite that workflow
