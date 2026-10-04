@@ -4,6 +4,24 @@ This tracked log records decisions that affect manuscript methods or
 interpretation. Generated run directories preserve the corresponding inputs,
 diagnostics, provenance, and checksums.
 
+## 2026-10-04 — DA1 checkpoint lookup correction; DA2 report received
+
+User-reported DA1 export job 3108805 failed before model auditing: the pilot
+hash ledger legitimately contains both inventory feasibility and clinical
+person-level `eligibility.tsv` for each cohort. The exporter incorrectly
+required a unique basename/cohort-parent match. Resolve using the required
+clinical schema and the plan-pinned DA1 checkpoint SUCCESS/checksum identity.
+Still reject genuinely multiple clinical candidates, changed hashes or the
+wrong checkpoint stage. Regression fixtures now contain both tables, as the
+real pilot does. This is an input-discovery fix, not a model or eligibility
+change; existing model fits do not need rerunning. Corrected cluster export
+remains pending.
+
+Downloaded `da2_dose_response_20261004T014417Z_REPORT` verifies locally:
+18 tasks, 1206 contexts, 2340 summary cells (1260 community/1080 independent),
+all report checksums pass and condition-specific pair counts agree with the
+cohort design. Scientific synthesis with DA1/DA3 is not yet complete.
+
 ## 2026-10-04 — Full DA2 descriptive dose response and paired supplement
 
 At the user's request, complete DA2 alongside the independently running DA1

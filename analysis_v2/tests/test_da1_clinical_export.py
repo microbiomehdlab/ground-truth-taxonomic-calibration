@@ -12,7 +12,7 @@ from pathlib import Path
 
 REPO = Path(__file__).resolve().parents[2]
 sys.path.insert(0,str(REPO/'analysis_v2/scripts'))
-from export_da1_clinical import build, verify, COHORTS, PROFILERS, BACKGROUNDS
+from export_da1_clinical import build, verify, clinical_checkpoint, COHORTS, PROFILERS, BACKGROUNDS
 from audit_bracken_denominators import write_table, table, digest
 
 
@@ -40,7 +40,15 @@ class ExportTest(unittest.TestCase):
                     condition=bg,group='1',age='',sex='Male',eligible='0',exclusion_reason='missing_or_invalid_age',bmi=''))
             checkpoint=cls.root/'checkpoint'/cohort; checkpoint.mkdir(parents=True)
             write_table(checkpoint/'eligibility.tsv',eligibility)
-            hashes.append(dict(path=str(checkpoint/'eligibility.tsv'),sha256=digest(checkpoint/'eligibility.tsv')))
+            (checkpoint/'SUCCESS').write_text('status\tPASS_DA1_CHECKPOINT\n')
+            seal(checkpoint)
+            # The real pilot pins BOTH files with this basename and cohort parent.
+            inventory=cls.root/'inventory'/cohort; inventory.mkdir(parents=True)
+            write_table(inventory/'eligibility.tsv',[dict(cohort=cohort,condition='Control',pool_n=20,
+                n_per_group=5,feasible=1,independent_n=10)])
+            (inventory/'SUCCESS').write_text('status\tPASS_DESIGN_INVENTORY\n'); seal(inventory)
+            for folder in (checkpoint,inventory):
+                hashes.extend(dict(path=str(p),sha256=digest(p)) for p in folder.iterdir())
             for profiler in PROFILERS:
                 features=[a['alias'] for a in aliases if a['tool']==profiler]
                 for bg in BACKGROUNDS:
@@ -83,6 +91,36 @@ class ExportTest(unittest.TestCase):
         self.assertTrue((out/'contexts/pilot_0000/source/original_bundle_checksums.txt').is_file())
         self.assertFalse((out/'contexts/pilot_0000/source/SHA256SUMS').exists())
         with self.assertRaises(Exception): build(self.plan,self.results,out,REPO)
+
+    def test_two_names_resolve_by_clinical_schema_and_seal(self):
+        hashes=table(self.plan/'input_hashes.tsv')
+        for cohort in COHORTS:
+            candidates=[r for r in hashes if Path(r['path']).name=='eligibility.tsv' and Path(r['path']).parent.name==cohort]
+            self.assertEqual(len(candidates),2)  # Reproduces job 3108805's old failure.
+            path,rows=clinical_checkpoint(hashes,cohort)
+            self.assertEqual(path,self.root/'checkpoint'/cohort/'eligibility.tsv')
+            self.assertTrue(all('sample_id' in r for r in rows))
+
+    def test_genuine_clinical_ambiguity_is_refused(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            duplicate=Path(tmp)/'yachida'; duplicate.mkdir()
+            source=self.root/'checkpoint/yachida/eligibility.tsv'
+            (duplicate/'eligibility.tsv').write_bytes(source.read_bytes())
+            hashes=table(self.plan/'input_hashes.tsv')+[dict(path=str(duplicate/'eligibility.tsv'),sha256=digest(duplicate/'eligibility.tsv'))]
+            with self.assertRaisesRegex(ValueError,'exactly one clinical'):
+                clinical_checkpoint(hashes,'yachida')
+
+    def test_checkpoint_status_cannot_be_substituted(self):
+        path=self.root/'checkpoint/yachida/SUCCESS'; original=path.read_text()
+        try:
+            path.write_text('status\tPASS_DESIGN_INVENTORY\n'); seal(path.parent)
+            hashes=table(self.plan/'input_hashes.tsv')
+            for r in hashes:
+                if Path(r['path']).parent==path.parent: r['sha256']=digest(Path(r['path']))
+            with self.assertRaisesRegex(ValueError,'not a passed DA1'):
+                clinical_checkpoint(hashes,'yachida')
+        finally:
+            path.write_text(original); seal(path.parent)
 
     def test_uncovered_input_rejected(self):
         with tempfile.TemporaryDirectory() as tmp:

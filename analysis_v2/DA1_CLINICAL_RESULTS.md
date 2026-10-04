@@ -43,6 +43,13 @@ replacement inference. Intervals and eligible-group distributions are added.
 There is no automatic fallback or refitting. An inconsistency retains an
 attempt directory with FAILED.json and prevents final report publication.
 
+The pilot's input ledger includes two `eligibility.tsv` files per cohort:
+inventory sample-size feasibility and clinical person-level eligibility. The
+exporter selects the latter by its columns and checksummed
+`PASS_DA1_CHECKPOINT` identity, not by filename alone. Job 3108805 failed on
+the earlier filename-only ambiguity before any model audit; a fresh export
+with the corrected code is required. Existing models remain unchanged.
+
 `REPORT/` contains:
 
 - `target_results.tsv`: 120 target–clinical-context rows, including failures

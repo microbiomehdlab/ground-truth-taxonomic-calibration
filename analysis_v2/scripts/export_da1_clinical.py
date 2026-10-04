@@ -31,6 +31,29 @@ def verify(root, required):
     return covered
 
 
+def clinical_checkpoint(hashes, cohort):
+    """Distinguish clinical person eligibility from the DA inventory's n grid."""
+    pinned = {Path(r['path']):r['sha256'] for r in hashes}
+    candidates = [p for p in pinned if p.name=='eligibility.tsv' and p.parent.name==cohort]
+    clinical = []
+    fields = {'cohort','comparison','sample_id','condition','group','age','sex','eligible','exclusion_reason'}
+    for path in candidates:
+        require(digest(path)==pinned[path], 'Changed eligibility evidence: '+str(path))
+        rows = table(path)
+        if rows and fields <= set(rows[0]): clinical.append((path,rows))
+    require(len(clinical)==1, 'Expected exactly one clinical person-eligibility table for '+cohort+
+            '; clinical candidates='+str([str(p) for p,_ in clinical])+'; all eligibility paths='+str([str(p) for p in candidates]))
+    path,rows = clinical[0]
+    for member in ('SUCCESS','SHA256SUMS'):
+        p = path.parent/member
+        require(p in pinned and digest(p)==pinned[p], 'Clinical checkpoint identity absent/changed: '+str(p))
+    verify(path.parent, {'SUCCESS','eligibility.tsv'})
+    require('status\tPASS_DA1_CHECKPOINT' in (path.parent/'SUCCESS').read_text().splitlines(),
+            'Selected eligibility is not a passed DA1 checkpoint')
+    require(all(r['cohort']==cohort for r in rows), 'Wrong clinical eligibility cohort')
+    return path,rows
+
+
 def build(plan, results, out, repo):
     plan, results, out, repo = [p.resolve() for p in (plan, results, out, repo)]
     require(not out.exists(), 'Choose a fresh report directory')
@@ -51,12 +74,8 @@ def build(plan, results, out, repo):
                  'analysis_v2/DA1_CLINICAL_RESULTS.md','analysis_v2/taxon_identity_freeze.sha256'):
         path = repo/name; evidence[str(path)] = digest(path)
     for c in COHORTS:
-        candidates = [r for r in hashes if Path(r['path']).name=='eligibility.tsv' and Path(r['path']).parent.name==c]
-        require(len(candidates)==1, 'Ambiguous/missing DA1 eligibility checkpoint: '+c)
-        entry = candidates[0]; path = Path(entry['path'])
-        require(digest(path)==entry['sha256'], 'Changed eligibility checkpoint')
-        checkpoints[c] = table(path); evidence[str(path)] = entry['sha256']
-        require(all(r['cohort']==c for r in checkpoints[c]), 'Wrong eligibility cohort')
+        path,checkpoints[c] = clinical_checkpoint(hashes,c)
+        for p in (path,path.parent/'SUCCESS',path.parent/'SHA256SUMS'): evidence[str(p)] = digest(p)
     alias_path = repo/'examples/spike_taxon_aliases.csv'; panel_path = repo/'spikes/spike_panel.tsv'
     for p in (alias_path,):
         expected = {r['sha256'] for r in hashes if Path(r['path']).name==p.name}
