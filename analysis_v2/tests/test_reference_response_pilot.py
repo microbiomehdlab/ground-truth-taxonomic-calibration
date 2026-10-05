@@ -7,7 +7,7 @@ import tempfile
 import unittest
 from pathlib import Path
 sys.path.insert(0,str(Path(__file__).resolve().parents[1]/'scripts'))
-from reference_response_pilot import expected_profile, selected_contexts, classify, seal, fresh, COHORTS, TOOLS, DOSES, require_observed_equivalence, hc3_flags
+from reference_response_pilot import expected_profile, selected_contexts, classify, seal, fresh, COHORTS, TOOLS, DOSES, require_observed_equivalence, hc3_flags, reconcile_fractions
 
 
 class ReferenceTests(unittest.TestCase):
@@ -89,6 +89,37 @@ class ReferenceTests(unittest.TestCase):
         with self.assertRaises(ValueError):require_observed_equivalence(r,dict(r,beta='2'))
         self.assertEqual(hc3_flags(dict(hc3_estimable='FALSE',beta='NA',hc3_q='1'))['estimable'],'FALSE')
         self.assertEqual(hc3_flags(dict(hc3_estimable='TRUE',beta='1',hc3_q='.01'))['positive_discovery'],'TRUE')
+
+    def historical_rows(self):
+        exact=100/(1000003+100)
+        recorded=format(exact,'.8f')
+        design=dict(R='1000003',N_total='100',f_hat=recorded)
+        rows=[dict(target_label=label,implanted_read_pairs_target='10',spike_fraction_total=recorded,
+                   spike_fraction_target=repr(10/1000103)) for label in self.inserted]
+        return rows,design,exact
+
+    def test_historical_eight_decimal_total_is_accepted_without_changing_reference(self):
+        rows,design,exact=self.historical_rows()
+        self.assertGreater(abs(float(design['f_hat'])-exact),1e-10)
+        original,added,inserted,observed=reconcile_fractions(rows,design)
+        self.assertEqual((original,added),(1000003,100))
+        self.assertEqual(observed,exact)
+        self.assertNotEqual(observed,float(design['f_hat']))
+        self.assertEqual(inserted,self.inserted)
+
+    def test_rounding_does_not_allow_bad_design_or_canonical_totals(self):
+        rows,design,_=self.historical_rows()
+        with self.assertRaises(ValueError):reconcile_fractions(rows,dict(design,f_hat='.00011'))
+        rows[0]['spike_fraction_total']=str(float(design['f_hat'])+1e-9)
+        with self.assertRaises(ValueError):reconcile_fractions(rows,design)
+
+    def test_target_fractions_remain_exact_and_counts_reconcile(self):
+        rows,design,_=self.historical_rows()
+        rows[0]['spike_fraction_target']=format(float(rows[0]['spike_fraction_target']),'.8f')
+        with self.assertRaises(ValueError):reconcile_fractions(rows,design)
+        rows,design,_=self.historical_rows()
+        rows[0]['implanted_read_pairs_target']='11'
+        with self.assertRaises(ValueError):reconcile_fractions(rows,design)
 
 
 if __name__=='__main__':unittest.main()

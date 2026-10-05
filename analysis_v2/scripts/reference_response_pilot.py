@@ -83,6 +83,29 @@ def expected_profile(baseline, tool, inserted, total_fraction, targets,
     return result, scale
 
 
+def reconcile_fractions(rows, design):
+    """Honor the historical eight-decimal total, but use integer-count truth."""
+    original, added = int(design['R']), int(design['N_total'])
+    require(original > 0 and added > 0, 'Invalid design counts')
+    inserted = {r['target_label']:int(r['implanted_read_pairs_target']) for r in rows}
+    require(len(inserted) == len(rows) == 10 and all(n > 0 for n in inserted.values())
+            and sum(inserted.values()) == added, 'Community inserted counts do not reconcile')
+    exact = added/(original+added)
+    recorded = float(design['f_hat'])
+    require(math.isfinite(recorded) and abs(recorded-exact) <= 5.01e-9,
+            f'Design f_hat differs beyond eight-decimal rounding: recorded={recorded:.17g}, '
+            f'exact={exact:.17g}, R={original}, N_total={added}')
+    for row in rows:
+        label = row['target_label']
+        total, target = float(row['spike_fraction_total']), float(row['spike_fraction_target'])
+        require(math.isfinite(total) and abs(total-recorded) <= 1e-12,
+                f'Canonical total differs from design f_hat: {label}, canonical={total:.17g}, '
+                f'design={recorded:.17g}')
+        require(math.isfinite(target) and abs(target-inserted[label]/(original+added)) <= 1e-12,
+                'Canonical target differs from exact inserted count fraction: '+label)
+    return original, added, inserted, exact
+
+
 def selected_contexts(plan, allocations=20, arms=('U',)):
     require(allocations in (20, 100), 'Use 20 engineering or 100 extension allocations')
     require(arms and len(set(arms)) == len(arms) and set(arms) <= {'U', 'P25', 'P50', 'P75'},
@@ -206,14 +229,10 @@ def prepare(a):
             design = Path(rows[0]['source_design']); track(design)
             dr = [r for r in table(design) if Decimal(r['fraction']) == Decimal(obs['dose'])]
             require(len(dr) == 1 and dr[0]['sample_id'] == obs['sample_id'], 'Ambiguous design dose')
-            original, added = int(dr[0]['R']), int(dr[0]['N_total'])
-            require(original > 0 and added > 0, 'Invalid design counts')
-            inserted = {r['target_label']:int(r['implanted_read_pairs_target']) for r in rows}
-            require(sum(inserted.values()) == added, 'Community inserted counts do not reconcile')
-            F = added/(original+added)
-            require(all(abs(float(r['spike_fraction_total'])-F) < 1e-10 and
-                        abs(float(r['spike_fraction_target'])-inserted[r['target_label']]/(original+added)) < 1e-10
-                        for r in rows), 'Canonical fractions do not reconcile')
+            try:
+                original, added, inserted, F = reconcile_fractions(rows,dr[0])
+            except ValueError as error:
+                raise ValueError(f'{key}; design={design}: {error}') from error
             S = None
             if tool == 'kraken2_bracken':
                 S = sum(int(r['new_est_reads']) for r in table(baseline_path) if r['taxonomy_lvl'] == 'S')
@@ -222,6 +241,8 @@ def prepare(a):
             audits.append(dict(key=key,cohort=cohort,sample_id=obs['sample_id'],profiler=tool,
                 nominal_total_dose=obs['dose'],original_pairs=original,inserted_pairs=added,
                 achieved_total_fraction=F,baseline_species_counts=S or '',retained_scale=scale,
+                recorded_design_total_fraction=dr[0]['f_hat'],
+                exact_minus_recorded_total_fraction=F-float(dr[0]['f_hat']),
                 inserted_counts_json=json.dumps(inserted,sort_keys=True),
                 effective_genome_size_bp=geff[(cohort,obs['sample_id'])] if tool == 'metaphlan4' else '',
                 target_genome_sizes_json=json.dumps(sizes,sort_keys=True) if tool == 'metaphlan4' else '',

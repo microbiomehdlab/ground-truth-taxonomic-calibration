@@ -44,9 +44,10 @@ class PipelineTests(unittest.TestCase):
                             if dose=='0':continue
                             added=int(float(dose)*1000000);F=added/(1000000+added)
                             design=source/('design_'+sid+'_'+dose+'.tsv')
-                            write_table(design,[dict(sample_id=sid,fraction=dose,R=1000000,N_total=added)])
+                            recorded=format(F,'.8f')
+                            write_table(design,[dict(sample_id=sid,fraction=dose,R=1000000,N_total=added,f_hat=recorded)])
                             for label in labels.values():
-                                canonical.append(dict(analysis_population='community',spike_fraction_total=F,
+                                canonical.append(dict(analysis_population='community',spike_fraction_total=recorded,
                                     spike_fraction_target=(added//10)/(1000000+added),implanted_read_pairs_target=added//10,
                                     profiler=tool,sample_id=sid,source_profile=str(path),source_design=str(design),target_label=label))
                     for n in (10,20):

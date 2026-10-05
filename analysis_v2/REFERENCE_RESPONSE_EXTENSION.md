@@ -44,7 +44,12 @@ true cell abundance; baseline measurement bias and genome-size assumptions
 remain. The two workflows do not share an independently measured truth scale.
 
 Canonical inserted counts must reconcile exactly to the recorded community
-design N_total. Fractions must reconcile to R and N. Genome-size and source
+design N_total. Canonical total fractions must reproduce the recorded design
+f_hat (tolerance 1e-12); historical f_hat is rounded to eight decimals and must
+agree with N/(R+N) within 5.01e-9. Canonical community target fractions retain
+their exact integer-count definition (tolerance 1e-12, not the rounded-total
+tolerance). Reference calculations always use exact N/(R+N), and both exact and
+recorded totals plus their difference are audited. Genome-size and source
 profile checksums, ten-target coverage, baseline identities and observed-plan
 identity are required; no fallback, interpolation or silently dropped sample.
 
@@ -153,6 +158,16 @@ recovery or a causal contamination claim. The output explicitly remains pending
 source-seal/receipt verification and scientific review before manuscript use.
 
 ## Validation and remaining work
+
+Cluster preparation 3108871 (5 October) passed the actual pinned MaAsLin2
+fixture but exposed an incorrect new 1e-10 total-fraction tolerance against
+historical eight-decimal f_hat. The reconciliation contract above corrects that
+interface bug without changing data or reference formulas. Unit tests reject
+out-of-rounding design differences, canonical/design disagreements, rounded
+community target fractions and incorrect integer counts. The complete pipeline
+fixture now uses eight-decimal totals rather than unrealistically exact totals.
+Failed preparation leaves the dependent array/collector unstarted; cancel those
+pending jobs and retry in a fresh run directory after pulling the correction.
 
 Local: Python formula/design tests, complete prepare/run/resume/collect fixture
 with a mocked R process, R full-family/backend-interface fixture with an LM test
