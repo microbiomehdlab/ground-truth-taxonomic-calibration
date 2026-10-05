@@ -1,5 +1,16 @@
 # Reference-response pilot: paper handoff, 5 October 2026
 
+Update: the targeted NE audit is now executed and locally verified. See
+REFERENCE_NE_REVIEW_20261005.md: MetaPhlAn constants are all-zero inputs; Bracken
+perfect fits are zero controls versus identical positive exposed values. The
+first next-step input inspection below is completed, not still pending.
+
+Reference assumptions and compact-figure scope are now reviewed in
+REFERENCE_ASSUMPTIONS_REVIEW_20261005.md. Four-panel draft and source tables live
+outside Git in ../reference_response_compact_20261005_v2/. No expanded reference
+jobs were submitted; the next methodological step is construction sensitivity,
+not another statistical-method search or a rerun of completed NE audits.
+
 Status: executed and checksum-verified; initial descriptive scientific review
 completed. Figure drafts exist. Not a production authorization or final paper
 claim. This entry supersedes the earlier statement that this pilot still awaited
