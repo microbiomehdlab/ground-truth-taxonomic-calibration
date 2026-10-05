@@ -1,5 +1,11 @@
 # Reference-response extension: implementation and execution
 
+100-allocation same-grid execution is now supported by the shared launcher;
+see REFERENCE_100_ALLOCATIONS.md. Set REFERENCE_ALLOCATIONS=100 explicitly.
+The default remains the original 20-allocation pilot described below. The
+half/double conversion stress was completed and reviewed separately in
+REFERENCE_SCALING_REVIEW_20261005.md; original primary settings are unchanged.
+
 This is a new, explicitly post-hoc study extension. It does not replace the
 completed observed DA3 fits or authorize a final production analysis. No new
 FASTQs or taxonomic profiles are generated. Interpretation must not equate a

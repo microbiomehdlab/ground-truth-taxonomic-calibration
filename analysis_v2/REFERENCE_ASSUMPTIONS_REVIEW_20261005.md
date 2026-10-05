@@ -1,5 +1,11 @@
 # Reference assumptions and scope decision — 5 October 2026
 
+Update: the half/double conversion stress is executed and verified; see
+REFERENCE_SCALING_REVIEW_20261005.md. The low-dose contrast persists, but Bfrag,
+Csym and Hhat expected detectability is scale-sensitive. Construction sensitivity
+for this declared global factor is no longer pending. Next recommended scope:
+all 100 saved allocations with the same grid and uniform arm.
+
 Reviewed expected_profile() and preparation in reference_response_pilot.py,
 existing formula fixtures, verified pilot outputs and verified NE audit. This is
 a conceptual/code review, not independent validation of true cell abundances.

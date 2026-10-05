@@ -15,6 +15,12 @@ from audit_bracken_denominators import digest,write_table,table
 
 class PipelineTests(unittest.TestCase):
     def test_complete_pipeline_and_tampering(self):
+        self.check_pipeline(20)
+
+    def test_full_100_allocation_pipeline(self):
+        self.check_pipeline(100)
+
+    def check_pipeline(self, allocations):
         repo=Path(__file__).resolve().parents[2]
         with tempfile.TemporaryDirectory() as temporary:
             base=Path(temporary);plan=base/'plan';plan.mkdir(); inventory=base/'inventory';inventory.mkdir()
@@ -52,7 +58,7 @@ class PipelineTests(unittest.TestCase):
                                     profiler=tool,sample_id=sid,source_profile=str(path),source_design=str(design),target_label=label))
                     for n in (10,20):
                         for dose in module.DOSES:
-                            for allocation in range(20):
+                            for allocation in range(allocations):
                                 contexts.append(dict(context_id='da3_%07d'%len(contexts),cohort=cohort,profiler=tool,
                                     background='Adenoma',n=n,arm='U',anchor=dose,allocation_id='full_%04d'%allocation,
                                     observations=[dict(sample_id=str(i),group=int(i<n),dose=dose if i<n else '0',
@@ -80,9 +86,9 @@ class PipelineTests(unittest.TestCase):
             module.seal(report,'PASS_DIRECT_MAASLIN')
             root=base/'extension'
             a=Namespace(out=root,repo=repo,plan=plan,inventory=inventory,geff_root=geff,observed_report=report,
-                        image=str(image),allocations=20,arms='U',batch_size=720)
+                        image=str(image),allocations=allocations,arms='U',batch_size=36*allocations)
             module.prepare(a)
-            self.assertEqual(json.loads((root/'identity.json').read_text())['contexts'],720)
+            self.assertEqual(json.loads((root/'identity.json').read_text())['contexts'],36*allocations)
             reference=json.loads((root/'reference_profiles.json').read_text())
             self.assertAlmostEqual(reference['yachida|kraken2_bracken|0|0.001']['T0'],.055)
             def fake_r(command,check):
@@ -113,7 +119,7 @@ class PipelineTests(unittest.TestCase):
             self.assertEqual(digest(root/'results/batch_0000/SHA256SUMS'),batch_hash)
             with self.assertRaises(ValueError):module.collect(root,root/'REPORT')
             status=json.loads((root/'REPORT/status.json').read_text())
-            self.assertEqual(status['target_rows'],7200)
+            self.assertEqual(status['target_rows'],360*allocations)
             self.assertFalse(status['production_authorized'])
             with (root/'results/batch_0000/targets.tsv').open('a') as h:h.write('tampered\n')
             with self.assertRaises(ValueError):module.collect(root,root.parent/'bad-report')
