@@ -7,6 +7,8 @@
 #SBATCH --error=reference_collect.%j.err
 set -euo pipefail
 : "${REFERENCE_ROOT:?}"
-cd "$REFERENCE_ROOT/source"
+# Reporting fixes may be applied without changing the sealed calculation source.
+: "${PROJECT:?}"
+cd "$PROJECT"
 python3 -B analysis_v2/scripts/reference_response_pilot.py collect \
     --root "$REFERENCE_ROOT" --out "$REFERENCE_ROOT/REPORT"

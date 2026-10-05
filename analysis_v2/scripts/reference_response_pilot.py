@@ -375,7 +375,14 @@ def hc3_flags(row):
 
 
 def collect(root, out):
-    fresh(out,[root]); verify(root)
+    root, out = root.resolve(), out.resolve()
+    # REPORT is an operational output, not an immutable plan member. Only this
+    # designated child may live inside the run; never overwrite plan/results.
+    if out == root/'REPORT':
+        fresh(out, [])
+    else:
+        fresh(out, [root])
+    verify(root)
     identity=dict(plan_sha256=digest(root/'SHA256SUMS'),image_sha256=json.loads((root/'identity.json').read_text())['image_sha256'])
     observed={(r['context_id'],r['target_label']):r for r in table(root/'observed_targets.tsv')}
     contexts={c['context_id']:c for c in json.loads((root/'contexts.json').read_text())}
@@ -415,6 +422,11 @@ def collect(root, out):
                     inference=inference,category=category,allocations=len(rows),count=count,conditional_frequency=count/len(rows)))
     out.mkdir(parents=True); write_table(out/'target_comparisons.tsv',comparisons)
     write_table(out/'conditional_categories.tsv',summary)
+    (out/'collector_provenance.json').write_text(json.dumps(dict(
+        collector_path=str(Path(__file__).resolve()),
+        collector_sha256=digest(Path(__file__).resolve()),
+        plan_sha256=identity['plan_sha256'],
+        calculation_source_preserved=True),indent=2)+'\n')
     (out/'status.json').write_text(json.dumps(dict(status='COMPLETE_PENDING_SCIENTIFIC_REVIEW',
         contexts=len(contexts),target_rows=len(comparisons),production_authorized=False,
         inference='MaAsLin2_1.18.0_primary_HC3_sensitivity_not_randomization_proof'),indent=2)+'\n')

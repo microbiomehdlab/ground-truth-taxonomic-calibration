@@ -175,6 +175,20 @@ double, assembly pairing gates and shell syntax. The actual pinned backend is
 NOT available locally; the cluster preparation job tests it and fails closed.
 The mock tests are not represented as real MaAsLin2 execution.
 
+### Collector-only recovery (2026-10-05)
+
+Run `reference_response_pilot_20261005T202107Z` completed preparation (3108874)
+and all 72 analysis tasks (3108875), but collector 3108876 rejected its own
+designated `REPORT` child as overlapping output. Collection now permits only
+that designated child inside the run, still refuses existing outputs and other
+nested destinations, and records the collector hash in the sealed report.
+The collection sbatch uses the current `PROJECT` checkout; the immutable
+calculation snapshot and completed batches remain unchanged. After pulling the
+fix, export `PROJECT` and the existing `REFERENCE_ROOT`, then submit only
+`analysis_v2/collect_reference_response.sbatch`. Do not resubmit preparation or
+the analysis array. Regression checks cover the actual nested report path,
+unsafe destinations, checksum preservation and refusal to overwrite a report.
+
 Next, without selecting settings by favorable significance:
 
 - Review all taxa's matched primary/HC3 effects and categories, including every
