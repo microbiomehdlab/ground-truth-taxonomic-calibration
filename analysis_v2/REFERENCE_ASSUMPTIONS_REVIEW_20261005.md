@@ -48,6 +48,12 @@ expected-response comparison, useful to locate conditional gaps in this design.
 
 ## Scope decision
 
+Implementation update: REFERENCE_SCALING_SENSITIVITY.md prespecifies half/double
+global MetaPhlAn conversion stress scenarios with fixed people/doses/models. These
+are broad assumption probes, not empirically estimated uncertainty bounds. The
+original pilot is preserved. Scientific review of these outputs precedes the
+proposed 100-allocation expansion below.
+
 The completed pilot is suitable for descriptive reporting with these caveats.
 Do not launch a giant reference expansion simply because the contrast is large.
 Next validate construction-level sensitivity using saved values/designs, focusing
