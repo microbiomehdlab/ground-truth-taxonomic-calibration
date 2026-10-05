@@ -1911,3 +1911,34 @@ this strengthened contract; profiling is not repeated.
 ## 2026-09-29 — Definitive cohort runbooks use the versioned v2 analysis image
 
 - Corrected the Yachida and Feng/Zeller definitive runbooks to point to `ground_truth_analysis_v2_1.sif`. The previous v1 path was stale relative to the frozen 2026-09-20 downstream environment decision and the successful upstream evidence-package build. This changes launch documentation only; no cohort analysis was submitted by this edit.
+
+## 2026-10-05 — Reference-response explanation extension
+
+Implemented a new, explicitly post-hoc reference/observed DA3 pilot, not an
+"ideal-profiler" causal partition of natural biomarker failure. The first
+engineering plan uses all ten taxa, Adenoma backgrounds in three cohorts, both
+tools, n=10/20, total doses 0.0001/0.001/0.01 and the first 20 saved allocation
+IDs. Observed primary MaAsLin2 results are reused; reference fits use the same
+pinned wrapper/family/transform. HC3 is a matched sensitivity, not a guarantee
+under skew. Non-estimable comparisons remain distinct from nonsignificance.
+
+Bracken uses a baseline-native anchored estimated-species-count denominator
+S+N, not the recovery analysis's all-input R+N. MetaPhlAn uses existing sealed
+G_eff and target genome sizes; the reference is approximate and not biological
+truth. Both constructions dilute every background feature before selecting the
+frozen DA family. Design integer counts and observed-plan/model/parser/image
+identities must match; no silent fallback or sample exclusion is allowed.
+
+Conditional cohort/tool summaries were generated locally from the downloaded
+complete direct MaAsLin2 report (1,200,000 target-context rows; 12,000 cohort
+frequency cells), without fitting models. Cohort joint frequencies explicitly
+assume independently sampled saved allocation distributions, not matching people
+by allocation ID or claiming population clinical replication probabilities.
+
+The new assembly adapter compares matched native changes only, requires exact
+mate/count/dose/seed agreement, and remains pending source-seal/receipt review.
+It deliberately avoids substituting historical read-proportional MetaPhlAn
+recovery for assembly-specific genome-corrected recovery. Local fixtures pass;
+actual MaAsLin2 pilot and real assembly comparison require cluster execution.
+See REFERENCE_RESPONSE_EXTENSION.md for commands and deferred work. Existing
+scientific outputs and manuscript conclusions were not replaced.

@@ -261,3 +261,13 @@ After sequential and map-reduce development runs complete,
 `scripts/compare_biomarker_development_runs.py` compares ten primary scientific tables after
 deterministic row sorting and numeric normalization. A map-reduce run should not replace its
 sequential reference unless this equivalence audit passes.
+
+## Reference-response study extension
+
+[Reference-response extension](REFERENCE_RESPONSE_EXTENSION.md) implements a
+720-context baseline-anchored reference/observed pilot with direct pinned
+MaAsLin2 and matched HC3 sensitivity, conditional cohort/tool summaries from
+existing DA3 outputs, and a matched Pana/Pint native assembly-response comparison.
+The runbook includes a single dependency-gated pilot submission and distinguishes
+local fixtures, actual-backend cluster validation and pending scientific review.
+These extensions do not replace observed results or authorize production.
