@@ -54,8 +54,11 @@ def build(root, report, out):
     native=json.loads((root/'native_profiles.json').read_text())
     summaries=[];vectors=[]
     for r in selected:
-        c=contexts[r['context_id']]; feature=r['feature']
-        require(catalog['targets'][c['profiler']][feature]==r['target_label'],'Target identity differs')
+        c=contexts[r['context_id']]
+        matches=[feature for feature,label in catalog['targets'][c['profiler']].items()
+                 if label==r['target_label']]
+        require(len(matches)==1,'Missing/ambiguous target feature in sealed catalog: '+r['target_label'])
+        feature=matches[0]
         values=[];groups=[]
         require(len({o['sample_id'] for o in c['observations']})==len(c['observations']), 'Repeated person')
         for o in c['observations']:

@@ -42,7 +42,7 @@ class InputTests(unittest.TestCase):
                     observations.append(dict(sample_id=str(person),key=key,group=group,dose='.0001' if group else '0'))
                 contexts.append(dict(context_id=cid,cohort='feng',profiler=tool,n=2,observations=observations))
                 rows.append(dict(context_id=cid,cohort='feng',profiler=tool,n=2,nominal_total_dose='.0001',
-                    allocation_id='full_0000',target_label='Fnuc',feature='feature',observed_estimable='FALSE',
+                    allocation_id='full_0000',target_label='Fnuc',observed_estimable='FALSE',
                     observed_status='NON_ESTIMABLE_CONSTANT' if i==0 else 'NON_ESTIMABLE_PERFECT_FIXED_FIT'))
             (root/'contexts.json').write_text(json.dumps(contexts))
             (root/'catalog.json').write_text(json.dumps(dict(profiles=profiles,
